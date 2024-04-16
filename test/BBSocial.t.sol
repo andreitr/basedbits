@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
@@ -80,7 +80,7 @@ contract BBSocialTest is Test {
     }
 
     function testInitialSettings() public {
-        assertEq(bbSocial.postThreshold(), 5);
+        assertEq(bbSocial.threshold(), 5);
         assertEq(bbSocial.collection(), address(mockERC721));
     }
 
@@ -98,7 +98,7 @@ contract BBSocialTest is Test {
 
     function testUpdateThreshold() public {
         bbSocial.updateThreshold(10);
-        assertEq(bbSocial.postThreshold(), 10);
+        assertEq(bbSocial.threshold(), 10);
     }
 
     function testFailUpdateThresholdNotOwner() public {
