@@ -63,6 +63,7 @@ contract MockERC721 is IERC721 {
     function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
         return interfaceId == type(IERC721).interfaceId || interfaceId == type(IERC721Receiver).interfaceId;
     }
+
 }
 
 contract BBSocialTest is Test {
@@ -88,7 +89,7 @@ contract BBSocialTest is Test {
         mockERC721.mint(user, 6); // Mint 6 NFTs to user
         vm.prank(user);
         bbSocial.postMessage("Hello World!");
-        assertEq(bbSocial.walletPostCount(user), 1);
+        assertEq(bbSocial.walletPosts(user), 1);
         assertEq(bbSocial.nftPostCount(1), 1); // Assuming tokenId 1 was minted
     }
 

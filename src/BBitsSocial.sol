@@ -11,8 +11,8 @@ contract BBSocial is Ownable, Pausable {
     uint16 public threshold; // Minimum number of NFTs a user must hold to post messages
     address public collection; // Address of the NFT collection required for posting messages
 
-    mapping(uint256 => uint256) public nftPostCount; // Mapping to keep track of post counts for each NFT
-    mapping(address => uint256) public walletPostCount; // Mapping to keep track of post counts for each wallet
+    mapping(uint256 => uint256) public walletPoints; // Mapping to keep track of post counts for each NFT
+    mapping(address => uint256) public walletPosts; // Mapping to keep track of post counts for each wallet
 
     event MessagePosted(address indexed sender, string message);
     event ThresholdUpdated(uint16 newThreshold);
@@ -25,22 +25,20 @@ contract BBSocial is Ownable, Pausable {
     function postMessage(string memory message) public whenNotPaused {
         require(IERC721(collection).balanceOf(msg.sender) >= threshold, "Not enough NFTs to post");
         uint256 totalTokens = IERC721(collection).balanceOf(msg.sender);
-        for (uint256 i = 0; i < totalTokens; i++) {
-            uint256 tokenId = IERC721Enumerable(collection).tokenOfOwnerByIndex(msg.sender, i);
-            nftPostCount[tokenId] += 1; // Increment the post count for each NFT owned by the sender
-        }
-        walletPostCount[msg.sender] += 1; // Increment the post count for the sender's wallet
+
+        walletPosts[msg.sender] += 1;
+        walletPoints[msg.sender] += totalTokens;
         emit MessagePosted(msg.sender, message);
     }
 
-    function getWalletPostCount(address wallet) public view returns (uint256) {
-        return walletPostCount[wallet];
+    function getWalletPosts(address wallet) public view returns (uint256) {
+        return walletPosts[wallet];
     }
 
-    function getNftPostCount(uint256 tokenId) public view returns (uint256) {
-        return nftPostCount[tokenId];
+    function getWalletPoints(address wallet) public view returns (uint256) {
+        return walletPoints[wallet];
     }
-    
+
     function pause() public onlyOwner {
         _pause();
     }
