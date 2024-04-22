@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "../src/BBSocial.sol";
+import "../src/BBitsSocial.sol";
 
 import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {IERC721Receiver} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
@@ -88,6 +88,8 @@ contract BBSocialTest is Test {
         mockERC721.mint(user, 6); // Mint 6 NFTs to user
         vm.prank(user);
         bbSocial.postMessage("Hello World!");
+        assertEq(bbSocial.walletPostCount(user), 1);
+        assertEq(bbSocial.nftPostCount(1), 1); // Assuming tokenId 1 was minted
     }
 
     function testFailPostMessageNotEnoughNFTs() public {
@@ -116,5 +118,34 @@ contract BBSocialTest is Test {
         address newCollection = address(0x3);
         vm.prank(user); // Acting as a non-owner
         bbSocial.updateCollection(newCollection);
+    }
+
+    function testPause() public {
+        bbSocial.pause();
+        assertTrue(bbSocial.paused());
+    }
+
+    function testFailPauseNotOwner() public {
+        vm.prank(user); // Acting as a non-owner
+        bbSocial.pause();
+    }
+
+    function testUnpause() public {
+        bbSocial.pause();
+        bbSocial.unpause();
+        assertFalse(bbSocial.paused());
+    }
+
+    function testFailUnpauseNotOwner() public {
+        bbSocial.pause();
+        vm.prank(user); // Acting as a non-owner
+        bbSocial.unpause();
+    }
+
+    function testFailPostMessageWhenPaused() public {
+        mockERC721.mint(user, 6); // Mint 6 NFTs to user
+        bbSocial.pause();
+        vm.prank(user);
+        bbSocial.postMessage("This should fail");
     }
 }
