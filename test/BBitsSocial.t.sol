@@ -66,7 +66,6 @@ contract MockERC721 is IERC721 {
     function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
         return interfaceId == type(IERC721).interfaceId || interfaceId == type(IERC721Receiver).interfaceId;
     }
-
 }
 
 contract BBSocialTest is Test {
@@ -123,7 +122,6 @@ contract BBSocialTest is Test {
         assertEq(bbSocial.getWalletPosts(user), 1);
     }
 
-
     function testGetWalletPoints() public {
         mockERC721.mint(user, 6); // Mint 6 NFTs to user
         vm.prank(user);
@@ -145,7 +143,6 @@ contract BBSocialTest is Test {
         assertTrue(bbSocial.isBanned(bannedUser));
     }
 
-
     function testIsBanned() public {
         address bannedUser = address(0x2);
         assertFalse(bbSocial.isBanned(bannedUser));
@@ -161,7 +158,6 @@ contract BBSocialTest is Test {
         bbSocial.unbanAddress(bannedUser); // Unban the user
         assertFalse(bbSocial.isBanned(bannedUser));
     }
-
 
     function testUpdateThreshold() public {
         bbSocial.updateThreshold(10);
