@@ -11,10 +11,11 @@ contract BBSocial is Ownable, Pausable {
     uint16 public threshold; // Minimum number of NFTs a user must hold to post messages
     address public collection; // Address of the NFT collection required for posting messages
 
-    mapping(uint256 => uint256) public walletPoints; // Mapping to keep track of post counts for each NFT
-    mapping(address => uint256) public walletPosts; // Mapping to keep track of post counts for each wallet
+    mapping(address => uint256) public walletPoints;
+    mapping(address => uint256) public walletPosts;
+    mapping(address => bool) public bannedWallets;
 
-    event MessagePosted(address indexed sender, string message);
+    event MessagePosted(address indexed sender, string message, uint256 timestamp);
     event ThresholdUpdated(uint16 newThreshold);
 
     constructor(uint16 _postThreshold, address _collection, address _initialOwner) Ownable(_initialOwner) {
@@ -23,12 +24,13 @@ contract BBSocial is Ownable, Pausable {
     }
 
     function postMessage(string memory message) public whenNotPaused {
-        require(IERC721(collection).balanceOf(msg.sender) >= threshold, "Not enough NFTs to post");
-        uint256 totalTokens = IERC721(collection).balanceOf(msg.sender);
+        uint256 senderBalance = IERC721(collection).balanceOf(msg.sender);
+        require(senderBalance >= threshold, "Not enough NFTs to post message");
+        require(!bannedWallets[msg.sender], "This address is banned from posting");
 
-        walletPosts[msg.sender] += 1;
-        walletPoints[msg.sender] += totalTokens;
-        emit MessagePosted(msg.sender, message);
+        walletPosts[msg.sender]++;
+        walletPoints[msg.sender] += senderBalance;
+        emit MessagePosted(msg.sender, message, block.timestamp);
     }
 
     function getWalletPosts(address wallet) public view returns (uint256) {
@@ -54,5 +56,17 @@ contract BBSocial is Ownable, Pausable {
 
     function updateCollection(address newCollection) public onlyOwner {
         collection = newCollection;
+    }
+
+    function banAddress(address _address) public onlyOwner {
+        bannedWallets[_address] = true;
+    }
+
+    function unbanAddress(address _address) public onlyOwner {
+        bannedWallets[_address] = false;
+    }
+
+    function isBanned(address _address) public view returns (bool) {
+        return bannedWallets[_address];
     }
 }

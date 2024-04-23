@@ -52,10 +52,13 @@ contract MockERC721 is IERC721 {
     }
 
     function approve(address to, uint256 tokenId) public override {}
+
     function getApproved(uint256 tokenId) public view override returns (address) {
         return address(0);
     }
+
     function setApprovalForAll(address operator, bool _approved) public override {}
+
     function isApprovedForAll(address owner, address operator) public view override returns (bool) {
         return false;
     }
@@ -90,7 +93,21 @@ contract BBSocialTest is Test {
         vm.prank(user);
         bbSocial.postMessage("Hello World!");
         assertEq(bbSocial.walletPosts(user), 1);
-        assertEq(bbSocial.nftPostCount(1), 1); // Assuming tokenId 1 was minted
+        assertEq(bbSocial.walletPoints(user), 6);
+    }
+
+    function testPostMultipleMessages() public {
+        mockERC721.mint(user, 7); // Mint 6 NFTs to user
+        vm.prank(user);
+
+        bbSocial.postMessage("Message 1");
+        assertEq(bbSocial.walletPosts(user), 1);
+        assertEq(bbSocial.walletPoints(user), 7);
+
+        vm.prank(user);
+        bbSocial.postMessage("Message 2");
+        assertEq(bbSocial.walletPosts(user), 2);
+        assertEq(bbSocial.walletPoints(user), 14);
     }
 
     function testFailPostMessageNotEnoughNFTs() public {
@@ -99,9 +116,64 @@ contract BBSocialTest is Test {
         bbSocial.postMessage("This should fail");
     }
 
+    function testGetWalletPosts() public {
+        mockERC721.mint(user, 6); // Mint 6 NFTs to user
+        vm.prank(user);
+        bbSocial.postMessage("Hello World!");
+        assertEq(bbSocial.getWalletPosts(user), 1);
+    }
+
+
+    function testGetWalletPoints() public {
+        mockERC721.mint(user, 6); // Mint 6 NFTs to user
+        vm.prank(user);
+        bbSocial.postMessage("Hello World!");
+        assertEq(bbSocial.getWalletPoints(user), 6);
+    }
+
+    function testFailPostMessageBannedWallet() public {
+        address bannedUser = address(0x2);
+        mockERC721.mint(bannedUser, 6); // Mint 6 NFTs to bannedUser
+        bbSocial.banAddress(bannedUser); // Ban the user
+        vm.prank(bannedUser); // Acting as the banned user
+        bbSocial.postMessage("This should fail because the wallet is banned");
+    }
+
+    function testBanAddress() public {
+        address bannedUser = address(0x2);
+        bbSocial.banAddress(bannedUser);
+        assertTrue(bbSocial.isBanned(bannedUser));
+    }
+
+
+    function testIsBanned() public {
+        address bannedUser = address(0x2);
+        assertFalse(bbSocial.isBanned(bannedUser));
+        bbSocial.banAddress(bannedUser);
+        assertTrue(bbSocial.isBanned(bannedUser));
+    }
+
+    function testUnbanAddress() public {
+        address bannedUser = address(0x2);
+        bbSocial.banAddress(bannedUser); // Ban the user
+        assertTrue(bbSocial.isBanned(bannedUser));
+
+        bbSocial.unbanAddress(bannedUser); // Unban the user
+        assertFalse(bbSocial.isBanned(bannedUser));
+    }
+
+
     function testUpdateThreshold() public {
         bbSocial.updateThreshold(10);
         assertEq(bbSocial.threshold(), 10);
+    }
+
+    function testEdgeCaseThreshold() public {
+        bbSocial.updateThreshold(type(uint16).max); // Set threshold to maximum value
+        assertEq(bbSocial.threshold(), type(uint16).max);
+
+        bbSocial.updateThreshold(0); // Set threshold to zero
+        assertEq(bbSocial.threshold(), 0);
     }
 
     function testFailUpdateThresholdNotOwner() public {
@@ -148,5 +220,10 @@ contract BBSocialTest is Test {
         bbSocial.pause();
         vm.prank(user);
         bbSocial.postMessage("This should fail");
+    }
+
+    function testOwnershipTransfer() public {
+        bbSocial.transferOwnership(user); // Transfer ownership to user
+        assertTrue(bbSocial.owner() == user);
     }
 }
