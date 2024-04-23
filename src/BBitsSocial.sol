@@ -24,6 +24,8 @@ contract BBitsSocial is Ownable, Pausable {
     }
 
     function postMessage(string memory message) public whenNotPaused {
+        require(bytes(message).length < 141, "Message exceeds 140 characters");
+
         uint256 senderBalance = IERC721(collection).balanceOf(msg.sender);
         require(senderBalance >= threshold, "Not enough NFTs to post message");
         require(!bannedWallets[msg.sender], "This address is banned from posting");

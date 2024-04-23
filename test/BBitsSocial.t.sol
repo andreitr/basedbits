@@ -115,6 +115,13 @@ contract BBitsSocialTest is Test {
         bbSocial.postMessage("This should fail");
     }
 
+    function testFailPostMessageTooManyCharacters() public {
+        mockERC721.mint(user, 6); // Mint 4 NFTs to user, not enough to meet the threshold
+        vm.prank(user);
+        bbSocial.postMessage("Today, I stumbled upon an old journal. Reading my past thoughts feels like meeting an old friend. Memories flood back, reminding me of who I am.");
+    }
+
+
     function testGetWalletPosts() public {
         mockERC721.mint(user, 6); // Mint 6 NFTs to user
         vm.prank(user);
