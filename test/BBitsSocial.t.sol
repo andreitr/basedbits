@@ -68,8 +68,8 @@ contract MockERC721 is IERC721 {
     }
 }
 
-contract BBSocialTest is Test {
-    BBSocial public bbSocial;
+contract BBitsSocialTest is Test {
+    BBitsSocial public bbSocial;
     MockERC721 public mockERC721;
     address public owner;
     address public user;
@@ -79,7 +79,7 @@ contract BBSocialTest is Test {
         user = address(0x1);
         mockERC721 = new MockERC721();
 
-        bbSocial = new BBSocial(5, address(mockERC721), owner);
+        bbSocial = new BBitsSocial(5, address(mockERC721), owner);
     }
 
     function testInitialSettings() public {
@@ -96,7 +96,7 @@ contract BBSocialTest is Test {
     }
 
     function testPostMultipleMessages() public {
-        mockERC721.mint(user, 7); // Mint 6 NFTs to user
+        mockERC721.mint(user, 7); // Mint 7 NFTs to user
         vm.prank(user);
 
         bbSocial.postMessage("Message 1");

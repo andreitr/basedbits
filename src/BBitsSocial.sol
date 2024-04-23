@@ -6,7 +6,7 @@ import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol"
 import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {IERC721Enumerable} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 
-contract BBSocial is Ownable, Pausable {
+contract BBitsSocial is Ownable, Pausable {
 
     uint16 public threshold; // Minimum number of NFTs a user must hold to post messages
     address public collection; // Address of the NFT collection required for posting messages
