@@ -76,10 +76,9 @@ contract BBitsCheckInTest is Test {
     address public user;
 
     function setUp() public {
-        owner = address(this); // Test contract is the owner
+        owner = address(this);
         user = address(0x1);
         mockERC721 = new MockERC721();
-
         bbCheckIn = new BBitsCheckIn(address(mockERC721), owner);
     }
 
@@ -87,91 +86,94 @@ contract BBitsCheckInTest is Test {
         assertEq(bbCheckIn.collection(), address(mockERC721));
     }
 
-//    function testCheckIn() public {
-//
-//        mockERC721.mint(user, 6);
-//        vm.prank(user);
-//
-//        bbCheckIn.checkIn();
-//
-//        // Verify streak and check-in count
-//        (, uint256 streak, uint256 checkInCount) = bbCheckIn.userStats(user);
-//        assertEq(streak, 1);
-//        assertEq(checkInCount, 1);
-//    }
-
-
-//    function testPauseContract() public {
-//        // Pause the contract
-//        bbCheckIn.pause();
-//
-//        // Attempt to check-in while paused
-//        vm.prank(user);
-//        bbCheckIn.checkIn();
-//        assertTrue(bbCheckIn.paused());
-//    }
-
-    function testUnpauseContract() public {
-        // Pause and then unpause the contract
-        bbCheckIn.pause();
-        bbCheckIn.unpause();
-
-        assertFalse(bbCheckIn.paused());
+    function testCheckIn() public {
+        mockERC721.mint(user, 1);
+        vm.prank(user);
+        bbCheckIn.checkIn();
+        // Verify streak and check-in count
+        (, uint256 streak, uint256 checkInCount) = bbCheckIn.userStats(user);
+        assertEq(streak, 1);
+        assertEq(checkInCount, 1);
     }
 
-    function testBanUser() public {
-        // Ban a user
-        address bannedUser = address(0x2);
-        bbCheckIn.ban(bannedUser);
-
-        assertTrue(bbCheckIn.isBanned(bannedUser));
+    function testCheckInStreak() public {
+        mockERC721.mint(user, 1);
+        vm.prank(user);
+        bbCheckIn.checkIn();
+        skip(86400);
+        vm.prank(user);
+        bbCheckIn.checkIn();
+        // Verify streak and check-in count
+        (, uint256 streak, uint256 checkInCount) = bbCheckIn.userStats(user);
+        assertEq(streak, 2);
+        assertEq(checkInCount, 2);
     }
 
-    function testUnbanUser() public {
-        // Ban and then unban a user
-        address bannedUser = address(0x2);
-        bbCheckIn.ban(bannedUser);
-        bbCheckIn.unban(bannedUser);
-
-        assertFalse(bbCheckIn.isBanned(bannedUser));
+    function testStreakReset() public {
+        mockERC721.mint(user, 1);
+        vm.prank(user);
+        bbCheckIn.checkIn();
+        skip(172800);
+        vm.prank(user);
+        bbCheckIn.checkIn();
+        // Verify streak and check-in count
+        (, uint256 streak, uint256 checkInCount) = bbCheckIn.userStats(user);
+        assertEq(streak, 1);
+        assertEq(checkInCount, 2);
     }
 
+    function testFailCheckInTooSoon() public {
+        mockERC721.mint(user, 1);
+        vm.prank(user);
+        bbCheckIn.checkIn();
+        vm.prank(user);
+        bbCheckIn.checkIn();
+    }
 
     function testFailCheckInNotEnoughNFTs() public {
         vm.prank(user);
         bbCheckIn.checkIn();
     }
 
-    function testFailCheckInBannedWallet() public {
+    function testFailCheckInBanned() public {
         address bannedUser = address(0x2);
         mockERC721.mint(bannedUser, 2);
-        bbCheckIn.ban(bannedUser); // Ban the user
-        vm.prank(bannedUser); // Acting as the banned user
+        bbCheckIn.ban(bannedUser);
+        vm.prank(bannedUser);
         bbCheckIn.checkIn();
     }
 
-    function testBanAddress() public {
+    function testFailCheckInPaused() public {
+        mockERC721.mint(user, 1);
+        bbCheckIn.pause();
+        vm.prank(user);
+        bbCheckIn.checkIn();
+    }
+
+    function testPauseContract() public {
+        bbCheckIn.pause();
+        assertTrue(bbCheckIn.paused());
+    }
+
+    function testUnpauseContract() public {
+        bbCheckIn.pause();
+        bbCheckIn.unpause();
+        assertFalse(bbCheckIn.paused());
+    }
+
+    function testBanUser() public {
         address bannedUser = address(0x2);
         bbCheckIn.ban(bannedUser);
         assertTrue(bbCheckIn.isBanned(bannedUser));
     }
 
-    function testIsBanned() public {
+    function testUnbanUser() public {
         address bannedUser = address(0x2);
-        assertFalse(bbCheckIn.isBanned(bannedUser));
         bbCheckIn.ban(bannedUser);
-        assertTrue(bbCheckIn.isBanned(bannedUser));
-    }
+        bbCheckIn.unban(bannedUser);
 
-    function testUnbanAddress() public {
-        address bannedUser = address(0x2);
-        bbCheckIn.ban(bannedUser); // Ban the user
-        assertTrue(bbCheckIn.isBanned(bannedUser));
-
-        bbCheckIn.unban(bannedUser); // Unban the user
         assertFalse(bbCheckIn.isBanned(bannedUser));
     }
-
 
     function testUpdateCollection() public {
         address newCollection = address(0x2);
@@ -205,13 +207,6 @@ contract BBitsCheckInTest is Test {
         bbCheckIn.pause();
         vm.prank(user); // Acting as a non-owner
         bbCheckIn.unpause();
-    }
-
-    function testFailCheckInWhenPaused() public {
-        mockERC721.mint(user, 6); // Mint 6 NFTs to user
-        bbCheckIn.pause();
-        vm.prank(user);
-        bbCheckIn.checkIn();
     }
 
     function testOwnershipTransfer() public {
