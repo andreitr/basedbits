@@ -90,10 +90,10 @@ contract BBitsCheckInTest is Test {
         mockERC721.mint(user, 1);
         vm.prank(user);
         bbCheckIn.checkIn();
-        // Verify streak and check-in count
-        (, uint256 streak, uint256 checkInCount) = bbCheckIn.userStats(user);
+        // Verify streak  count
+        (, uint256 streak, uint16 count) = bbCheckIn.checkInStats(user);
         assertEq(streak, 1);
-        assertEq(checkInCount, 1);
+        assertEq(count, 1);
     }
 
     function testCheckInStreak() public {
@@ -104,22 +104,25 @@ contract BBitsCheckInTest is Test {
         vm.prank(user);
         bbCheckIn.checkIn();
         // Verify streak and check-in count
-        (, uint256 streak, uint256 checkInCount) = bbCheckIn.userStats(user);
+        (, uint16 streak, uint16 count) = bbCheckIn.checkInStats(user);
         assertEq(streak, 2);
-        assertEq(checkInCount, 2);
+        assertEq(count, 2);
     }
 
     function testStreakReset() public {
         mockERC721.mint(user, 1);
         vm.prank(user);
         bbCheckIn.checkIn();
+        skip(86400);
+        vm.prank(user);
+        bbCheckIn.checkIn();
         skip(172800);
         vm.prank(user);
         bbCheckIn.checkIn();
-        // Verify streak and check-in count
-        (, uint256 streak, uint256 checkInCount) = bbCheckIn.userStats(user);
+        // Verify streak count
+        (, uint16 streak, uint16 count) = bbCheckIn.checkInStats(user);
         assertEq(streak, 1);
-        assertEq(checkInCount, 2);
+        assertEq(count, 3);
     }
 
     function testFailCheckInTooSoon() public {

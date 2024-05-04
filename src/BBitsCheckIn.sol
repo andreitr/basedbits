@@ -8,32 +8,33 @@ import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721
 contract BBitsCheckIn is Ownable, Pausable {
 
     address public collection;
-    mapping(address => bool) public bannedWallets;
-    mapping(address => UserData) public userData;
+    mapping(address => bool) public banned;
 
-    struct UserData {
+    mapping(address => CheckInStats) public userData;
+
+    struct CheckInStats {
         uint256 lastCheckIn;
-        uint256 streak;
-        uint256 checkInCount;
+        uint16 streak;
+        uint16 count;
     }
 
-    event CheckedIn(address indexed sender, uint256 timestamp, uint256 checkInCount, uint256 streak);
+    event CheckIn(address indexed sender, uint256 timestamp);
 
     constructor(address _collection, address _initialOwner) Ownable(_initialOwner) {
         collection = _collection;
     }
 
     function checkIn() public whenNotPaused {
-        UserData storage user = userData[msg.sender];
+        CheckInStats storage user = userData[msg.sender];
         require(IERC721(collection).balanceOf(msg.sender) > 0, "Must have at least one NFT to check in");
-        require(!bannedWallets[msg.sender], "This address is banned from posting");
+        require(!banned[msg.sender], "This address is banned from posting");
         require(user.lastCheckIn == 0 || block.timestamp >= user.lastCheckIn + 1 days, "At least 24 hours must have passed since the last check-in or this is the first check-in");
 
         user.streak = (block.timestamp >= user.lastCheckIn + 48 hours) ? 1 : user.streak + 1;
         user.lastCheckIn = block.timestamp;
-        user.checkInCount++;
+        user.count += 1;
 
-        emit CheckedIn(msg.sender, block.timestamp, user.checkInCount, user.streak);
+        emit CheckIn(msg.sender, block.timestamp);
     }
 
     function pause() public onlyOwner {
@@ -45,23 +46,23 @@ contract BBitsCheckIn is Ownable, Pausable {
     }
 
     function ban(address _address) public onlyOwner {
-        bannedWallets[_address] = true;
+        banned[_address] = true;
     }
 
     function isBanned(address _address) public view returns (bool) {
-        return bannedWallets[_address];
+        return banned[_address];
     }
 
     function unban(address _address) public onlyOwner {
-        bannedWallets[_address] = false;
+        banned[_address] = false;
     }
 
     function updateCollection(address newCollection) public onlyOwner {
         collection = newCollection;
     }
 
-    function userStats(address _address) public view returns (uint256, uint256, uint256) {
-        UserData storage user = userData[_address];
-        return (user.lastCheckIn, user.streak, user.checkInCount);
+    function checkInStats(address _address) public view returns (uint256, uint16, uint16) {
+        CheckInStats storage stats = userData[_address];
+        return (stats.lastCheckIn, stats.streak, stats.count);
     }
 }
