@@ -91,7 +91,7 @@ contract BBitsCheckInTest is Test {
         vm.prank(user);
         bbCheckIn.checkIn();
         // Verify streak  count
-        (, uint256 streak, uint16 count) = bbCheckIn.checkInStats(user);
+        (, uint256 streak, uint16 count) = bbCheckIn.checkIns(user);
         assertEq(streak, 1);
         assertEq(count, 1);
     }
@@ -104,7 +104,7 @@ contract BBitsCheckInTest is Test {
         vm.prank(user);
         bbCheckIn.checkIn();
         // Verify streak and check-in count
-        (, uint16 streak, uint16 count) = bbCheckIn.checkInStats(user);
+        (, uint16 streak, uint16 count) = bbCheckIn.checkIns(user);
         assertEq(streak, 2);
         assertEq(count, 2);
     }
@@ -120,7 +120,7 @@ contract BBitsCheckInTest is Test {
         vm.prank(user);
         bbCheckIn.checkIn();
         // Verify streak count
-        (, uint16 streak, uint16 count) = bbCheckIn.checkInStats(user);
+        (, uint16 streak, uint16 count) = bbCheckIn.checkIns(user);
         assertEq(streak, 1);
         assertEq(count, 3);
     }
@@ -137,6 +137,18 @@ contract BBitsCheckInTest is Test {
         vm.prank(user);
         bbCheckIn.checkIn();
     }
+
+    function testCanCheckInFalse() public {
+        vm.prank(user);
+        assertFalse(bbCheckIn.canCheckIn(user));
+    }
+
+    function testCanCheckIn() public {
+        mockERC721.mint(user, 1);
+        vm.prank(user);
+        assertTrue(bbCheckIn.canCheckIn(user));
+    }
+
 
     function testFailCheckInBanned() public {
         address bannedUser = address(0x2);

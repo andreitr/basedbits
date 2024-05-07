@@ -10,9 +10,9 @@ contract BBitsCheckIn is Ownable, Pausable {
     address public collection;
     mapping(address => bool) public banned;
 
-    mapping(address => CheckInStats) public userData;
+    mapping(address => UserCheckIns) public checkIns;
 
-    struct CheckInStats {
+    struct UserCheckIns {
         uint256 lastCheckIn;
         uint16 streak;
         uint16 count;
@@ -25,7 +25,7 @@ contract BBitsCheckIn is Ownable, Pausable {
     }
 
     function checkIn() public whenNotPaused {
-        CheckInStats storage user = userData[msg.sender];
+        UserCheckIns storage user = checkIns[msg.sender];
         require(IERC721(collection).balanceOf(msg.sender) > 0, "Must have at least one NFT to check in");
         require(!banned[msg.sender], "This address is banned from posting");
         require(user.lastCheckIn == 0 || block.timestamp >= user.lastCheckIn + 1 days, "At least 24 hours must have passed since the last check-in or this is the first check-in");
@@ -35,6 +35,14 @@ contract BBitsCheckIn is Ownable, Pausable {
         user.count += 1;
 
         emit CheckIn(msg.sender, block.timestamp);
+    }
+
+    function isBanned(address _address) public view returns (bool) {
+        return banned[_address];
+    }
+
+    function canCheckIn(address _address) public view returns (bool) {
+        return IERC721(collection).balanceOf(msg.sender) > 0;
     }
 
     function pause() public onlyOwner {
@@ -49,20 +57,11 @@ contract BBitsCheckIn is Ownable, Pausable {
         banned[_address] = true;
     }
 
-    function isBanned(address _address) public view returns (bool) {
-        return banned[_address];
-    }
-
     function unban(address _address) public onlyOwner {
         banned[_address] = false;
     }
 
     function updateCollection(address newCollection) public onlyOwner {
         collection = newCollection;
-    }
-
-    function checkInStats(address _address) public view returns (uint256, uint16, uint16) {
-        CheckInStats storage stats = userData[_address];
-        return (stats.lastCheckIn, stats.streak, stats.count);
     }
 }
