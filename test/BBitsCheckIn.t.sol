@@ -125,6 +125,23 @@ contract BBitsCheckInTest is Test {
         assertEq(count, 3);
     }
 
+    function testStreakPreserveReset() public {
+        mockERC721.mint(user, 1);
+        vm.prank(user);
+        bbCheckIn.checkIn();
+        skip(100800); //28 hours
+        vm.prank(user);
+        bbCheckIn.checkIn();
+        skip(165600); // 46 hours
+        vm.prank(user);
+        bbCheckIn.checkIn();
+        // Verify streak count
+        (, uint16 streak, uint16 count) = bbCheckIn.checkIns(user);
+        assertEq(streak, 3);
+        assertEq(count, 3);
+    }
+
+
     function testFailCheckInTooSoon() public {
         mockERC721.mint(user, 1);
         vm.prank(user);
