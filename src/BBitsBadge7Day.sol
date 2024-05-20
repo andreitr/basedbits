@@ -5,7 +5,7 @@ import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IERC1155Mintable} from "./interfaces/IERC1155Mintable.sol";
 import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
 
-contract SevenDayStreakBadge is Ownable {
+contract BBitsBadge7Day is Ownable {
 
     address public bBitsCheckInAddress;
     address public erc1155Address;
