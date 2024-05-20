@@ -7,7 +7,7 @@ import {IERC165} from "lib/openzeppelin-contracts/contracts/utils/introspection/
 contract ERC1155Mock is IERC1155Mintable {
     mapping(address => mapping(uint256 => uint256)) public balances;
 
-    function mint(address to, uint256 id, uint256 amount, bytes memory data) external override {
+    function mint(address to, uint256 id, uint256 amount, bytes memory data) external {
         balances[to][id] += amount;
     }
 
@@ -31,7 +31,10 @@ contract ERC1155Mock is IERC1155Mintable {
 
     // Implement other required methods as no-op
     function setApprovalForAll(address operator, bool approved) external override {}
-    function isApprovedForAll(address account, address operator) external view override returns (bool) { return false; }
+
+    function isApprovedForAll(address account, address operator) external view override returns (bool) {return false;}
+
     function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) external override {}
+
     function safeBatchTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) external override {}
 }

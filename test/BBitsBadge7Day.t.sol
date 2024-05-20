@@ -68,26 +68,26 @@ contract BBitsBadge7DayTest is Test {
 
     function testUpdateCheckInAddressByOwner() public {
         address newAddress = address(0x2);
-        badgeMinter.updateCheckInAddress(newAddress);
-        assertEq(badgeMinter.bBitsCheckInAddress(), newAddress);
+        badgeMinter.updateCheckInContract(newAddress);
+        assertEq(badgeMinter.checkInContract(), newAddress);
     }
 
     function testFailUpdateCheckInAddressByNonOwner() public {
         address newAddress = address(0x2);
         vm.prank(user); // Acting as a non-owner
-        badgeMinter.updateCheckInAddress(newAddress);
+        badgeMinter.updateCheckInContract(newAddress);
     }
 
     function testUpdateBadgeCollectionAddressByOwner() public {
         address newAddress = address(0x3);
-        badgeMinter.updateBadgeCollectionAddress(newAddress);
-        assertEq(badgeMinter.erc1155Address(), newAddress);
+        badgeMinter.updateBadgeContract(newAddress);
+        assertEq(badgeMinter.badgeContract(), newAddress);
     }
 
     function testFailUpdateBadgeCollectionAddressByNonOwner() public {
         address newAddress = address(0x3);
         vm.prank(user); // Acting as a non-owner
-        badgeMinter.updateBadgeCollectionAddress(newAddress);
+        badgeMinter.updateBadgeContract(newAddress);
     }
 
     function testUpdateBadgeTokenIdByOwner() public {

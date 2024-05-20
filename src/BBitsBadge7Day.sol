@@ -7,47 +7,46 @@ import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
 
 contract BBitsBadge7Day is Ownable {
 
-    address public bBitsCheckInAddress;
-    address public erc1155Address;
-    mapping(address => bool) public hasMinted;
+    address public checkInContract;
+    address public badgeContract;
     uint256 public tokenId;
+    mapping(address => bool) public minted;
 
     event BadgeMinted(address indexed user, uint256 timestamp);
 
-    constructor(address _bBitsCheckInAddress, address _erc1155Address, uint256 _tokenId, address _initialOwner) Ownable(_initialOwner) {
-        bBitsCheckInAddress = _bBitsCheckInAddress;
-        erc1155Address = _erc1155Address;
+    constructor(address _checkInContractAddress, address _badgeContractAddress, uint256 _tokenId, address _initialOwner) Ownable(_initialOwner) {
+        checkInContract = _checkInContractAddress;
+        badgeContract = _badgeContractAddress;
         tokenId = _tokenId;
     }
 
     function mint() external {
-        require(!hasMinted[msg.sender], "Badge already minted by this address");
+        require(!minted[msg.sender], "Badge already minted by this address");
 
-        (, uint16 streak, uint16 count) = IBBitsCheckIn(bBitsCheckInAddress).checkIns(msg.sender);
+        (, uint16 streak,) = IBBitsCheckIn(checkInContract).checkIns(msg.sender);
         require(streak >= 7, "Must have a 7-day streak to mint a badge");
 
-        hasMinted[msg.sender] = true;
+        minted[msg.sender] = true;
 
-        IERC1155Mintable(erc1155Address).mint(msg.sender, tokenId, 1, "");
+        IERC1155Mintable(badgeContract).mint(msg.sender, tokenId, 1, "");
 
         emit BadgeMinted(msg.sender, block.timestamp);
     }
 
     function canMint(address user) external view returns (bool) {
-        if (hasMinted[user]) {
+        if (minted[user]) {
             return false;
         }
-
-        (, uint16 streak, uint16 count) = IBBitsCheckIn(bBitsCheckInAddress).checkIns(user);
+        (, uint16 streak,) = IBBitsCheckIn(checkInContract).checkIns(user);
         return streak >= 7;
     }
 
-    function updateCheckInAddress(address newAddress) external onlyOwner {
-        bBitsCheckInAddress = newAddress;
+    function updateCheckInContract(address newAddress) external onlyOwner {
+        checkInContract = newAddress;
     }
 
-    function updateBadgeCollectionAddress(address newAddress) external onlyOwner {
-        erc1155Address = newAddress;
+    function updateBadgeContract(address newAddress) external onlyOwner {
+        badgeContract = newAddress;
     }
 
     function updateBadgeTokenId(uint256 newTokenId) external onlyOwner {
