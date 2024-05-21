@@ -3,44 +3,37 @@ pragma solidity ^0.8.25;
 
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
-import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
-import {IERC721Enumerable} from "lib/openzeppelin-contracts/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
+import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
 
 contract BBitsSocial is Ownable, Pausable {
 
-    uint16 public threshold; // Minimum number of NFTs a user must hold to post messages
-    address public collection; // Address of the NFT collection required for posting messages
+    address public checkInContract;
+    uint16 public streakThreshold;
+    uint8 public characterLimit;
 
-    mapping(address => uint256) public walletPoints;
-    mapping(address => uint256) public walletPosts;
-    mapping(address => bool) public bannedWallets;
+    mapping(address => uint256) public posts;
 
     event MessagePosted(address indexed sender, string message, uint256 timestamp);
-    event ThresholdUpdated(uint16 newThreshold);
+    event ThresholdUpdated(uint16 newThreshold, uint256 timestamp);
+    event CharacterLimitUpdated(uint8 newThreshold, uint256 timestamp);
 
-    constructor(uint16 _postThreshold, address _collection, address _initialOwner) Ownable(_initialOwner) {
-        threshold = _postThreshold;
-        collection = _collection;
+    constructor(uint16 _postThreshold, address _checkInContractAddress, uint8 _characterLimit, address _initialOwner) Ownable(_initialOwner) {
+        streakThreshold = _postThreshold;
+        checkInContract = _checkInContractAddress;
+        characterLimit = _characterLimit;
     }
 
-    function postMessage(string memory message) public whenNotPaused {
-        require(bytes(message).length < 141, "Message exceeds 140 characters");
+    function post(string memory message) public whenNotPaused {
+        require(bytes(message).length < characterLimit, "Message exceeds character limit");
 
-        uint256 senderBalance = IERC721(collection).balanceOf(msg.sender);
-        require(senderBalance >= threshold, "Not enough NFTs to post message");
-        require(!bannedWallets[msg.sender], "This address is banned from posting");
+        IBBitsCheckIn check = IBBitsCheckIn(checkInContract);
+        (, uint16 streak,) = check.checkIns(msg.sender);
 
-        walletPosts[msg.sender]++;
-        walletPoints[msg.sender] += senderBalance;
+        require(!check.banned(msg.sender), "Account is banned from Based Bits");
+        require(streak >= streakThreshold, "Not enough streaks to post");
+
+        posts[msg.sender]++;
         emit MessagePosted(msg.sender, message, block.timestamp);
-    }
-
-    function getWalletPosts(address wallet) public view returns (uint256) {
-        return walletPosts[wallet];
-    }
-
-    function getWalletPoints(address wallet) public view returns (uint256) {
-        return walletPoints[wallet];
     }
 
     function pause() public onlyOwner {
@@ -51,24 +44,17 @@ contract BBitsSocial is Ownable, Pausable {
         _unpause();
     }
 
-    function updateThreshold(uint16 newThreshold) public onlyOwner {
-        threshold = newThreshold;
-        emit ThresholdUpdated(newThreshold);
+    function updateCheckInContract(address newAddress) external onlyOwner {
+        checkInContract = newAddress;
     }
 
-    function updateCollection(address newCollection) public onlyOwner {
-        collection = newCollection;
+    function updateCharacterLimit(uint8 limit) public onlyOwner {
+        characterLimit = limit;
+        emit CharacterLimitUpdated(limit, block.timestamp);
     }
 
-    function banAddress(address _address) public onlyOwner {
-        bannedWallets[_address] = true;
-    }
-
-    function unbanAddress(address _address) public onlyOwner {
-        bannedWallets[_address] = false;
-    }
-
-    function isBanned(address _address) public view returns (bool) {
-        return bannedWallets[_address];
+    function updateStreakThreshold(uint16 threshold) public onlyOwner {
+        streakThreshold = threshold;
+        emit ThresholdUpdated(threshold, block.timestamp);
     }
 }

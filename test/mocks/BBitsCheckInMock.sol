@@ -10,8 +10,14 @@ contract BBitsCheckInMock is IBBitsCheckIn {
         uint16 count;
     }
     mapping(address => UserCheckIns) public checkIns;
+    mapping(address => bool) public banned;
 
     function setStreak(address user, uint16 streak) external {
         checkIns[user].streak = streak;
     }
+
+    function setBanned(address user) external {
+        banned[user] = true;
+    }
+
 }
