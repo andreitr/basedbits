@@ -3,15 +3,15 @@ pragma solidity ^0.8.25;
 
 import "forge-std/Test.sol";
 import "../src/BBitsBadge7Day.sol";
-import {IERC1155Mintable} from "../src/interfaces/IERC1155Mintable.sol";
 import {IBBitsCheckIn} from "../src/interfaces/IBBitsCheckIn.sol";
-import {ERC1155Mock} from "./mocks/ERC1155Mock.sol";
+import {IBBitsBadges} from "../src/interfaces/IBBitsBadges.sol";
+import {BBitsBadgesMock} from "./mocks/BBitsBadgesMock.sol";
 import {BBitsCheckInMock} from "./mocks/BBitsCheckInMock.sol";
 
 contract BBitsBadge7DayTest is Test {
 
     BBitsBadge7Day public badgeMinter;
-    IERC1155Mintable public collection;
+    IBBitsBadges public collection;
     BBitsCheckInMock public checkin;
 
     address public owner;
@@ -21,7 +21,7 @@ contract BBitsBadge7DayTest is Test {
         owner = address(this);
         user = address(0x1);
 
-        collection = IERC1155Mintable(address(new ERC1155Mock()));
+        collection = IBBitsBadges(address(new BBitsBadgesMock()));
         checkin = new BBitsCheckInMock();
         badgeMinter = new BBitsBadge7Day(address(checkin), address(collection), 1, owner);
     }

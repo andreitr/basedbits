@@ -2,8 +2,8 @@
 pragma solidity ^0.8.25;
 
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
-import {IERC1155Mintable} from "./interfaces/IERC1155Mintable.sol";
 import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
+import {IBBitsBadges} from "./interfaces/IBBitsBadges.sol";
 
 contract BBitsBadge7Day is Ownable {
 
@@ -28,7 +28,7 @@ contract BBitsBadge7Day is Ownable {
 
         minted[msg.sender] = true;
 
-        IERC1155Mintable(badgeContract).mint(msg.sender, tokenId, 1, "");
+        IBBitsBadges(badgeContract).mint(msg.sender, tokenId);
 
         emit BadgeMinted(msg.sender, block.timestamp);
     }
