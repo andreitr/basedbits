@@ -13,12 +13,12 @@ contract BBitsSocial is Ownable, Pausable {
 
     mapping(address => uint256) public posts;
 
-    event MessagePosted(address indexed sender, string message, uint256 timestamp);
+    event SocialPost(address indexed sender, string message, uint256 timestamp);
     event ThresholdUpdated(uint16 newThreshold, uint256 timestamp);
     event CharacterLimitUpdated(uint8 newThreshold, uint256 timestamp);
 
-    constructor(uint16 _postThreshold, address _checkInContractAddress, uint8 _characterLimit, address _initialOwner) Ownable(_initialOwner) {
-        streakThreshold = _postThreshold;
+    constructor(uint16 _streakThreshold, address _checkInContractAddress, uint8 _characterLimit, address _initialOwner) Ownable(_initialOwner) {
+        streakThreshold = _streakThreshold;
         checkInContract = _checkInContractAddress;
         characterLimit = _characterLimit;
     }
@@ -33,7 +33,7 @@ contract BBitsSocial is Ownable, Pausable {
         require(streak >= streakThreshold, "Not enough streaks to post");
 
         posts[msg.sender]++;
-        emit MessagePosted(msg.sender, message, block.timestamp);
+        emit SocialPost(msg.sender, message, block.timestamp);
     }
 
     function pause() public onlyOwner {

@@ -22,6 +22,11 @@ contract BBitsBadges is ERC1155, AccessControl {
         _mint(to, id, 1, "");
     }
 
+//    function uri(uint256 /* id */) public view virtual returns (string memory) {
+////        return _uri;
+//        return "id";
+//    }
+
     function setURI(string memory uri) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setURI(uri);
     }
