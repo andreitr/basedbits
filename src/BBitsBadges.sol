@@ -9,7 +9,7 @@ contract BBitsBadges is ERC1155, AccessControl {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    constructor(string memory baseURI, address _minter, address _owner) ERC1155(baseURI) {
+    constructor(string memory baseURI, address _minter, address _owner) ERC1155(baseURI)  {
         _grantRole(MINTER_ROLE, _minter);
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
     }
@@ -21,11 +21,6 @@ contract BBitsBadges is ERC1155, AccessControl {
     function mint(address to, uint256 id) external onlyRole(MINTER_ROLE) {
         _mint(to, id, 1, "");
     }
-
-//    function uri(uint256 /* id */) public view virtual returns (string memory) {
-////        return _uri;
-//        return "id";
-//    }
 
     function setURI(string memory uri) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setURI(uri);

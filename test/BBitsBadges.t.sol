@@ -16,7 +16,7 @@ contract BBitsCheckInBadgesTest is Test {
         minter = address(0x1);
         user = address(0x2);
 
-        badges = new BBitsBadges("https://basedbits.fun/api/badges/", minter, owner);
+        badges = new BBitsBadges("https://basedbits.fun/api/badges/{id}.json", minter, owner);
     }
 
     function testMint() public {
