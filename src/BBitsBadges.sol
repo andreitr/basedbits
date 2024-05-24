@@ -3,14 +3,18 @@ pragma solidity ^0.8.25;
 
 import {IBBitsBadges} from "./interfaces/IBBitsBadges.sol";
 import {ERC1155} from "lib/openzeppelin-contracts/contracts/token/ERC1155/ERC1155.sol";
-import {AccessControl} from "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
+import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
+import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 
-contract BBitsBadges is ERC1155, AccessControl {
+
+contract BBitsBadges is ERC1155, AccessControl, Ownable {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    string public contractURI = "https://basedbits.fun/api/badges";
 
-    constructor(string memory baseURI, address _minter, address _owner) ERC1155(baseURI)  {
-        _grantRole(MINTER_ROLE, _minter);
+    event ContractURIUpdated(string newURI, uint256 timestamp);
+
+    constructor(address _owner)  ERC1155("https://basedbits.fun/api/badges/{id}") Ownable(_owner) {
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
     }
 
@@ -24,5 +28,10 @@ contract BBitsBadges is ERC1155, AccessControl {
 
     function setURI(string memory uri) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setURI(uri);
+    }
+
+    function updateContractURI(string memory newURI) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        contractURI = newURI;
+        emit ContractURIUpdated(newURI, block.timestamp);
     }
 }
