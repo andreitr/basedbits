@@ -16,7 +16,7 @@ contract BBitsCheckInBadgesTest is Test {
         minter = address(0x1);
         user = address(0x2);
 
-        badges = new BBitsBadges("https://basedbits.fun/api/badges/{id}.json", minter, owner);
+        badges = new BBitsBadges("https://basedbits.fun/api/badges/{id}", minter, owner);
     }
 
     function testMint() public {
@@ -33,13 +33,13 @@ contract BBitsCheckInBadgesTest is Test {
     }
 
     function testTokenURI() public {
-        assertEq(badges.uri(1), "bas");
+        assertEq(badges.uri(1), "https://basedbits.fun/api/badges/{id}");
 
     }
 
     function testSetTokenURI() public {
-        badges.setURI('new.com/');
-        assertEq(badges.uri(1), "new.com/1");
+        badges.setURI('https://newuri.com/token/{id}.json');
+        assertEq(badges.uri(1), "https://newuri.com/token/{id}.json");
     }
 
     function testFailMintIfNotMinter() public {
