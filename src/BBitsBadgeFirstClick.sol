@@ -5,39 +5,34 @@ import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
 import {IBBitsBadges} from "./interfaces/IBBitsBadges.sol";
 
-contract BBitsBadge7Day is Ownable {
+contract BBitsBadgeFirstClick is Ownable {
 
-    address public checkInContract;
     address public badgeContract;
-    uint256 public tokenId;
+    mapping(address => bool) public minter;
     mapping(address => bool) public minted;
+    uint256 public tokenId;
 
-    constructor(address _checkInContractAddress, address _badgeContractAddress, uint256 _tokenId, address _initialOwner) Ownable(_initialOwner) {
-        checkInContract = _checkInContractAddress;
+    address[] public minters;
+
+    constructor(address[] memory _minters, address _badgeContractAddress, uint256 _tokenId, address _initialOwner) Ownable(_initialOwner) {
         badgeContract = _badgeContractAddress;
         tokenId = _tokenId;
+
+        for (uint256 i = 0; i < _minters.length; i++) {
+            minter[_minters[i]] = true;
+        }
     }
 
     function mint() external {
         require(!minted[msg.sender], "Badge already minted by this address");
-
-        (, uint16 streak,) = IBBitsCheckIn(checkInContract).checkIns(msg.sender);
-        require(streak >= 7, "Must have a 7-day streak to mint a badge");
+        require(minter[msg.sender], "Not allowed to mint");
 
         IBBitsBadges(badgeContract).mint(msg.sender, tokenId);
         minted[msg.sender] = true;
     }
 
     function canMint(address user) external view returns (bool) {
-        if (minted[user]) {
-            return false;
-        }
-        (, uint16 streak,) = IBBitsCheckIn(checkInContract).checkIns(user);
-        return streak >= 7;
-    }
-
-    function updateCheckInContract(address newAddress) external onlyOwner {
-        checkInContract = newAddress;
+        return !minted[user] && minter[user];
     }
 
     function updateBadgeContract(address newAddress) external onlyOwner {
@@ -46,5 +41,13 @@ contract BBitsBadge7Day is Ownable {
 
     function updateBadgeTokenId(uint256 newTokenId) external onlyOwner {
         tokenId = newTokenId;
+    }
+
+    function addMinter(address newMinter) external onlyOwner {
+        minter[newMinter] = true;
+    }
+
+    function removeMinter(address existingMinter) external onlyOwner {
+        minter[existingMinter] = false;
     }
 }
