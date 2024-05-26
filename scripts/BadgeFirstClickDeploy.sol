@@ -4,7 +4,7 @@ pragma solidity ^0.8.25;
 import "forge-std/Script.sol";
 import "../src/BBitsBadgeFirstClick.sol";
 
-contract FirstClickDeploy is Script {
+contract BadgeDeploy is Script {
 
     function run() external {
         address[] memory minters = new address[](209);
