@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
+import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
 import {IBBitsBadges} from "./interfaces/IBBitsBadges.sol";
 
-contract BBitsBadgeFirstClick is Ownable {
+contract BBitsBadgeFirstClick is Ownable, ReentrancyGuard {
 
     address public badgeContract;
     mapping(address => bool) public minter;
@@ -23,12 +24,12 @@ contract BBitsBadgeFirstClick is Ownable {
         }
     }
 
-    function mint() external {
+    function mint() external nonReentrant {
         require(!minted[msg.sender], "Badge already minted by this address");
         require(minter[msg.sender], "Not allowed to mint");
 
-        IBBitsBadges(badgeContract).mint(msg.sender, tokenId);
         minted[msg.sender] = true;
+        IBBitsBadges(badgeContract).mint(msg.sender, tokenId);
     }
 
     function canMint(address user) external view returns (bool) {

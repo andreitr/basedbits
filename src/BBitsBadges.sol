@@ -6,7 +6,6 @@ import {ERC1155} from "lib/openzeppelin-contracts/contracts/token/ERC1155/ERC115
 import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 
-
 contract BBitsBadges is ERC1155, AccessControl, Ownable {
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -14,7 +13,7 @@ contract BBitsBadges is ERC1155, AccessControl, Ownable {
 
     event ContractURIUpdated(string newURI, uint256 timestamp);
 
-    constructor(address _owner)  ERC1155("https://basedbits.fun/api/badges/{id}") Ownable(_owner) {
+    constructor(address _owner) ERC1155("https://basedbits.fun/api/badges/{id}") Ownable(_owner) {
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
     }
 
