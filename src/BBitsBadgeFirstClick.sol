@@ -12,9 +12,7 @@ contract BBitsBadgeFirstClick is Ownable, ReentrancyGuard {
     mapping(address => bool) public minter;
     mapping(address => bool) public minted;
     uint256 public tokenId;
-
-    address[] public minters;
-
+    
     constructor(address[] memory _minters, address _badgeContractAddress, uint256 _tokenId, address _initialOwner) Ownable(_initialOwner) {
         badgeContract = _badgeContractAddress;
         tokenId = _tokenId;

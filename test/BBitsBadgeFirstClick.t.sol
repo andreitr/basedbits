@@ -44,9 +44,13 @@ contract BBitsBadgeFirstClickTest is Test {
     }
 
     function testMintOnlyOnce() public {
-        vm.prank(user);
+        vm.startPrank(user);
         badgeMinter.mint();
         assertFalse(badgeMinter.canMint(user));
+
+        vm.expectRevert();
+        badgeMinter.mint();
+        vm.stopPrank();
     }
 
     function testUpdateBadgeCollectionAddressByOwner() public {
