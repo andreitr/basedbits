@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import {IERC1155MetadataURI, IERC1155} from "lib/openzeppelin-contracts/contracts/token/ERC1155/ERC1155.sol";
+import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 import "forge-std/Test.sol";
 import "../src/BBitsBadges.sol";
 
@@ -71,5 +73,11 @@ contract BBitsBadgesTest is Test {
         vm.prank(minter);
         vm.expectRevert("AccessControl: account is missing role");
         badges.mint(user, 1);
+    }
+
+    function testSupportsInterface() public {
+        assertEq(badges.supportsInterface(type(IERC1155).interfaceId), true);
+        assertEq(badges.supportsInterface(type(IERC1155MetadataURI).interfaceId), true);
+        assertEq(badges.supportsInterface(type(IAccessControl).interfaceId), true);
     }
 }

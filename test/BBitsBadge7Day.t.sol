@@ -101,4 +101,19 @@ contract BBitsBadge7DayTest is Test {
         vm.prank(user); // Acting as a non-owner
         badgeMinter.updateBadgeTokenId(newTokenId);
     }
+
+    function testSecondMintAfterAlreadyMinted() public {
+        vm.startPrank(user);
+        checkin.setStreak(user, 8);
+
+        // First mint success
+        assertEq(badgeMinter.canMint(user), true);
+        badgeMinter.mint();
+
+        // Second mint failure
+        assertEq(badgeMinter.canMint(user), false);
+        vm.expectRevert();
+        badgeMinter.mint();
+        vm.stopPrank();
+    }
 }
