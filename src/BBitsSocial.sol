@@ -8,7 +8,7 @@ import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
 contract BBitsSocial is Ownable, Pausable {
     address public checkInContract;
     uint16 public streakThreshold;
-    uint8 public characterLimit;
+    uint16 public characterLimit;
 
     mapping(address => uint256) public posts;
 
@@ -17,13 +17,13 @@ contract BBitsSocial is Ownable, Pausable {
     event CharacterLimitUpdated(uint8 newThreshold, uint256 timestamp);
 
     constructor(
-        uint16 _streakThreshold, 
-        address _checkInContractAddress, 
-        uint8 _characterLimit, 
+        address _checkInContractAddress,
+        uint16 _streakThreshold,
+        uint16 _characterLimit,
         address _initialOwner
     ) Ownable(_initialOwner) {
-        streakThreshold = _streakThreshold;
         checkInContract = _checkInContractAddress;
+        streakThreshold = _streakThreshold;
         characterLimit = _characterLimit;
     }
 
@@ -38,6 +38,13 @@ contract BBitsSocial is Ownable, Pausable {
 
         posts[msg.sender]++;
         emit SocialPost(msg.sender, message, block.timestamp);
+    }
+
+    function canPost(address user) public view returns (bool) {
+        IBBitsCheckIn check = IBBitsCheckIn(checkInContract);
+        (, uint16 streak,) = check.checkIns(user);
+
+        return streak >= streakThreshold;
     }
 
     function pause() public onlyOwner {

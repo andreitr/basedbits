@@ -11,21 +11,23 @@ import {
 
 contract BBitsBadgeFirstClickTest is BBitsTestUtils {
 
+    uint256 constant tokenId = 0x0000000000000000000000000000000000000000000000000000000000000002;
+
     function testInit() public {
         address[] memory minters = new address[](1);
         minters[0] = user0;
-        badgeFirstClickMinter = new BBitsBadgeFirstClick(minters, badges, 2, owner);
+        badgeFirstClickMinter = new BBitsBadgeFirstClick(minters, badges, tokenId, owner);
         assertEq(address(badgeFirstClickMinter.badgeContract()), address(badges));
-        assertEq(badgeFirstClickMinter.tokenId(), 2);
+        assertEq(badgeFirstClickMinter.tokenId(), tokenId);
         assertEq(badgeFirstClickMinter.minter(user0), true);
     }
 
     function testMintSuccess() public {
-        assertEq(badges.balanceOf(user0, 2), 0);
+        assertEq(badges.balanceOf(user0, tokenId), 0);
         assertEq(badgeFirstClickMinter.minted(user0), false);
         vm.prank(user0);
         badgeFirstClickMinter.mint();
-        assertEq(badges.balanceOf(user0, 2), 1);
+        assertEq(badges.balanceOf(user0, tokenId), 1);
         assertEq(badgeFirstClickMinter.minted(user0), true);
     }
 

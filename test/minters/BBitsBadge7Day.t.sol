@@ -11,20 +11,22 @@ import {
 
 contract BBitsBadge7DayTest is BBitsTestUtils {
 
+    uint256 constant tokenId = 0x0000000000000000000000000000000000000000000000000000000000000001;
+
     function testInit() public {
-        badge7DayMinter = new BBitsBadge7Day(checkIn, badges, 1, owner);
+        badge7DayMinter = new BBitsBadge7Day(checkIn, badges, tokenId, owner);
         assertEq(address(badge7DayMinter.checkInContract()), address(checkIn));
         assertEq(address(badge7DayMinter.badgeContract()), address(badges));
         assertEq(badge7DayMinter.tokenId(), 1);
     }
 
     function testMintSuccess() public {
-        assertEq(badges.balanceOf(user0, 1), 0);
+        assertEq(badges.balanceOf(user0, tokenId), 0);
         assertEq(badge7DayMinter.minted(user0), false);
         setCheckInStreak(user0, 7);
         vm.prank(user0);
         badge7DayMinter.mint();
-        assertEq(badges.balanceOf(user0, 1), 1);
+        assertEq(badges.balanceOf(user0, tokenId), 1);
         assertEq(badge7DayMinter.minted(user0), true);
     }
 
@@ -65,7 +67,7 @@ contract BBitsBadge7DayTest is BBitsTestUtils {
     }
 
     function testUpdateBadgeTokenId() public {
-        assertEq(badge7DayMinter.tokenId(), 1);
+        assertEq(badge7DayMinter.tokenId(), tokenId);
         badge7DayMinter.updateBadgeTokenId(4);
         assertEq(badge7DayMinter.tokenId(), 4);
     }

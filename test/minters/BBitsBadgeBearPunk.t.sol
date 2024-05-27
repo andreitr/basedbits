@@ -11,21 +11,23 @@ import {
 
 contract BBitsBadgeBearPunkTest is BBitsTestUtils {
 
+    uint256 constant tokenId = 0x0000000000000000000000000000000000000000000000000000000000000003;
+
     function testInit() public {
         badgeBearPunkMinter = new BBitsBadgeBearPunk(bearPunks, checkIn, badges, 3, owner);
         assertEq(address(badgeBearPunkMinter.bearPunks()), address(bearPunks));
         assertEq(address(badgeBearPunkMinter.checkInContract()), address(checkIn));
         assertEq(address(badgeBearPunkMinter.badgeContract()), address(badges));
-        assertEq(badgeBearPunkMinter.tokenId(), 3);
+        assertEq(badgeBearPunkMinter.tokenId(), tokenId);
     }
 
     function testMintSuccess() public {
-        assertEq(badges.balanceOf(user0, 3), 0);
+        assertEq(badges.balanceOf(user0, tokenId), 0);
         assertEq(badgeBearPunkMinter.minted(user0), false);
         setCheckInStreak(user0, 7);
         vm.prank(user0);
         badgeBearPunkMinter.mint();
-        assertEq(badges.balanceOf(user0, 3), 1);
+        assertEq(badges.balanceOf(user0, tokenId), 1);
         assertEq(badgeBearPunkMinter.minted(user0), true);
     }
 
@@ -71,7 +73,7 @@ contract BBitsBadgeBearPunkTest is BBitsTestUtils {
     }
 
     function testUpdateBadgeTokenId() public {
-        assertEq(badgeBearPunkMinter.tokenId(), 3);
+        assertEq(badgeBearPunkMinter.tokenId(), tokenId);
         badgeBearPunkMinter.updateBadgeTokenId(4);
         assertEq(badgeBearPunkMinter.tokenId(), 4);
     }

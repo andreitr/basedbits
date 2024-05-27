@@ -2,9 +2,9 @@
 pragma solidity 0.8.25;
 
 import {
-    BBitsTestUtils, 
-    console,
-    BBitsSocial
+BBitsTestUtils,
+console,
+BBitsSocial
 } from "./utils/BBitsTestUtils.sol";
 
 contract BBitsSocialTest is BBitsTestUtils {
@@ -13,7 +13,7 @@ contract BBitsSocialTest is BBitsTestUtils {
     event CharacterLimitUpdated(uint8 newThreshold, uint256 timestamp);
 
     function testInitialSettings() public {
-        social = new BBitsSocial(8, address(checkIn), 140, owner);
+        social = new BBitsSocial(address(checkIn), 8, 140, owner);
         assertEq(social.streakThreshold(), 8);
         assertEq(social.checkInContract(), address(checkIn));
         assertEq(social.characterLimit(), 140);
@@ -25,6 +25,19 @@ contract BBitsSocialTest is BBitsTestUtils {
         social.post("Hello World!");
         assertEq(social.posts(user0), 1);
     }
+
+    function testCanPost() public {
+        setCheckInStreak(user0, 11);
+        vm.prank(user0);
+        assertTrue(social.canPost(user0));
+    }
+
+    function testCanNotPost() public {
+        setCheckInStreak(user0, 3);
+        vm.prank(user0);
+        assertFalse(social.canPost(user0));
+    }
+
 
     function testPostMessageWithUpdatedThreshold() public {
         setCheckInStreak(user0, 6);

@@ -48,7 +48,7 @@ contract BBitsTestUtils is Test {
         // Core
         badges = new BBitsBadges(owner);
         checkIn = new BBitsCheckIn(address(basedBits), owner);
-        social = new BBitsSocial(8, address(checkIn), 140, owner);
+        social = new BBitsSocial(address(checkIn),8, 140, owner);
 
         // Minters
         badge7DayMinter = new BBitsBadge7Day(checkIn, badges, 1, owner);
