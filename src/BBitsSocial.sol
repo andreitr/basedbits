@@ -12,7 +12,7 @@ contract BBitsSocial is Ownable, Pausable {
 
     mapping(address => uint256) public posts;
 
-    event SocialPost(address indexed sender, string message, uint256 timestamp);
+    event Message(address indexed sender, string message, uint256 timestamp);
     event ThresholdUpdated(uint16 newThreshold, uint256 timestamp);
     event CharacterLimitUpdated(uint8 newThreshold, uint256 timestamp);
 
@@ -37,7 +37,7 @@ contract BBitsSocial is Ownable, Pausable {
         require(streak >= streakThreshold, "Not enough streaks to post");
 
         posts[msg.sender]++;
-        emit SocialPost(msg.sender, message, block.timestamp);
+        emit Message(msg.sender, message, block.timestamp);
     }
 
     function canPost(address user) public view returns (bool) {
