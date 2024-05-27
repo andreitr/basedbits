@@ -31,10 +31,11 @@ contract BBitsBadgeBearPunkTest is BBitsTestUtils {
 
     function testSecondMintFailure() public {
         setCheckInStreak(user0, 7);
-        vm.prank(user0);
+        vm.startPrank(user0);
         badgeBearPunkMinter.mint();
         vm.expectRevert("User is not eligible to mint");
         badgeBearPunkMinter.mint();
+        vm.stopPrank();
     }
 
     function testCanMint() public {

@@ -12,5 +12,6 @@ gas_reports = [
     "BBitsSocial",
     "BBitsCheckIn",
     "BBitsBadge7Day",
-    "BBitsBadgeFirstClick"
+    "BBitsBadgeFirstClick",
+    "BBitsBadgeBearPunk"
 ]
