@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {BBitsTestUtils, console} from "./utils/BBitsTestUtils.sol";
+import {
+    BBitsTestUtils, 
+    console,
+    BBitsSocial
+} from "./utils/BBitsTestUtils.sol";
 
 contract BBitsSocialTest is BBitsTestUtils {
 
-    function testInitialSettings() public view {
+    function testInitialSettings() public {
+        social = new BBitsSocial(8, address(checkIn), 140, owner);
         assertEq(social.streakThreshold(), 8);
         assertEq(social.checkInContract(), address(checkIn));
         assertEq(social.characterLimit(), 140);
@@ -119,5 +124,11 @@ contract BBitsSocialTest is BBitsTestUtils {
     function testOwnershipTransfer() public {
         social.transferOwnership(user0); // Transfer ownership to user
         assertTrue(social.owner() == user0);
+    }
+
+    function testUpdateCharacterLimit() public {
+        assertEq(social.characterLimit(), 140);
+        social.updateCharacterLimit(240);
+        assertEq(social.characterLimit(), 240);
     }
 }

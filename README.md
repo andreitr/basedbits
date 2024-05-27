@@ -8,4 +8,3 @@ Built using [Foundry](https://book.getfoundry.sh/)
 - `forge test --gas-report`
 - `forge coverage`
 - `forge coverage --report lcov`
-- `forge build --sizes`

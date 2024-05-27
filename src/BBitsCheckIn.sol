@@ -26,7 +26,7 @@ contract BBitsCheckIn is Ownable, Pausable {
 
     function checkIn() public whenNotPaused {
         UserCheckIns storage user = checkIns[msg.sender];
-        require(IERC721(collection).balanceOf(msg.sender) > 0, "Must have at least one NFT to check in");
+        require(canCheckIn(msg.sender), "Must have at least one NFT to check in");
         require(!banned[msg.sender], "This address is banned from posting");
         require(user.lastCheckIn == 0 || block.timestamp >= user.lastCheckIn + 1 days, "At least 24 hours must have passed since the last check-in or this is the first check-in");
 
