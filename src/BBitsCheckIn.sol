@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 
 contract BBitsCheckIn is Ownable, Pausable {
-
     address public collection;
     mapping(address => bool) public banned;
-
     mapping(address => UserCheckIns) public checkIns;
 
     struct UserCheckIns {
@@ -26,9 +24,12 @@ contract BBitsCheckIn is Ownable, Pausable {
 
     function checkIn() public whenNotPaused {
         UserCheckIns storage user = checkIns[msg.sender];
-        require(IERC721(collection).balanceOf(msg.sender) > 0, "Must have at least one NFT to check in");
+        require(canCheckIn(msg.sender), "Must have at least one NFT to check in");
         require(!banned[msg.sender], "This address is banned from posting");
-        require(user.lastCheckIn == 0 || block.timestamp >= user.lastCheckIn + 1 days, "At least 24 hours must have passed since the last check-in or this is the first check-in");
+        require(
+            user.lastCheckIn == 0 || block.timestamp >= user.lastCheckIn + 1 days,
+            "At least 24 hours must have passed since the last check-in or this is the first check-in"
+        );
 
         user.streak = (block.timestamp >= user.lastCheckIn + 48 hours) ? 1 : user.streak + 1;
         user.lastCheckIn = block.timestamp;
@@ -42,7 +43,7 @@ contract BBitsCheckIn is Ownable, Pausable {
     }
 
     function canCheckIn(address _address) public view returns (bool) {
-        return IERC721(collection).balanceOf(msg.sender) > 0;
+        return IERC721(collection).balanceOf(_address) > 0;
     }
 
     function pause() public onlyOwner {

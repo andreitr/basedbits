@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
 
 contract BBitsSocial is Ownable, Pausable {
-
     address public checkInContract;
     uint16 public streakThreshold;
     uint8 public characterLimit;
@@ -17,7 +16,12 @@ contract BBitsSocial is Ownable, Pausable {
     event ThresholdUpdated(uint16 newThreshold, uint256 timestamp);
     event CharacterLimitUpdated(uint8 newThreshold, uint256 timestamp);
 
-    constructor(uint16 _streakThreshold, address _checkInContractAddress, uint8 _characterLimit, address _initialOwner) Ownable(_initialOwner) {
+    constructor(
+        uint16 _streakThreshold, 
+        address _checkInContractAddress, 
+        uint8 _characterLimit, 
+        address _initialOwner
+    ) Ownable(_initialOwner) {
         streakThreshold = _streakThreshold;
         checkInContract = _checkInContractAddress;
         characterLimit = _characterLimit;

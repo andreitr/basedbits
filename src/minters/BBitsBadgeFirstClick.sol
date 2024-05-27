@@ -1,20 +1,23 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
-import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
-import {IBBitsBadges} from "./interfaces/IBBitsBadges.sol";
+import {BBitsBadges} from "../BBitsBadges.sol";
 
 contract BBitsBadgeFirstClick is Ownable, ReentrancyGuard {
-
-    address public badgeContract;
+    BBitsBadges public badgeContract;
     mapping(address => bool) public minter;
     mapping(address => bool) public minted;
     uint256 public tokenId;
     
-    constructor(address[] memory _minters, address _badgeContractAddress, uint256 _tokenId, address _initialOwner) Ownable(_initialOwner) {
-        badgeContract = _badgeContractAddress;
+    constructor(
+        address[] memory _minters, 
+        BBitsBadges _badgeContract, 
+        uint256 _tokenId, 
+        address _initialOwner
+    ) Ownable(_initialOwner) {
+        badgeContract = _badgeContract;
         tokenId = _tokenId;
 
         for (uint256 i = 0; i < _minters.length; i++) {
@@ -23,18 +26,16 @@ contract BBitsBadgeFirstClick is Ownable, ReentrancyGuard {
     }
 
     function mint() external nonReentrant {
-        require(!minted[msg.sender], "Badge already minted by this address");
-        require(minter[msg.sender], "Not allowed to mint");
-
+        require(canMint(msg.sender), "User is not eligible to mint");
         minted[msg.sender] = true;
-        IBBitsBadges(badgeContract).mint(msg.sender, tokenId);
+        badgeContract.mint(msg.sender, tokenId);
     }
 
-    function canMint(address user) external view returns (bool) {
+    function canMint(address user) public view returns (bool) {
         return !minted[user] && minter[user];
     }
 
-    function updateBadgeContract(address newAddress) external onlyOwner {
+    function updateBadgeContract(BBitsBadges newAddress) external onlyOwner {
         badgeContract = newAddress;
     }
 
