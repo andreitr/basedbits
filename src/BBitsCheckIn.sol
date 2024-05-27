@@ -6,10 +6,8 @@ import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol"
 import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 
 contract BBitsCheckIn is Ownable, Pausable {
-
     address public collection;
     mapping(address => bool) public banned;
-
     mapping(address => UserCheckIns) public checkIns;
 
     struct UserCheckIns {

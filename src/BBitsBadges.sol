@@ -7,7 +7,6 @@ import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessC
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 
 contract BBitsBadges is ERC1155, AccessControl, Ownable {
-
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     string public contractURI = "https://basedbits.fun/api/badges";
 
