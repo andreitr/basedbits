@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
@@ -42,7 +42,7 @@ contract BBitsCheckIn is Ownable, Pausable {
     }
 
     function canCheckIn(address _address) public view returns (bool) {
-        return IERC721(collection).balanceOf(msg.sender) > 0;
+        return IERC721(collection).balanceOf(_address) > 0;
     }
 
     function pause() public onlyOwner {

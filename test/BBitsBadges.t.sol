@@ -1,38 +1,32 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.25;
 
 import {IERC1155MetadataURI, IERC1155} from "lib/openzeppelin-contracts/contracts/token/ERC1155/ERC1155.sol";
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
-import "forge-std/Test.sol";
-import "../src/BBitsBadges.sol";
+import {BBitsTestUtils, console} from "./utils/BBitsTestUtils.sol";
 
-contract BBitsBadgesTest is Test {
+contract BBitsBadgesTest is BBitsTestUtils {
 
-    BBitsBadges private badges;
-    address private owner;
-    address private minter;
-    address private user;
+    address public minter;
 
-    function setUp() public {
-        owner = address(this);
-        minter = address(0x1);
-        user = address(0x2);
+    function setUp() public override {
+        super.setUp();
 
-        badges = new BBitsBadges(owner);
+        minter = address(0x3);
         badges.grantRole(badges.MINTER_ROLE(), minter);
     }
 
     function testMint() public {
         vm.prank(minter);
-        badges.mint(user, 1);
+        badges.mint(user0, 1);
 
-        assertEq(badges.balanceOf(user, 1), 1);
+        assertEq(badges.balanceOf(user0, 1), 1);
     }
 
     function testSingleMint() public {
         vm.prank(minter);
-        badges.mint(user, 55);
-        assertEq(badges.balanceOf(user, 55), 1);
+        badges.mint(user0, 55);
+        assertEq(badges.balanceOf(user0, 55), 1);
     }
 
     function testTokenURI() public view { // Marked as view
@@ -50,7 +44,7 @@ contract BBitsBadgesTest is Test {
     }
 
     function testFailUpdateContractMetadataURIIfNotOwner() public {
-        vm.prank(user);
+        vm.prank(user0);
         vm.expectRevert("AccessControl: account is missing role");
         badges.updateContractURI("https://newuri.com/api/badges");
     }
@@ -62,9 +56,9 @@ contract BBitsBadgesTest is Test {
     }
 
     function testFailMintIfNotMinter() public {
-        vm.prank(user);
+        vm.prank(user0);
         vm.expectRevert("AccessControl: account is missing role");
-        badges.mint(user, 1);
+        badges.mint(user0, 1);
     }
 
     function testFailIfMinterRevoked() public {
@@ -72,10 +66,10 @@ contract BBitsBadgesTest is Test {
         badges.revokeRole(badges.MINTER_ROLE(), minter);
         vm.prank(minter);
         vm.expectRevert("AccessControl: account is missing role");
-        badges.mint(user, 1);
+        badges.mint(user0, 1);
     }
 
-    function testSupportsInterface() public {
+    function testSupportsInterface() public view {
         assertEq(badges.supportsInterface(type(IERC1155).interfaceId), true);
         assertEq(badges.supportsInterface(type(IERC1155MetadataURI).interfaceId), true);
         assertEq(badges.supportsInterface(type(IAccessControl).interfaceId), true);
