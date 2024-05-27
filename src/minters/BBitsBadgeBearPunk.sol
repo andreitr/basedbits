@@ -3,26 +3,28 @@ pragma solidity 0.8.25;
 
 import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import {BBitsCheckIn} from "../BBitsCheckIn.sol";
 import {BBitsBadges} from "../BBitsBadges.sol";
 
-contract BBitsBadgeFirstClick is Ownable, ReentrancyGuard {
+contract BBitsBadgeBearPunk is Ownable, ReentrancyGuard {
+    IERC721 public immutable bearPunks;
+    BBitsCheckIn public checkInContract;
     BBitsBadges public badgeContract;
-    mapping(address => bool) public minter;
-    mapping(address => bool) public minted;
     uint256 public tokenId;
-    
+    mapping(address => bool) public minted;
+
     constructor(
-        address[] memory _minters, 
-        BBitsBadges _badgeContract, 
+        IERC721 _bearPunks,
+        BBitsCheckIn _checkInContractAddress,
+        BBitsBadges _badgeContractAddress,
         uint256 _tokenId, 
         address _initialOwner
     ) Ownable(_initialOwner) {
-        badgeContract = _badgeContract;
+        bearPunks = _bearPunks;
+        checkInContract = _checkInContractAddress;
+        badgeContract = _badgeContractAddress;
         tokenId = _tokenId;
-
-        for (uint256 i = 0; i < _minters.length; i++) {
-            minter[_minters[i]] = true;
-        }
     }
 
     function mint() external nonReentrant {
@@ -32,7 +34,14 @@ contract BBitsBadgeFirstClick is Ownable, ReentrancyGuard {
     }
 
     function canMint(address user) public view returns (bool) {
-        return !minted[user] && minter[user];
+        if (minted[user]) return false;
+        if (bearPunks.balanceOf(user) == 0) return false;
+        (, uint16 streak,) = checkInContract.checkIns(user);
+        return streak >= 7;
+    }
+
+    function updateCheckInContract(BBitsCheckIn newAddress) external onlyOwner {
+        checkInContract = newAddress;
     }
 
     function updateBadgeContract(BBitsBadges newAddress) external onlyOwner {
@@ -41,13 +50,5 @@ contract BBitsBadgeFirstClick is Ownable, ReentrancyGuard {
 
     function updateBadgeTokenId(uint256 newTokenId) external onlyOwner {
         tokenId = newTokenId;
-    }
-
-    function addMinter(address newMinter) external onlyOwner {
-        minter[newMinter] = true;
-    }
-
-    function removeMinter(address existingMinter) external onlyOwner {
-        minter[existingMinter] = false;
     }
 }

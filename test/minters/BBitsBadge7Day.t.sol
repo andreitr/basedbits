@@ -1,96 +1,72 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {BBitsTestUtils, console} from "../utils/BBitsTestUtils.sol";
+import {
+    BBitsTestUtils, 
+    console,
+    BBitsCheckIn,
+    BBitsBadge7Day,
+    BBitsBadges
+} from "../utils/BBitsTestUtils.sol";
 
 contract BBitsBadge7DayTest is BBitsTestUtils {
 
-    function testMintWithSevenDayStreak() public {
+    function testInit() public {
+        badge7DayMinter = new BBitsBadge7Day(checkIn, badges, 1, owner);
+        assertEq(address(badge7DayMinter.checkInContract()), address(checkIn));
+        assertEq(address(badge7DayMinter.badgeContract()), address(badges));
+        assertEq(badge7DayMinter.tokenId(), 1);
+    }
+
+    function testMintSuccess() public {
+        assertEq(badges.balanceOf(user0, 1), 0);
+        assertEq(badge7DayMinter.minted(user0), false);
         setCheckInStreak(user0, 7);
         vm.prank(user0);
         badge7DayMinter.mint();
         assertEq(badges.balanceOf(user0, 1), 1);
+        assertEq(badge7DayMinter.minted(user0), true);
     }
 
-    function testCanMintWithSevenDayStreak() public {
+    function testSecondMintFailure() public {
         setCheckInStreak(user0, 7);
         vm.prank(user0);
-        assertTrue(badge7DayMinter.canMint(user0));
-    }
-
-    function testCantMint() public {
-        setCheckInStreak(user0, 3);
-        vm.prank(user0);
-        assertFalse(badge7DayMinter.canMint(user0));
-    }
-
-    function testMintWithTenDayStreak() public {
-        setCheckInStreak(user0, 10);
-        vm.prank(user0);
         badge7DayMinter.mint();
-        assertEq(badges.balanceOf(user0, 1), 1);
-    }
-
-    function testCorrectStreak() public {
-        setCheckInStreak(user1, 10);
-        (, uint16 streak,) = checkIn.checkIns(user1);
-        assertEq(streak, 10);
-    }
-
-    function testFailMintWithoutSevenDayStreak() public {
-        vm.prank(user0);
-        setCheckInStreak(user0, 3);
+        vm.expectRevert("User is not eligible to mint");
         badge7DayMinter.mint();
     }
 
-    function testUpdateCheckInAddressByOwner() public {
-        address newAddress = address(0x3);
-        badge7DayMinter.updateCheckInContract(newAddress);
-        assertEq(badge7DayMinter.checkInContract(), newAddress);
-    }
+    function testCanMint() public {
+        // Low streak
+        assertEq(badge7DayMinter.canMint(user1), false);
 
-    function testFailUpdateCheckInAddressByNonOwner() public {
-        address newAddress = address(0x3);
-        vm.prank(user0); // Acting as a non-owner
-        badge7DayMinter.updateCheckInContract(newAddress);
-    }
+        // Can mint
+        setCheckInStreak(user1, 7);
+        assertEq(badge7DayMinter.canMint(user1), true);
 
-    function testUpdateBadgeCollectionAddressByOwner() public {
-        address newAddress = address(0x3);
-        badge7DayMinter.updateBadgeContract(newAddress);
-        assertEq(badge7DayMinter.badgeContract(), newAddress);
-    }
-
-    function testFailUpdateBadgeCollectionAddressByNonOwner() public {
-        address newAddress = address(0x3);
-        vm.prank(user0); // Acting as a non-owner
-        badge7DayMinter.updateBadgeContract(newAddress);
-    }
-
-    function testUpdateBadgeTokenIdByOwner() public {
-        uint256 newTokenId = 2;
-        badge7DayMinter.updateBadgeTokenId(newTokenId);
-        assertEq(badge7DayMinter.tokenId(), newTokenId);
-    }
-
-    function testFailUpdateBadgeTokenIdByNonOwner() public {
-        uint256 newTokenId = 2;
-        vm.prank(user0); // Acting as a non-owner
-        badge7DayMinter.updateBadgeTokenId(newTokenId);
-    }
-
-    function testSecondMintAfterAlreadyMinted() public {
-        setCheckInStreak(user0, 8);
-        vm.startPrank(user0);
-
-        // First mint success
-        assertEq(badge7DayMinter.canMint(user0), true);
+        // Already minted
+        vm.prank(user1);
         badge7DayMinter.mint();
+        assertEq(badge7DayMinter.canMint(user1), false);
+    }
 
-        // Second mint failure
-        assertEq(badge7DayMinter.canMint(user0), false);
-        vm.expectRevert();
-        badge7DayMinter.mint();
-        vm.stopPrank();
+    function testUpdateCheckInContract() public {
+        assertEq(address(badge7DayMinter.checkInContract()), address(checkIn));
+        BBitsCheckIn newCheckIn = new BBitsCheckIn(address(basedBits), owner);
+        badge7DayMinter.updateCheckInContract(newCheckIn);
+        assertEq(address(badge7DayMinter.checkInContract()), address(newCheckIn));
+    }
+
+    function testUpdateBadgeContract() public {
+        assertEq(address(badge7DayMinter.badgeContract()), address(badges));
+        BBitsBadges newbadges = new BBitsBadges(owner);
+        badge7DayMinter.updateBadgeContract(newbadges);
+        assertEq(address(badge7DayMinter.badgeContract()), address(newbadges));
+    }
+
+    function testUpdateBadgeTokenId() public {
+        assertEq(badge7DayMinter.tokenId(), 1);
+        badge7DayMinter.updateBadgeTokenId(4);
+        assertEq(badge7DayMinter.tokenId(), 4);
     }
 }

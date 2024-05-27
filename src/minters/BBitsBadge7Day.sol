@@ -3,45 +3,43 @@ pragma solidity 0.8.25;
 
 import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
-import {IBBitsCheckIn} from "../interfaces/IBBitsCheckIn.sol";
-import {IBBitsBadges} from "../interfaces/IBBitsBadges.sol";
+import {BBitsCheckIn} from "../BBitsCheckIn.sol";
+import {BBitsBadges} from "../BBitsBadges.sol";
 
 contract BBitsBadge7Day is Ownable, ReentrancyGuard {
-
-    address public checkInContract;
-    address public badgeContract;
+    BBitsCheckIn public checkInContract;
+    BBitsBadges public badgeContract;
     uint256 public tokenId;
     mapping(address => bool) public minted;
 
-    constructor(address _checkInContractAddress, address _badgeContractAddress, uint256 _tokenId, address _initialOwner) Ownable(_initialOwner) {
+    constructor(
+        BBitsCheckIn _checkInContractAddress, 
+        BBitsBadges _badgeContractAddress, 
+        uint256 _tokenId, 
+        address _initialOwner
+    ) Ownable(_initialOwner) {
         checkInContract = _checkInContractAddress;
         badgeContract = _badgeContractAddress;
         tokenId = _tokenId;
     }
 
     function mint() external nonReentrant {
-        require(!minted[msg.sender], "Badge already minted by this address");
-
-        (, uint16 streak,) = IBBitsCheckIn(checkInContract).checkIns(msg.sender);
-        require(streak >= 7, "Must have a 7-day streak to mint a badge");
-
+        require(canMint(msg.sender), "User is not eligible to mint");
         minted[msg.sender] = true;
-        IBBitsBadges(badgeContract).mint(msg.sender, tokenId);
+        badgeContract.mint(msg.sender, tokenId);
     }
 
-    function canMint(address user) external view returns (bool) {
-        if (minted[user]) {
-            return false;
-        }
-        (, uint16 streak,) = IBBitsCheckIn(checkInContract).checkIns(user);
+    function canMint(address user) public view returns (bool) {
+        if (minted[user]) return false;
+        (, uint16 streak,) = checkInContract.checkIns(user);
         return streak >= 7;
     }
 
-    function updateCheckInContract(address newAddress) external onlyOwner {
+    function updateCheckInContract(BBitsCheckIn newAddress) external onlyOwner {
         checkInContract = newAddress;
     }
 
-    function updateBadgeContract(address newAddress) external onlyOwner {
+    function updateBadgeContract(BBitsBadges newAddress) external onlyOwner {
         badgeContract = newAddress;
     }
 

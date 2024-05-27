@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import "forge-std/Script.sol";
-import "../src/BBitsBadgeFirstClick.sol";
+import {BBitsBadgeFirstClick, BBitsBadges} from "../src/minters/BBitsBadgeFirstClick.sol";
 
 contract BadgeDeploy is Script {
 
@@ -217,7 +217,7 @@ contract BadgeDeploy is Script {
         minters[207] = 0xC78b7ed2540Eb041e36C82df2B9BF8D65c221136;
         minters[208] = 0x83084261052cFAA8fc252EF43449840e04d1A935;
 
-        address badgeContractAddress = address(0xcD5F7F1C838488960F82d993790bc2034b3CdBFE);
+        BBitsBadges badgeContractAddress = BBitsBadges(0xcD5F7F1C838488960F82d993790bc2034b3CdBFE);
         uint256 tokenId = 2;
         address initialOwner = address(0x1d671d1B191323A38490972D58354971E5c1cd2A);
 

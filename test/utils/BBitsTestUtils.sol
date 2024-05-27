@@ -12,6 +12,7 @@ import {BBitsSocial} from "../../src/BBitsSocial.sol";
 // Minters
 import {BBitsBadge7Day} from "../../src/minters/BBitsBadge7Day.sol";
 import {BBitsBadgeFirstClick} from "../../src/minters/BBitsBadgeFirstClick.sol";
+import {BBitsBadgeBearPunk} from "../../src/minters/BBitsBadgeBearPunk.sol";
 
 // Mocks
 import {MockERC721} from "../mocks/MockERC721.sol";
@@ -23,8 +24,10 @@ contract BBitsTestUtils is Test {
 
     BBitsBadge7Day public badge7DayMinter;
     BBitsBadgeFirstClick public badgeFirstClickMinter;
+    BBitsBadgeBearPunk public badgeBearPunkMinter;
 
     MockERC721 public basedBits; /// @dev stand-in for BasedBits, consider forking Base?
+    MockERC721 public bearPunks;
 
     address public owner;
     address public user0;
@@ -38,26 +41,33 @@ contract BBitsTestUtils is Test {
         user1 = address(0x2);
         user2 = address(0x3);
 
+        // Mocks
+        basedBits = new MockERC721();
+        bearPunks = new MockERC721();
+
         // Core
         badges = new BBitsBadges(owner);
-        basedBits = new MockERC721();
         checkIn = new BBitsCheckIn(address(basedBits), owner);
         social = new BBitsSocial(8, address(checkIn), 140, owner);
 
         // Minters
-        badge7DayMinter = new BBitsBadge7Day(address(checkIn), address(badges), 1, owner);
+        badge7DayMinter = new BBitsBadge7Day(checkIn, badges, 1, owner);
 
         address[] memory minters = new address[](1);
         minters[0] = user0;
+        badgeFirstClickMinter = new BBitsBadgeFirstClick(minters, badges, 2, owner);
 
-        badgeFirstClickMinter = new BBitsBadgeFirstClick(minters, address(badges), 2, owner);
+        badgeBearPunkMinter = new BBitsBadgeBearPunk(bearPunks, checkIn, badges, 3, owner);
 
         badges.grantRole(badges.MINTER_ROLE(), address(badge7DayMinter));
         badges.grantRole(badges.MINTER_ROLE(), address(badgeFirstClickMinter));
+        badges.grantRole(badges.MINTER_ROLE(), address(badgeBearPunkMinter));
 
         // Ancilalry set up
         basedBits.mint(user0);
         basedBits.mint(user1);
+
+        bearPunks.mint(user0);
     }
 
     /// @dev assumed to already be an owner of a BBits, will revert if not
