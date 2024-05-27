@@ -38,35 +38,40 @@ contract BBitsBadgesTest is BBitsTestUtils {
     }
 
     function testUpdateContractMetadataURI() public {
-        vm.prank(owner);
+        vm.startPrank(owner);
         badges.updateContractURI("https://newuri.com/api/badges");
         assertEq(badges.contractURI(), "https://newuri.com/api/badges");
+        vm.stopPrank();
     }
 
-    function testFailUpdateContractMetadataURIIfNotOwner() public {
-        vm.prank(user0);
-        vm.expectRevert("AccessControl: account is missing role");
+    function testUpdateContractMetadataURIIfNotOwner() public {
+        vm.startPrank(user0);
+        vm.expectRevert();
         badges.updateContractURI("https://newuri.com/api/badges");
+        vm.stopPrank();
     }
 
     function testSetTokenURI() public {
-        vm.prank(owner);
+        vm.startPrank(owner);
         badges.setURI('https://newuri.com/token/{id}.json');
         assertEq(badges.uri(1), "https://newuri.com/token/{id}.json");
+        vm.stopPrank();
     }
 
-    function testFailMintIfNotMinter() public {
-        vm.prank(user0);
-        vm.expectRevert("AccessControl: account is missing role");
+    function testMintIfNotMinter() public {
+        vm.startPrank(user0);
+        vm.expectRevert();
         badges.mint(user0, 1);
+        vm.stopPrank();
     }
 
-    function testFailIfMinterRevoked() public {
+    function testIfMinterRevoked() public {
         vm.prank(owner);
         badges.revokeRole(badges.MINTER_ROLE(), minter);
-        vm.prank(minter);
-        vm.expectRevert("AccessControl: account is missing role");
+        vm.startPrank(minter);
+        vm.expectRevert();
         badges.mint(user0, 1);
+        vm.stopPrank();
     }
 
     function testSupportsInterface() public view {
