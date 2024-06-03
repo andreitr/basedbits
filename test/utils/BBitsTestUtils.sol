@@ -8,6 +8,7 @@ import "forge-std/console.sol";
 import {BBitsBadges} from "../../src/BBitsBadges.sol";
 import {BBitsCheckIn} from "../../src/BBitsCheckIn.sol";
 import {BBitsSocial} from "../../src/BBitsSocial.sol";
+import {BBitsRaffle} from "../../src/BBitsRaffle.sol";
 
 // Minters
 import {BBitsBadge7Day} from "../../src/minters/BBitsBadge7Day.sol";
@@ -21,6 +22,7 @@ contract BBitsTestUtils is Test {
     BBitsBadges public badges;
     BBitsCheckIn public checkIn;
     BBitsSocial public social;
+    BBitsRaffle public raffle;
 
     BBitsBadge7Day public badge7DayMinter;
     BBitsBadgeFirstClick public badgeFirstClickMinter;
@@ -37,9 +39,9 @@ contract BBitsTestUtils is Test {
     function setUp() public virtual {
         // Users
         owner = address(this);
-        user0 = address(0x1);
-        user1 = address(0x2);
-        user2 = address(0x3);
+        user0 = address(100);
+        user1 = address(200);
+        user2 = address(300);
 
         // Mocks
         basedBits = new MockERC721();
@@ -49,6 +51,7 @@ contract BBitsTestUtils is Test {
         badges = new BBitsBadges(owner);
         checkIn = new BBitsCheckIn(address(basedBits), owner);
         social = new BBitsSocial(address(checkIn),8, 140, owner);
+        raffle = new BBitsRaffle(owner, basedBits);
 
         // Minters
         badge7DayMinter = new BBitsBadge7Day(checkIn, badges, 1, owner);
