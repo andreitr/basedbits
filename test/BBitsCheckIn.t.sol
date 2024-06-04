@@ -10,7 +10,6 @@ contract BBitsCheckInTest is BBitsTestUtils {
     }
 
     function testCheckIn() public {
-        basedBits.mint(user0);
         vm.prank(user0);
         checkIn.checkIn();
         // Verify streak  count
@@ -20,7 +19,6 @@ contract BBitsCheckInTest is BBitsTestUtils {
     }
 
     function testCheckInStreak() public {
-        basedBits.mint(user0);
         vm.prank(user0);
         checkIn.checkIn();
         vm.warp(block.timestamp + 1.01 days);
@@ -33,7 +31,6 @@ contract BBitsCheckInTest is BBitsTestUtils {
     }
 
     function testStreakReset() public {
-        basedBits.mint(user0);
         vm.prank(user0);
         checkIn.checkIn();
         vm.warp(block.timestamp + 2.01 days);
@@ -49,7 +46,6 @@ contract BBitsCheckInTest is BBitsTestUtils {
     }
 
     function testStreakPreserveReset() public {
-        basedBits.mint(user0);
         vm.prank(user0);
         checkIn.checkIn();
         vm.warp(block.timestamp + 1.01 days); 
@@ -66,7 +62,6 @@ contract BBitsCheckInTest is BBitsTestUtils {
 
 
     function testFailCheckInTooSoon() public {
-        basedBits.mint(user0);
         vm.prank(user0);
         checkIn.checkIn();
         vm.prank(user0);
@@ -84,7 +79,6 @@ contract BBitsCheckInTest is BBitsTestUtils {
     }
 
     function testCanCheckIn() public {
-        basedBits.mint(user0);
         vm.prank(user0);
         assertTrue(checkIn.canCheckIn(user0));
     }
@@ -92,14 +86,14 @@ contract BBitsCheckInTest is BBitsTestUtils {
 
     function testFailCheckInBanned() public {
         address bannedUser = address(0x2);
-        basedBits.mintMany(bannedUser, 2);
+        (bool s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mintMany(address,uint256)")), bannedUser, 2));
+        assert(s);
         checkIn.ban(bannedUser);
         vm.prank(bannedUser);
         checkIn.checkIn();
     }
 
     function testFailCheckInPaused() public {
-        basedBits.mint(user0);
         checkIn.pause();
         vm.prank(user0);
         checkIn.checkIn();

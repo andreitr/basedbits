@@ -16,6 +16,7 @@ import {BBitsBadgeFirstClick} from "../../src/minters/BBitsBadgeFirstClick.sol";
 import {BBitsBadgeBearPunk} from "../../src/minters/BBitsBadgeBearPunk.sol";
 
 // Mocks
+import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {MockERC721} from "../mocks/MockERC721.sol";
 
 contract BBitsTestUtils is Test {
@@ -28,8 +29,8 @@ contract BBitsTestUtils is Test {
     BBitsBadgeFirstClick public badgeFirstClickMinter;
     BBitsBadgeBearPunk public badgeBearPunkMinter;
 
-    MockERC721 public basedBits; /// @dev stand-in for BasedBits, consider forking Base?
-    MockERC721 public bearPunks;
+    IERC721 public basedBits; /// @dev stand-in for BasedBits, consider forking Base?
+    IERC721 public bearPunks;
 
     address public owner;
     address public user0;
@@ -51,7 +52,7 @@ contract BBitsTestUtils is Test {
         badges = new BBitsBadges(owner);
         checkIn = new BBitsCheckIn(address(basedBits), owner);
         social = new BBitsSocial(address(checkIn),8, 140, owner);
-        raffle = new BBitsRaffle(owner, basedBits);
+        raffle = new BBitsRaffle(owner, basedBits, checkIn);
 
         // Minters
         badge7DayMinter = new BBitsBadge7Day(checkIn, badges, 1, owner);
@@ -67,10 +68,19 @@ contract BBitsTestUtils is Test {
         badges.grantRole(badges.MINTER_ROLE(), address(badgeBearPunkMinter));
 
         // Ancilalry set up
-        basedBits.mint(user0);
-        basedBits.mint(user1);
+        (bool s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mint(address)")), user0));
+        assert(s);
+        (s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mint(address)")), user1));
+        assert(s);
+        
+        (s,) = address(bearPunks).call(abi.encodeWithSelector(bytes4(keccak256("mint(address)")), user0));
+        assert(s);
+    }
 
-        bearPunks.mint(user0);
+    modifier prank(address _user) {
+        vm.startPrank(_user);
+        _;
+        vm.stopPrank();
     }
 
     /// @dev assumed to already be an owner of a BBits, will revert if not

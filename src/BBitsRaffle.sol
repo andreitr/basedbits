@@ -5,13 +5,17 @@ import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/Reentr
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {Pausable} from "lib/openzeppelin-contracts/contracts/utils/Pausable.sol";
 import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
 import {IBBitsRaffle} from "./interfaces/IBBitsRaffle.sol";
 
 /// @title  Based Bits Raffle
 /// @notice This contract ...
 contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     /// @notice Based Bits NFT.
-    IERC721 public collection;
+    IERC721 public immutable collection;
+
+    /// @notice Based Bits checkin contract.
+    IBBitsCheckIn public immutable checkIn;
 
     /// @notice The current raffle status of this contract.
     ///         PendingRaffle:     Raffle not started (just deployed/just settled).
@@ -41,9 +45,10 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     /// @notice An array of token ids and corresponding sponsors that are held by the contract.
     SponsoredPrize[] public prizes;
 
-    constructor(address _owner, IERC721 _collection) Ownable(_owner) {
+    constructor(address _owner, IERC721 _collection, IBBitsCheckIn _checkIn) Ownable(_owner) {
         status = RaffleStatus.PendingRaffle;
         collection = _collection;
+        checkIn = _checkIn;
         rafflePeriod = 1 days;
         antiBotFee = 0.0001 ether;
         raffleCount = 1; /// @dev start it at 1 to make logic nicer
@@ -57,23 +62,17 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     function depositBasedBits(uint256[] calldata _tokenIds) external nonReentrant whenNotPaused {
         uint256 length = _tokenIds.length;
         if (length == 0) revert DepositZero();
-
-        SponsoredPrize memory newSponsoredPrize;
-
         uint256 tokenId;
-
+        SponsoredPrize memory newSponsoredPrize;
         for (uint256 i; i < length; ++i) {
             tokenId = _tokenIds[i];
             collection.transferFrom(msg.sender, address(this), tokenId);
             if (collection.ownerOf(tokenId) != address(this)) revert TransferFailed();
-
             newSponsoredPrize = SponsoredPrize({
                 tokenId: tokenId,
                 sponsor: msg.sender
             });
             prizes.push(newSponsoredPrize);
-
-            /// @dev looping over an event isn't great here tbh
             emit BasedBitsDeposited(msg.sender, tokenId);
         }
     }
@@ -149,9 +148,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
 
         futureBlockNumber = block.number + 1;
 
-        if (status == RaffleStatus.InRaffle) {
-            status = RaffleStatus.PendingSettlement;
-        }
+        status = RaffleStatus.PendingSettlement;
 
         emit RandomSeedSet(currentRaffleId, futureBlockNumber);
     }
@@ -204,6 +201,10 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
 
     function isEligibleForFreeEntry(address _user) public view returns (bool) {
         if (collection.balanceOf(_user) == 0) return false;
+        
+        (uint256 _lastCheckIn,,) = checkIn.checkIns(_user);
+        if (block.timestamp - _lastCheckIn > 2 days) revert HasNotCheckedInRecently();
+        
         return true;
     }
 

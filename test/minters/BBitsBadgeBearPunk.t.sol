@@ -49,7 +49,8 @@ contract BBitsBadgeBearPunkTest is BBitsTestUtils {
         assertEq(badgeBearPunkMinter.canMint(user1), false);
 
         // Can mint
-        bearPunks.mint(user1);
+        (bool s,) = address(bearPunks).call(abi.encodeWithSelector(bytes4(keccak256("mint(address)")), user1));
+        assert(s);
         assertEq(badgeBearPunkMinter.canMint(user1), true);
 
         // Already minted
