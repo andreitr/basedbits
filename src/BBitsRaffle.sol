@@ -42,6 +42,10 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     /// @dev raffleId => address => entered
     mapping(uint256 => mapping(address => bool)) public hasEnteredRaffle;
 
+    /// @notice A mapping to track free token Id entries for any given raffle.
+    /// @dev raffleId => tokenId => entered
+    mapping(uint256 => mapping(uint256 => bool)) public tokenIdUsedForFreeEntry;
+
     /// @notice An array of token ids and corresponding sponsors that are held by the contract.
     SponsoredPrize[] public prizes;
 
@@ -83,7 +87,6 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         if (status != RaffleStatus.PendingRaffle) revert WrongStatus();
         uint256 prizesLength = prizes.length;
         if (prizesLength == 0) revert NoBasedBitsToRaffle();
-
         address[] memory newEntries;
         Raffle memory newRaffle = Raffle({
             startedAt: block.timestamp,
@@ -92,43 +95,34 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
             winner: address(0),
             sponsoredPrize: prizes[prizesLength - 1]
         });
-        idToRaffle[raffleCount++] = newRaffle; /// @dev check raffleCount is incremented properly here
-        /// @dev Doesn't pop the prizes array yet incase there are no entries, does it at settlement
-
+        idToRaffle[raffleCount++] = newRaffle;
+        /// @dev Pops prizes array at settlement if there are entries.
         status = RaffleStatus.InRaffle;
-
         emit NewRaffleStarted(getCurrentRaffleId());
     }
 
     /// ENTRIES ///
 
-    function newFreeEntry() external nonReentrant whenNotPaused {
-        if (!isEligibleForFreeEntry(msg.sender)) revert NotEligibleForFreeEntry();
-
+    /// @dev Passes a tokenId also to prevent re-use abuse
+    function newFreeEntry(uint256 _tokenId) external nonReentrant whenNotPaused {
+        if (!isEligibleForFreeEntry(msg.sender, _tokenId)) revert NotEligibleForFreeEntry();
+        tokenIdUsedForFreeEntry[getCurrentRaffleId()][_tokenId] = true;
         _newEntry();
     }
 
     function newPaidEntry() external payable nonReentrant whenNotPaused {
         if (msg.value != antiBotFee) revert MustPayAntiBotFee();
-
         _newEntry();
     }
 
     function _newEntry() internal {
         if (status != RaffleStatus.InRaffle) revert WrongStatus();
-
         uint256 currentRaffleId = getCurrentRaffleId();
-
         Raffle storage currentRaffle = idToRaffle[currentRaffleId];
-
         if (block.timestamp - currentRaffle.startedAt > rafflePeriod) revert RaffleExpired();
-        
         if (hasEnteredRaffle[currentRaffleId][msg.sender]) revert AlreadyEnteredRaffle();
-
         hasEnteredRaffle[currentRaffleId][msg.sender] = true;
-
         currentRaffle.entries.push(msg.sender);
-
         emit RaffleEntered(currentRaffleId, msg.sender);
     }
 
@@ -199,12 +193,19 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         return raffleCount - 1; 
     }
 
-    function isEligibleForFreeEntry(address _user) public view returns (bool) {
-        if (collection.balanceOf(_user) == 0) return false;
-        
+    function getRaffleEntryNumber(uint256 _raffleId) public view returns (uint256) {
+        return idToRaffle[_raffleId].entries.length;
+    }
+
+    function getRaffleEntryByIndex(uint256 _raffleId, uint256 _index) public view returns (address) {
+        return idToRaffle[_raffleId].entries[_index];
+    }
+
+    function isEligibleForFreeEntry(address _user, uint256 _tokenId) public view returns (bool) {
+        if (collection.ownerOf(_tokenId) != _user) return false;
         (uint256 _lastCheckIn,,) = checkIn.checkIns(_user);
-        if (block.timestamp - _lastCheckIn > 2 days) revert HasNotCheckedInRecently();
-        
+        if (block.timestamp - _lastCheckIn > 2 days) return false;
+        if (tokenIdUsedForFreeEntry[getCurrentRaffleId()][_tokenId]) return false;
         return true;
     }
 

@@ -8,7 +8,7 @@ import "forge-std/console.sol";
 import {BBitsBadges} from "../../src/BBitsBadges.sol";
 import {BBitsCheckIn} from "../../src/BBitsCheckIn.sol";
 import {BBitsSocial} from "../../src/BBitsSocial.sol";
-import {BBitsRaffle} from "../../src/BBitsRaffle.sol";
+import {BBitsRaffle, IBBitsRaffle} from "../../src/BBitsRaffle.sol";
 
 // Minters
 import {BBitsBadge7Day} from "../../src/minters/BBitsBadge7Day.sol";
@@ -29,13 +29,16 @@ contract BBitsTestUtils is Test {
     BBitsBadgeFirstClick public badgeFirstClickMinter;
     BBitsBadgeBearPunk public badgeBearPunkMinter;
 
-    IERC721 public basedBits; /// @dev stand-in for BasedBits, consider forking Base?
+    IERC721 public basedBits; 
     IERC721 public bearPunks;
 
     address public owner;
     address public user0;
     address public user1;
     address public user2;
+
+    /// @dev Based Bits token Ids of Owner, useful for raffle tests
+    uint256[5] public ownerTokenIds;
 
     function setUp() public virtual {
         // Users
@@ -83,7 +86,9 @@ contract BBitsTestUtils is Test {
         vm.stopPrank();
     }
 
-    /// @dev assumed to already be an owner of a BBits, will revert if not
+    /// CHECKIN ///
+
+    /// @dev Assumed to already be an owner of a BBits, will revert if not
     function setCheckInStreak(address user, uint16 streak) public {
         vm.startPrank(user);
 
@@ -104,5 +109,57 @@ contract BBitsTestUtils is Test {
         vm.prank(owner);
         checkIn.ban(user);
         assertEq(checkIn.banned(user), true);
+    }
+
+    /// RAFFLE ///
+
+    /// @dev Assumed to be the owner when this is called
+    ///      Also assumed to be in Pending Raffle status after setup
+    function setRaffleStatus(IBBitsRaffle.RaffleStatus _status) public {
+        if (_status == IBBitsRaffle.RaffleStatus.InRaffle) {
+            /// Deposit three tokenIds
+            uint256[] memory tokenIds = new uint256[](3);
+            tokenIds[0] = ownerTokenIds[0];
+            tokenIds[1] = ownerTokenIds[1];
+            tokenIds[2] = ownerTokenIds[2];
+            raffle.depositBasedBits(tokenIds);
+
+            /// Start next raffle
+            raffle.startNextRaffle();
+        } else if (_status == IBBitsRaffle.RaffleStatus.PendingSettlement) {
+            /// Deposit three tokenIds
+            uint256[] memory tokenIds = new uint256[](3);
+            tokenIds[0] = ownerTokenIds[0];
+            tokenIds[1] = ownerTokenIds[1];
+            tokenIds[2] = ownerTokenIds[2];
+            raffle.depositBasedBits(tokenIds);
+
+            /// Start next raffle
+            raffle.startNextRaffle();
+
+            /// Set Random Seed
+            vm.warp(block.timestamp + 1.01 days);
+            uint256 antiBotFee = raffle.antiBotFee();
+            raffle.setRandomSeed{value: antiBotFee}();
+        } else {
+            /// @dev For Pending Raffle status get to just after settled
+            /// Deposit three tokenIds
+            uint256[] memory tokenIds = new uint256[](3);
+            tokenIds[0] = ownerTokenIds[0];
+            tokenIds[1] = ownerTokenIds[1];
+            tokenIds[2] = ownerTokenIds[2];
+            raffle.depositBasedBits(tokenIds);
+
+            /// Start next raffle
+            raffle.startNextRaffle();
+
+            /// Set random seed
+            vm.warp(block.timestamp + 1.01 days);
+            raffle.setRandomSeed();
+
+            /// Settle raffle
+            vm.roll(block.number + 1);
+            raffle.settleRaffle();
+        }
     }
 }
