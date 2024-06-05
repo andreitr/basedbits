@@ -7,7 +7,7 @@ import {
     BBitsRaffle,
     console
 } from "./utils/BBitsTestUtils.sol";
-import {ERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
+import {ERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
 import {IBBitsRaffle} from "../src/interfaces/IBBitsRaffle.sol";
 
 contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {

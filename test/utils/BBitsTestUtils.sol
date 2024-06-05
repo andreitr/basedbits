@@ -16,7 +16,7 @@ import {BBitsBadgeFirstClick} from "../../src/minters/BBitsBadgeFirstClick.sol";
 import {BBitsBadgeBearPunk} from "../../src/minters/BBitsBadgeBearPunk.sol";
 
 // Mocks
-import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
 import {MockERC721} from "../mocks/MockERC721.sol";
 
 contract BBitsTestUtils is Test {

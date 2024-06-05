@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {IERC1155MetadataURI, IERC1155} from "lib/openzeppelin-contracts/contracts/token/ERC1155/ERC1155.sol";
-import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
+import {IERC1155MetadataURI, IERC1155} from "@openzeppelin/token/ERC1155/ERC1155.sol";
+import {IAccessControl} from "@openzeppelin/access/AccessControl.sol";
 import {BBitsTestUtils, console} from "./utils/BBitsTestUtils.sol";
 
 contract BBitsBadgesTest is BBitsTestUtils {

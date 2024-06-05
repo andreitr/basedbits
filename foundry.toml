@@ -16,3 +16,7 @@ gas_reports = [
     "BBitsBadgeBearPunk",
     "BBitsRaffle"
 ]
+
+remappings = [
+    "@openzeppelin/=lib/openzeppelin-contracts/contracts",
+]

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {ReentrancyGuard} from "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
-import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
+import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {BBitsBadges} from "../BBitsBadges.sol";
 
 contract BBitsBadgeFirstClick is Ownable, ReentrancyGuard {

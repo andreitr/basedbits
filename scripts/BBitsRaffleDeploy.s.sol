@@ -2,7 +2,7 @@
 pragma solidity 0.8.25;
 
 import "forge-std/Script.sol";
-import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
 import {IBBitsCheckIn} from "../src/interfaces/IBBitsCheckIn.sol";
 import {BBitsRaffle} from "../src/BBitsRaffle.sol";
 
