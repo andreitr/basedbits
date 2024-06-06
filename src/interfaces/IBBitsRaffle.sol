@@ -31,6 +31,7 @@ interface IBBitsRaffle {
     error MustPayAntiBotFee();
     error SeedMustBeReset();
     error TransferFailed();
+    error IndexOutOfBounds();
 
     event BasedBitsDeposited(address _sponsor, uint256 _tokenId);
     event NewRaffleStarted(uint256 _raffleId);

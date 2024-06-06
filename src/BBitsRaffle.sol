@@ -55,7 +55,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         checkIn = _checkIn;
         rafflePeriod = 1 days;
         antiBotFee = 0.0001 ether;
-        raffleCount = 1; /// @dev start it at 1 to make logic nicer
+        raffleCount = 1;
     }
 
     receive() external payable {}
@@ -96,7 +96,6 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
             sponsoredPrize: prizes[prizesLength - 1]
         });
         idToRaffle[raffleCount++] = newRaffle;
-        /// @dev Pops prizes array at settlement if there are entries.
         status = RaffleStatus.InRaffle;
         emit NewRaffleStarted(getCurrentRaffleId());
     }
@@ -128,61 +127,42 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
 
     /// SETTLEMENT ///
 
+    /// @dev Status can be either InRaffle or PendingSettlement to allow for re-rolling seed
     function setRandomSeed() external payable nonReentrant whenNotPaused {
-        /// @dev Status can be either InRaffle or PendingSettlement to allow for re-rolling seed
         if (status == RaffleStatus.PendingRaffle) revert WrongStatus();
-
         uint256 currentRaffleId = getCurrentRaffleId();
-
         Raffle storage currentRaffle = idToRaffle[currentRaffleId];
-
         if (block.timestamp - currentRaffle.startedAt < rafflePeriod) revert RaffleOnGoing();
-
         if (msg.value != antiBotFee) revert MustPayAntiBotFee();
-
         futureBlockNumber = block.number + 1;
-
         status = RaffleStatus.PendingSettlement;
-
         emit RandomSeedSet(currentRaffleId, futureBlockNumber);
     }
 
+    /// @dev Only pops the prize array if there are entries
     function settleRaffle() external nonReentrant whenNotPaused {
         if (status != RaffleStatus.PendingSettlement) revert WrongStatus();
-
-        /// @dev The first clause prevents setting the seed and settling the raffle in the same block
         if (block.number < futureBlockNumber || block.number - futureBlockNumber >= 255) revert SeedMustBeReset();
-
         uint256 pseudoRandom = uint256(keccak256(abi.encodePacked(futureBlockNumber, blockhash(futureBlockNumber))));
-
         uint256 currentRaffleId = getCurrentRaffleId();
-
         Raffle storage currentRaffle = idToRaffle[currentRaffleId];
-
         uint256 entriesLength = currentRaffle.entries.length;
-
         if (entriesLength == 0) {
             currentRaffle.settledAt = block.timestamp;
             emit RaffleSettled(currentRaffleId, address(0), 0);
         } else {
-            prizes.pop(); /// @dev Only pops the prize array if there are entries
-
+            prizes.pop();
             address winner = currentRaffle.entries[pseudoRandom % entriesLength];
             address sponsor = currentRaffle.sponsoredPrize.sponsor;
             uint256 tokenId = currentRaffle.sponsoredPrize.tokenId;
-
             currentRaffle.settledAt = block.timestamp;
             currentRaffle.winner = winner;
-
             collection.transferFrom(address(this), winner, tokenId);
             if (collection.ownerOf(tokenId) != winner) revert TransferFailed();
-
             (bool success, ) = (sponsor).call{value: address(this).balance}("");
             if (!success) revert TransferFailed();
-
             emit RaffleSettled(currentRaffleId, winner, tokenId);
         }
-
         status = RaffleStatus.PendingRaffle;
     }
 
@@ -198,6 +178,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     }
 
     function getRaffleEntryByIndex(uint256 _raffleId, uint256 _index) public view returns (address) {
+        if (_index >= getRaffleEntryNumber(_raffleId)) revert IndexOutOfBounds();
         return idToRaffle[_raffleId].entries[_index];
     }
 
@@ -211,8 +192,8 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
 
     /// OWNER ///
 
-    function setPaused(bool _isPaused) external onlyOwner {
-        _isPaused ? _pause() : _unpause();
+    function setPaused(bool _setPaused) external onlyOwner {
+        _setPaused ? _pause() : _unpause();
     }
 
     function setAntiBotFee(uint256 _newFee) external onlyOwner {

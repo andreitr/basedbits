@@ -8,6 +8,7 @@ import {
     console
 } from "./utils/BBitsTestUtils.sol";
 import {ERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
+import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 import {IBBitsRaffle} from "../src/interfaces/IBBitsRaffle.sol";
 
 contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
@@ -194,6 +195,8 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         checkIn.checkIn();
         raffle.newFreeEntry(ownerTokenIds[4]);
 
+        assertEq(raffle.tokenIdUsedForFreeEntry(1,ownerTokenIds[4]), true);
+
         vm.expectRevert(IBBitsRaffle.NotEligibleForFreeEntry.selector);
         raffle.newFreeEntry(ownerTokenIds[4]);
     }
@@ -232,9 +235,304 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         setRaffleStatus(RaffleStatus.InRaffle);
         uint256 antiBotFee = raffle.antiBotFee();
 
+        assertEq(raffle.hasEnteredRaffle(1, owner), false);
+
         raffle.newPaidEntry{value: antiBotFee}();
+
+        assertEq(raffle.hasEnteredRaffle(1, owner), true);
 
         vm.expectRevert(IBBitsRaffle.AlreadyEnteredRaffle.selector);
         raffle.newPaidEntry{value: antiBotFee}();
+    }
+
+    function testNewFreeEntrySuccessConditions() public prank(owner) {
+        vm.warp(block.timestamp + 1.01 days);
+        setRaffleStatus(RaffleStatus.InRaffle);
+        checkIn.checkIn();
+
+        assertEq(raffle.hasEnteredRaffle(1, owner), false);
+        assertEq(raffle.tokenIdUsedForFreeEntry(1, ownerTokenIds[3]), false);
+        assertEq(raffle.getRaffleEntryNumber(1), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit RaffleEntered(1, owner);
+        raffle.newFreeEntry(ownerTokenIds[3]);
+
+        assertEq(raffle.hasEnteredRaffle(1, owner), true);
+        assertEq(raffle.tokenIdUsedForFreeEntry(1, ownerTokenIds[3]), true);
+        assertEq(raffle.getRaffleEntryNumber(1), 1);
+        assertEq(raffle.getRaffleEntryByIndex(1, 0), owner);
+    }
+
+    function testNewPaidEntrySuccessConditions() public prank(owner) {
+        setRaffleStatus(RaffleStatus.InRaffle);
+        uint256 antiBotFee = raffle.antiBotFee();
+        uint256 raffleBalanceBefore = address(raffle).balance;
+
+        assertEq(raffle.hasEnteredRaffle(1, owner), false);
+        assertEq(raffle.getRaffleEntryNumber(1), 0);
+
+        vm.expectEmit(true, true, true, true);
+        emit RaffleEntered(1, owner);
+        raffle.newPaidEntry{value: antiBotFee}();
+
+        assertEq(raffle.hasEnteredRaffle(1, owner), true);
+        assertEq(raffle.getRaffleEntryNumber(1), 1);
+        assertEq(raffle.getRaffleEntryByIndex(1, 0), owner);
+        assertEq(address(raffle).balance, raffleBalanceBefore + antiBotFee);
+    }
+
+    /// SET RANDOM SEED ///
+
+    function testSetRandomSeedFailureConditions() public prank(owner) {
+        /// Wrong Status
+        vm.expectRevert(IBBitsRaffle.WrongStatus.selector);
+        raffle.setRandomSeed();
+
+        /// Raffle Ongoing
+        setRaffleStatus(RaffleStatus.InRaffle);
+        vm.expectRevert(IBBitsRaffle.RaffleOnGoing.selector);
+        raffle.setRandomSeed();
+
+        /// Antibot Fee
+        vm.warp(block.timestamp + 1.01 days);
+        vm.expectRevert(IBBitsRaffle.MustPayAntiBotFee.selector);
+        raffle.setRandomSeed();
+    }
+
+    function testSetRandomSeedSuccessConditions() public prank(owner) {
+        setRaffleStatus(RaffleStatus.InRaffle);
+        uint256 antiBotFee = raffle.antiBotFee(); 
+        vm.warp(block.timestamp + 1.01 days);
+
+        vm.expectEmit(true, true, true, true);
+        emit RandomSeedSet(1, block.number + 1);
+        raffle.setRandomSeed{value: antiBotFee}();
+
+        assert(raffle.status() == RaffleStatus.PendingSettlement);
+    }
+
+    function testReSetRandomSeedSuccessConditions() public prank(owner) {
+        setRaffleStatus(RaffleStatus.InRaffle);
+        uint256 antiBotFee = raffle.antiBotFee(); 
+        vm.warp(block.timestamp + 1.01 days);
+
+        vm.expectEmit(true, true, true, true);
+        emit RandomSeedSet(1, block.number + 1);
+        raffle.setRandomSeed{value: antiBotFee}();
+
+        assert(raffle.status() == RaffleStatus.PendingSettlement);
+        vm.roll(block.number + 1);
+
+        vm.expectEmit(true, true, true, true);
+        emit RandomSeedSet(1, block.number + 1);
+        raffle.setRandomSeed{value: antiBotFee}();
+    }
+
+    /// SETTLE RAFFLE ///
+
+    function testSettleRaffleWrongStatusFailureConditions() public prank(owner) {
+        /// Pending Raffle
+        vm.expectRevert(IBBitsRaffle.WrongStatus.selector);
+        raffle.settleRaffle();
+
+        /// In Raffle
+        setRaffleStatus(RaffleStatus.InRaffle);
+        vm.expectRevert(IBBitsRaffle.WrongStatus.selector);
+        raffle.settleRaffle();
+    }
+
+    function testSettleRaffleSeedMustBeResetFailureConditions() public prank(owner) {
+        setRaffleStatus(RaffleStatus.PendingSettlement);
+
+        /// Seed used too rapidly
+        vm.expectRevert(IBBitsRaffle.SeedMustBeReset.selector);
+        raffle.settleRaffle();
+
+        /// Seed expired
+        vm.roll(block.number + 256);
+        vm.expectRevert(IBBitsRaffle.SeedMustBeReset.selector);
+        raffle.settleRaffle();
+    }
+
+    function testSettleRaffleNoEntriesSuccessConditions() public prank(owner) {
+        setRaffleStatus(RaffleStatus.PendingSettlement);
+        vm.roll(block.number + 1);
+
+        assertEq(basedBits.balanceOf(address(raffle)), 3);
+
+        vm.expectEmit(true, true, true, true);
+        emit RaffleSettled(1, address(0), 0);
+        raffle.settleRaffle();
+
+        (, uint256 settledAt, address winner,) = raffle.idToRaffle(1);
+        (uint256 tokenId, address sponsor) = raffle.prizes(2);
+
+        assertEq(raffle.getRaffleEntryNumber(1), 0);
+        assertEq(settledAt, block.timestamp);
+        assertEq(winner, address(0));
+        assert(raffle.status() == RaffleStatus.PendingRaffle);
+        assertEq(basedBits.balanceOf(address(raffle)), 3);
+        assertEq(tokenId, ownerTokenIds[2]);
+        assertEq(sponsor, owner);
+    }
+
+    function testSettleRaffleOneEntrySuccessConditions() public prank(owner) {
+        setRaffleInMotionWithOnePaidEntry();
+
+        /// Set Random Seed 
+        vm.warp(block.timestamp + 1.01 days);
+        uint256 antiBotFee = raffle.antiBotFee();
+        raffle.setRandomSeed{value: antiBotFee}();
+        vm.roll(block.number + 1);
+
+        assertEq(basedBits.balanceOf(address(raffle)), 3);
+        assertEq(address(raffle).balance, 2 * antiBotFee);
+        uint256 ownerBalanceBefore = owner.balance;
+
+        /// Settle
+        /// @dev Owner is both winner and sponsor
+        vm.expectEmit(true, true, true, true);
+        emit RaffleSettled(1, owner, ownerTokenIds[2]);
+        raffle.settleRaffle();
+
+        (, uint256 settledAt, address winner,) = raffle.idToRaffle(1);
+        (uint256 tokenId, address sponsor) = raffle.prizes(1);
+
+        assertEq(raffle.getRaffleEntryNumber(1), 1);
+        assertEq(settledAt, block.timestamp);
+        assertEq(winner, owner);
+        assert(raffle.status() == RaffleStatus.PendingRaffle);
+        assertEq(basedBits.balanceOf(address(raffle)), 2);
+        assertEq(tokenId, ownerTokenIds[1]);
+        assertEq(sponsor, owner);
+        assertEq(address(raffle).balance, 0);
+        assertEq(owner.balance, ownerBalanceBefore + (2 * antiBotFee));
+        assertEq(basedBits.ownerOf(ownerTokenIds[2]), owner);
+    }
+
+    function testSettleRaffleMultipleEntriesSuccessConditions() public prank(owner) {
+        setRaffleInMotionWithOnePaidEntry();
+        uint256 antiBotFee = raffle.antiBotFee();
+
+        /// User0 enters
+        vm.stopPrank();
+        vm.startPrank(user0);
+        basedBits.setApprovalForAll(address(raffle), true);
+        raffle.newPaidEntry{value: antiBotFee}();
+
+        /// Set Random Seed 
+        vm.warp(block.timestamp + 1.01 days);
+        raffle.setRandomSeed{value: antiBotFee}();
+        vm.roll(block.number + 1);
+
+        assertEq(basedBits.balanceOf(address(raffle)), 3);
+        assertEq(address(raffle).balance, 3 * antiBotFee);
+        uint256 ownerBalanceBefore = owner.balance;
+        uint256 user0BalanceBefore = user0.balance;
+
+        /// Settle
+        /// @dev Get random number given that it is the seed block
+        uint256 pseudoRandom = uint256(keccak256(abi.encodePacked(block.number, blockhash(block.number))));
+        uint256 winningIndex = pseudoRandom % 2;
+        address predictedWinner = raffle.getRaffleEntryByIndex(1, winningIndex);
+
+        vm.expectEmit(true, true, true, true);
+        emit RaffleSettled(1, predictedWinner, ownerTokenIds[2]);
+        raffle.settleRaffle();
+
+        (, uint256 settledAt, address winner,) = raffle.idToRaffle(1);
+        (uint256 tokenId, address sponsor) = raffle.prizes(1);
+
+        assertEq(raffle.getRaffleEntryNumber(1), 2);
+        assertEq(settledAt, block.timestamp);
+        assertEq(winner, predictedWinner);
+        assert(raffle.status() == RaffleStatus.PendingRaffle);
+        assertEq(basedBits.balanceOf(address(raffle)), 2);
+        assertEq(tokenId, ownerTokenIds[1]);
+        assertEq(sponsor, owner);
+        assertEq(address(raffle).balance, 0);
+        assertEq(owner.balance, ownerBalanceBefore + (3 * antiBotFee));
+        assertEq(user0.balance, user0BalanceBefore);
+        assertEq(basedBits.ownerOf(ownerTokenIds[2]), predictedWinner);
+
+        vm.stopPrank();
+    }
+
+    /// ONLY OWNER ///
+
+    function testSetPaused() public prank(owner) {
+        assertEq(raffle.paused(), false);
+
+        raffle.setPaused(true);
+        assertEq(raffle.paused(), true);
+
+        raffle.setPaused(false);
+        assertEq(raffle.paused(), false);
+
+        /// Non owner
+        vm.stopPrank();
+        vm.startPrank(user0);
+
+        vm.expectRevert();
+        raffle.setPaused(true);
+
+        vm.stopPrank();
+    }
+
+    function testSetAntiBotFee() public prank(owner) {
+        assertEq(raffle.antiBotFee(), 0.0001 ether);
+
+        raffle.setAntiBotFee(0.1 ether);
+        assertEq(raffle.antiBotFee(), 0.1 ether);
+
+        /// Non owner
+        vm.stopPrank();
+        vm.startPrank(user0);
+
+        vm.expectRevert();
+        raffle.setAntiBotFee(1 ether);
+
+        vm.stopPrank();
+    }
+
+    function testSetRafflePeriod() public prank(owner) {
+        assertEq(raffle.rafflePeriod(), 1 days);
+
+        raffle.setRafflePeriod(7 days);
+        assertEq(raffle.rafflePeriod(), 7 days);
+
+        /// Non owner
+        vm.stopPrank();
+        vm.startPrank(user0);
+
+        vm.expectRevert();
+        raffle.setRafflePeriod(2 days);
+
+        vm.stopPrank();
+    }
+
+    function testWhenNotPaused() public prank(owner) {
+        raffle.setPaused(true);
+
+        uint256[] memory tokenIds = new uint256[](0);
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        raffle.depositBasedBits(tokenIds);
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        raffle.startNextRaffle();
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        raffle.newFreeEntry(ownerTokenIds[3]);
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        raffle.newPaidEntry{value: 0.0001 ether}();
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        raffle.setRandomSeed();
+
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        raffle.settleRaffle();
     }
 }

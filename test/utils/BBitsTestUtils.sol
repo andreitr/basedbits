@@ -162,4 +162,21 @@ contract BBitsTestUtils is Test {
             raffle.settleRaffle();
         }
     }
+
+    /// @dev Assumed to be the owner when this is called
+    function setRaffleInMotionWithOnePaidEntry() internal {
+        /// Deposit three tokenIds
+        uint256[] memory tokenIds = new uint256[](3);
+        tokenIds[0] = ownerTokenIds[0];
+        tokenIds[1] = ownerTokenIds[1];
+        tokenIds[2] = ownerTokenIds[2];
+        raffle.depositBasedBits(tokenIds);
+
+        /// Start next raffle
+        raffle.startNextRaffle();
+
+        /// Owner makes an entry
+        uint256 antiBotFee = raffle.antiBotFee();
+        raffle.newPaidEntry{value: antiBotFee}();
+    }
 }
