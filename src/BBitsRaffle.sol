@@ -24,10 +24,10 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     RaffleStatus public status;
 
     /// @notice The total number of raffles held by this contract.
-    uint256 public raffleCount;
+    uint256 public count;
 
     /// @notice Length of time that a raffle lasts.
-    uint256 public rafflePeriod;
+    uint256 public duration;
 
     /// @notice An fee that must be paid on some functions to discourage botting or abuse.
     uint256 public antiBotFee;
@@ -38,7 +38,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     /// @notice A mapping from raffle ids to raffle info.
     mapping(uint256 => Raffle) public idToRaffle;
 
-    /// @notice A mapping to track entries for any given raffle.
+    /// @notice A mapping to track addresses that have entered any given raffle.
     /// @dev raffleId => address => entered
     mapping(uint256 => mapping(address => bool)) public hasEnteredRaffle;
 
@@ -53,9 +53,9 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         status = RaffleStatus.PendingRaffle;
         collection = _collection;
         checkIn = _checkIn;
-        rafflePeriod = 1 days;
+        duration = 1 days;
         antiBotFee = 0.0001 ether;
-        raffleCount = 1;
+        count = 1;
     }
 
     receive() external payable {}
@@ -93,9 +93,9 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
             settledAt: 0,
             entries: newEntries,
             winner: address(0),
-            sponsoredPrize: prizes[prizesLength - 1]
+            sponsoredPrize: prizes[0]
         });
-        idToRaffle[raffleCount++] = newRaffle;
+        idToRaffle[count++] = newRaffle;
         status = RaffleStatus.InRaffle;
         emit NewRaffleStarted(getCurrentRaffleId());
     }
@@ -118,7 +118,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         if (status != RaffleStatus.InRaffle) revert WrongStatus();
         uint256 currentRaffleId = getCurrentRaffleId();
         Raffle storage currentRaffle = idToRaffle[currentRaffleId];
-        if (block.timestamp - currentRaffle.startedAt > rafflePeriod) revert RaffleExpired();
+        if (block.timestamp - currentRaffle.startedAt > duration) revert RaffleExpired();
         if (hasEnteredRaffle[currentRaffleId][msg.sender]) revert AlreadyEnteredRaffle();
         hasEnteredRaffle[currentRaffleId][msg.sender] = true;
         currentRaffle.entries.push(msg.sender);
@@ -132,7 +132,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         if (status == RaffleStatus.PendingRaffle) revert WrongStatus();
         uint256 currentRaffleId = getCurrentRaffleId();
         Raffle storage currentRaffle = idToRaffle[currentRaffleId];
-        if (block.timestamp - currentRaffle.startedAt < rafflePeriod) revert RaffleOnGoing();
+        if (block.timestamp - currentRaffle.startedAt < duration) revert RaffleOnGoing();
         if (msg.value != antiBotFee) revert MustPayAntiBotFee();
         futureBlockNumber = block.number + 1;
         status = RaffleStatus.PendingSettlement;
@@ -142,8 +142,9 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     /// @dev Only pops the prize array if there are entries
     function settleRaffle() external nonReentrant whenNotPaused {
         if (status != RaffleStatus.PendingSettlement) revert WrongStatus();
-        if (block.number < futureBlockNumber || block.number - futureBlockNumber >= 255) revert SeedMustBeReset();
-        uint256 pseudoRandom = uint256(keccak256(abi.encodePacked(futureBlockNumber, blockhash(futureBlockNumber))));
+        bytes32 blockHash = blockhash(futureBlockNumber);
+        if (blockHash == bytes32(0)) revert SeedMustBeReset();
+        uint256 pseudoRandom = uint256(keccak256(abi.encodePacked(futureBlockNumber, blockHash)));
         uint256 currentRaffleId = getCurrentRaffleId();
         Raffle storage currentRaffle = idToRaffle[currentRaffleId];
         uint256 entriesLength = currentRaffle.entries.length;
@@ -151,6 +152,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
             currentRaffle.settledAt = block.timestamp;
             emit RaffleSettled(currentRaffleId, address(0), 0);
         } else {
+            prizes[0] = prizes[prizes.length - 1];
             prizes.pop();
             address winner = currentRaffle.entries[pseudoRandom % entriesLength];
             address sponsor = currentRaffle.sponsoredPrize.sponsor;
@@ -170,7 +172,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     
     /// @dev Will return zero when initially deployed but there is no raffle zero.
     function getCurrentRaffleId() public view returns (uint256) {
-        return raffleCount - 1; 
+        return count - 1; 
     }
 
     function getRaffleEntryNumber(uint256 _raffleId) public view returns (uint256) {
@@ -200,7 +202,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         antiBotFee = _newFee;
     }
 
-    function setRafflePeriod(uint256 _newRafflePeriod) external onlyOwner {
-        rafflePeriod = _newRafflePeriod;
+    function setDuration(uint256 _newDuration) external onlyOwner {
+        duration = _newDuration;
     }
 }

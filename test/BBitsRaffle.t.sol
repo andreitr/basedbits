@@ -39,8 +39,8 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
     function testInit() public view {
         assertEq(address(raffle.collection()), address(basedBits));
         assertEq(address(raffle.checkIn()), address(checkIn));
-        assertEq(raffle.raffleCount(), 1);
-        assertEq(raffle.rafflePeriod(), 1 days);
+        assertEq(raffle.count(), 1);
+        assertEq(raffle.duration(), 1 days);
         assertEq(raffle.antiBotFee(), 0.0001 ether);
         assertEq(raffle.paused(), false);
         assertEq(raffle.owner(), owner);
@@ -141,7 +141,7 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         ) = raffle.idToRaffle(1);
         uint256 numberOfEntries = raffle.getRaffleEntryNumber(1);
 
-        assertEq(raffle.raffleCount(), 1);
+        assertEq(raffle.count(), 1);
         assertEq(raffle.getCurrentRaffleId(), 0);
         assertEq(startedAt, 0);
         assertEq(settledAt, 0);
@@ -163,13 +163,13 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         ) = raffle.idToRaffle(1);
         numberOfEntries = raffle.getRaffleEntryNumber(1);
 
-        assertEq(raffle.raffleCount(), 2);
+        assertEq(raffle.count(), 2);
         assertEq(raffle.getCurrentRaffleId(), 1);
         assertEq(startedAt, block.timestamp);
         assertEq(settledAt, 0);
         assertEq(winner, address(0));
         assertEq(prize.sponsor, owner);
-        assertEq(prize.tokenId, ownerTokenIds[2]);
+        assertEq(prize.tokenId, ownerTokenIds[0]);
         assertEq(numberOfEntries, 0);
         assert(raffle.status() == RaffleStatus.InRaffle);
     }
@@ -350,14 +350,14 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         raffle.settleRaffle();
 
         /// Seed expired
-        vm.roll(block.number + 256);
+        vm.roll(block.number + 258);
         vm.expectRevert(IBBitsRaffle.SeedMustBeReset.selector);
         raffle.settleRaffle();
     }
 
     function testSettleRaffleNoEntriesSuccessConditions() public prank(owner) {
         setRaffleStatus(RaffleStatus.PendingSettlement);
-        vm.roll(block.number + 1);
+        vm.roll(block.number + 2);
 
         assertEq(basedBits.balanceOf(address(raffle)), 3);
 
@@ -384,7 +384,7 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         vm.warp(block.timestamp + 1.01 days);
         uint256 antiBotFee = raffle.antiBotFee();
         raffle.setRandomSeed{value: antiBotFee}();
-        vm.roll(block.number + 1);
+        vm.roll(block.number + 2);
 
         assertEq(basedBits.balanceOf(address(raffle)), 3);
         assertEq(address(raffle).balance, 2 * antiBotFee);
@@ -393,7 +393,7 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         /// Settle
         /// @dev Owner is both winner and sponsor
         vm.expectEmit(true, true, true, true);
-        emit RaffleSettled(1, owner, ownerTokenIds[2]);
+        emit RaffleSettled(1, owner, ownerTokenIds[0]);
         raffle.settleRaffle();
 
         (, uint256 settledAt, address winner,) = raffle.idToRaffle(1);
@@ -408,7 +408,7 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         assertEq(sponsor, owner);
         assertEq(address(raffle).balance, 0);
         assertEq(owner.balance, ownerBalanceBefore + (2 * antiBotFee));
-        assertEq(basedBits.ownerOf(ownerTokenIds[2]), owner);
+        assertEq(basedBits.ownerOf(ownerTokenIds[0]), owner);
     }
 
     function testSettleRaffleMultipleEntriesSuccessConditions() public prank(owner) {
@@ -424,7 +424,7 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         /// Set Random Seed 
         vm.warp(block.timestamp + 1.01 days);
         raffle.setRandomSeed{value: antiBotFee}();
-        vm.roll(block.number + 1);
+        vm.roll(block.number + 2);
 
         assertEq(basedBits.balanceOf(address(raffle)), 3);
         assertEq(address(raffle).balance, 3 * antiBotFee);
@@ -433,12 +433,12 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
 
         /// Settle
         /// @dev Get random number given that it is the seed block
-        uint256 pseudoRandom = uint256(keccak256(abi.encodePacked(block.number, blockhash(block.number))));
+        uint256 pseudoRandom = uint256(keccak256(abi.encodePacked(block.number - 1, blockhash(block.number - 1))));
         uint256 winningIndex = pseudoRandom % 2;
         address predictedWinner = raffle.getRaffleEntryByIndex(1, winningIndex);
 
         vm.expectEmit(true, true, true, true);
-        emit RaffleSettled(1, predictedWinner, ownerTokenIds[2]);
+        emit RaffleSettled(1, predictedWinner, ownerTokenIds[0]);
         raffle.settleRaffle();
 
         (, uint256 settledAt, address winner,) = raffle.idToRaffle(1);
@@ -454,7 +454,7 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         assertEq(address(raffle).balance, 0);
         assertEq(owner.balance, ownerBalanceBefore + (3 * antiBotFee));
         assertEq(user0.balance, user0BalanceBefore);
-        assertEq(basedBits.ownerOf(ownerTokenIds[2]), predictedWinner);
+        assertEq(basedBits.ownerOf(ownerTokenIds[0]), predictedWinner);
 
         vm.stopPrank();
     }
@@ -496,18 +496,18 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         vm.stopPrank();
     }
 
-    function testSetRafflePeriod() public prank(owner) {
-        assertEq(raffle.rafflePeriod(), 1 days);
+    function testSetDuration() public prank(owner) {
+        assertEq(raffle.duration(), 1 days);
 
-        raffle.setRafflePeriod(7 days);
-        assertEq(raffle.rafflePeriod(), 7 days);
+        raffle.setDuration(7 days);
+        assertEq(raffle.duration(), 7 days);
 
         /// Non owner
         vm.stopPrank();
         vm.startPrank(user0);
 
         vm.expectRevert();
-        raffle.setRafflePeriod(2 days);
+        raffle.setDuration(2 days);
 
         vm.stopPrank();
     }
