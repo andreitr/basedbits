@@ -3,9 +3,9 @@ pragma solidity ^0.8.25;
 
 interface IBBitsRaffle {
     enum RaffleStatus {
-        PendingRaffle,    /// Raffle not started (just deployed/just settled)
-        InRaffle,         /// Accepting entries
-        PendingSettlement /// No longer accepting entries but not settled
+        PendingRaffle,
+        InRaffle,
+        PendingSettlement
     }
 
     struct Raffle {

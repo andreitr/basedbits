@@ -7,9 +7,10 @@ import {
     BBitsRaffle,
     console
 } from "./utils/BBitsTestUtils.sol";
-import {ERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
+import {ERC721, IERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 import {IBBitsRaffle} from "../src/interfaces/IBBitsRaffle.sol";
+import {MockBrokenSettleRafflePOC, Brick} from "./mocks/MockBrokenSettleRafflePOC.sol";
 
 contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
     function setUp() public override {
@@ -22,6 +23,8 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
 
         user0 = address(100);
         user1 = address(200);
+
+        vm.deal(owner, 1e18);
 
         basedBits = ERC721(0x617978b8af11570c2dAb7c39163A8bdE1D282407);
         checkIn = BBitsCheckIn(0xE842537260634175891925F058498F9099C102eB);
@@ -150,6 +153,7 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         assertEq(prize.tokenId, 0);
         assertEq(numberOfEntries, 0);
         assert(raffle.status() == RaffleStatus.PendingRaffle);
+        //uint256 
 
         vm.expectEmit(true, true, true, true);
         emit NewRaffleStarted(1);
@@ -176,29 +180,44 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
 
     /// ENTRIES ///
 
-    function testNewFreeEntryNotEligibleFailureConditions() public prank(owner) {
+    function testNewFreeEntryNotEligibleFailureConditions() public {
+        vm.startPrank(user0);
+        checkIn.checkIn();
+        vm.warp(block.timestamp + 1.01 days);
+        vm.stopPrank();
+        vm.startPrank(owner);
         setRaffleStatus(RaffleStatus.InRaffle);
         vm.stopPrank();
 
+        bool query;
+
         /// Non-owner
         vm.startPrank(user1);
+        query = raffle.isEligibleForFreeEntry(user1);
+        assertEq(query, false);
         vm.expectRevert(IBBitsRaffle.NotEligibleForFreeEntry.selector);
-        raffle.newFreeEntry(ownerTokenIds[4]);
+        raffle.newFreeEntry();
         vm.stopPrank();
 
-        /// Has not checked in recently
+        /// Does not have streak 
         vm.startPrank(user0);
+        query = raffle.isEligibleForFreeEntry(user0);
+        assertEq(query, false);
         vm.expectRevert(IBBitsRaffle.NotEligibleForFreeEntry.selector);
-        raffle.newFreeEntry(ownerTokenIds[4]);
+        raffle.newFreeEntry();
 
-        /// Token Already used for free entry
+        /// Insufficient balance
         checkIn.checkIn();
-        raffle.newFreeEntry(ownerTokenIds[4]);
+        query = raffle.isEligibleForFreeEntry(user0);
+        assertEq(query, true);
+        raffle.newFreeEntry();
 
-        assertEq(raffle.tokenIdUsedForFreeEntry(1,ownerTokenIds[4]), true);
+        assertEq(raffle.raffleFreeEntryCount(raffle.getCurrentRaffleId()), 1);
+        query = raffle.isEligibleForFreeEntry(user0);
+        assertEq(query, false);
 
         vm.expectRevert(IBBitsRaffle.NotEligibleForFreeEntry.selector);
-        raffle.newFreeEntry(ownerTokenIds[4]);
+        raffle.newFreeEntry();
     }
 
     function testNewPaidEntryMustPayAntiBotFeeFailureConditions() public prank(owner) {
@@ -246,20 +265,21 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
     }
 
     function testNewFreeEntrySuccessConditions() public prank(owner) {
+        checkIn.checkIn();
         vm.warp(block.timestamp + 1.01 days);
         setRaffleStatus(RaffleStatus.InRaffle);
         checkIn.checkIn();
 
         assertEq(raffle.hasEnteredRaffle(1, owner), false);
-        assertEq(raffle.tokenIdUsedForFreeEntry(1, ownerTokenIds[3]), false);
+        assertEq(raffle.raffleFreeEntryCount(raffle.getCurrentRaffleId()), 0);
         assertEq(raffle.getRaffleEntryNumber(1), 0);
 
         vm.expectEmit(true, true, true, true);
         emit RaffleEntered(1, owner);
-        raffle.newFreeEntry(ownerTokenIds[3]);
+        raffle.newFreeEntry();
 
         assertEq(raffle.hasEnteredRaffle(1, owner), true);
-        assertEq(raffle.tokenIdUsedForFreeEntry(1, ownerTokenIds[3]), true);
+        assertEq(raffle.raffleFreeEntryCount(raffle.getCurrentRaffleId()), 1);
         assertEq(raffle.getRaffleEntryNumber(1), 1);
         assertEq(raffle.getRaffleEntryByIndex(1, 0), owner);
     }
@@ -397,14 +417,14 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         raffle.settleRaffle();
 
         (, uint256 settledAt, address winner,) = raffle.idToRaffle(1);
-        (uint256 tokenId, address sponsor) = raffle.prizes(1);
+        (uint256 tokenId, address sponsor) = raffle.prizes(0);
 
         assertEq(raffle.getRaffleEntryNumber(1), 1);
         assertEq(settledAt, block.timestamp);
         assertEq(winner, owner);
         assert(raffle.status() == RaffleStatus.PendingRaffle);
         assertEq(basedBits.balanceOf(address(raffle)), 2);
-        assertEq(tokenId, ownerTokenIds[1]);
+        assertEq(tokenId, ownerTokenIds[2]);
         assertEq(sponsor, owner);
         assertEq(address(raffle).balance, 0);
         assertEq(owner.balance, ownerBalanceBefore + (2 * antiBotFee));
@@ -442,18 +462,18 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         raffle.settleRaffle();
 
         (, uint256 settledAt, address winner,) = raffle.idToRaffle(1);
-        (uint256 tokenId, address sponsor) = raffle.prizes(1);
+        (uint256 tokenId, address sponsor) = raffle.prizes(0);
 
         assertEq(raffle.getRaffleEntryNumber(1), 2);
         assertEq(settledAt, block.timestamp);
         assertEq(winner, predictedWinner);
         assert(raffle.status() == RaffleStatus.PendingRaffle);
         assertEq(basedBits.balanceOf(address(raffle)), 2);
-        assertEq(tokenId, ownerTokenIds[1]);
+        assertEq(tokenId, ownerTokenIds[2]);
         assertEq(sponsor, owner);
         assertEq(address(raffle).balance, 0);
-        assertEq(owner.balance, ownerBalanceBefore + (3 * antiBotFee));
-        assertEq(user0.balance, user0BalanceBefore);
+        assertEq(owner.balance, ownerBalanceBefore + (2 * antiBotFee));
+        assertEq(user0.balance, user0BalanceBefore + antiBotFee);
         assertEq(basedBits.ownerOf(ownerTokenIds[0]), predictedWinner);
 
         vm.stopPrank();
@@ -524,7 +544,7 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         raffle.startNextRaffle();
 
         vm.expectRevert(Pausable.EnforcedPause.selector);
-        raffle.newFreeEntry(ownerTokenIds[3]);
+        raffle.newFreeEntry();
 
         vm.expectRevert(Pausable.EnforcedPause.selector);
         raffle.newPaidEntry{value: 0.0001 ether}();
@@ -534,5 +554,23 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
 
         vm.expectRevert(Pausable.EnforcedPause.selector);
         raffle.settleRaffle();
+    }
+
+    /// MISC ///
+
+    function testCanBrickRaffleLoopWithCallResponseCheck() public prank(owner) {
+        /// Setup
+        MockBrokenSettleRafflePOC mock = new MockBrokenSettleRafflePOC(basedBits);
+        Brick brick = new Brick(basedBits, mock);
+        (bool s,) = address(mock).call{value: 0.1 ether}("");
+        assert(s);
+
+        /// The Attack
+        basedBits.transferFrom(owner, address(brick), ownerTokenIds[3]);
+        brick.CallDepositBasedBitsMock(ownerTokenIds[3]);
+        vm.expectRevert(IBBitsRaffle.TransferFailed.selector);
+        mock.settleRaffleMock();
+
+        assertEq(mock.reset(), false);
     }
 }

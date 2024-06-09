@@ -35,6 +35,9 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     /// @dev The value used to derive randomness when settling the raffle.
     uint256 private futureBlockNumber;
 
+    /// @dev The Block Number Setter, who is repaid the antiBotFee. 
+    address private lastBlockNumberSetter;
+
     /// @notice A mapping from raffle ids to raffle info.
     mapping(uint256 => Raffle) public idToRaffle;
 
@@ -42,9 +45,8 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     /// @dev raffleId => address => entered
     mapping(uint256 => mapping(address => bool)) public hasEnteredRaffle;
 
-    /// @notice A mapping to track free token Id entries for any given raffle.
-    /// @dev raffleId => tokenId => entered
-    mapping(uint256 => mapping(uint256 => bool)) public tokenIdUsedForFreeEntry;
+    /// @notice A mapping to track the number of free entries for any given raffle.
+    mapping(uint256 => uint256) public raffleFreeEntryCount;
 
     /// @notice An array of token ids and corresponding sponsors that are held by the contract.
     SponsoredPrize[] public prizes;
@@ -71,7 +73,6 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         for (uint256 i; i < length; ++i) {
             tokenId = _tokenIds[i];
             collection.transferFrom(msg.sender, address(this), tokenId);
-            if (collection.ownerOf(tokenId) != address(this)) revert TransferFailed();
             newSponsoredPrize = SponsoredPrize({
                 tokenId: tokenId,
                 sponsor: msg.sender
@@ -102,10 +103,9 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
 
     /// ENTRIES ///
 
-    /// @dev Passes a tokenId also to prevent re-use abuse
-    function newFreeEntry(uint256 _tokenId) external nonReentrant whenNotPaused {
-        if (!isEligibleForFreeEntry(msg.sender, _tokenId)) revert NotEligibleForFreeEntry();
-        tokenIdUsedForFreeEntry[getCurrentRaffleId()][_tokenId] = true;
+    function newFreeEntry() external nonReentrant whenNotPaused {
+        if (!isEligibleForFreeEntry(msg.sender)) revert NotEligibleForFreeEntry();
+        ++raffleFreeEntryCount[getCurrentRaffleId()];
         _newEntry();
     }
 
@@ -134,12 +134,15 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         Raffle storage currentRaffle = idToRaffle[currentRaffleId];
         if (block.timestamp - currentRaffle.startedAt < duration) revert RaffleOnGoing();
         if (msg.value != antiBotFee) revert MustPayAntiBotFee();
+        lastBlockNumberSetter = msg.sender;
         futureBlockNumber = block.number + 1;
         status = RaffleStatus.PendingSettlement;
         emit RandomSeedSet(currentRaffleId, futureBlockNumber);
     }
 
     /// @dev Only pops the prize array if there are entries
+    ///      Must not check return values from the calls to lastBlockNumberSetter and sponsor to 
+    ///      ensure the function can not be soft-locked. Also prevents griefing abuse.
     function settleRaffle() external nonReentrant whenNotPaused {
         if (status != RaffleStatus.PendingSettlement) revert WrongStatus();
         bytes32 blockHash = blockhash(futureBlockNumber);
@@ -148,6 +151,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         uint256 currentRaffleId = getCurrentRaffleId();
         Raffle storage currentRaffle = idToRaffle[currentRaffleId];
         uint256 entriesLength = currentRaffle.entries.length;
+        lastBlockNumberSetter.call{value: antiBotFee}("");
         if (entriesLength == 0) {
             currentRaffle.settledAt = block.timestamp;
             emit RaffleSettled(currentRaffleId, address(0), 0);
@@ -160,9 +164,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
             currentRaffle.settledAt = block.timestamp;
             currentRaffle.winner = winner;
             collection.transferFrom(address(this), winner, tokenId);
-            if (collection.ownerOf(tokenId) != winner) revert TransferFailed();
-            (bool success, ) = (sponsor).call{value: address(this).balance}("");
-            if (!success) revert TransferFailed();
+            sponsor.call{value: address(this).balance}("");
             emit RaffleSettled(currentRaffleId, winner, tokenId);
         }
         status = RaffleStatus.PendingRaffle;
@@ -184,11 +186,10 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         return idToRaffle[_raffleId].entries[_index];
     }
 
-    function isEligibleForFreeEntry(address _user, uint256 _tokenId) public view returns (bool) {
-        if (collection.ownerOf(_tokenId) != _user) return false;
-        (uint256 _lastCheckIn,,) = checkIn.checkIns(_user);
-        if (block.timestamp - _lastCheckIn > 2 days) return false;
-        if (tokenIdUsedForFreeEntry[getCurrentRaffleId()][_tokenId]) return false;
+    function isEligibleForFreeEntry(address _user) public view returns (bool) {
+        if (collection.balanceOf(_user) <= raffleFreeEntryCount[getCurrentRaffleId()]) return false;
+        (, uint16 streak,) = checkIn.checkIns(_user);
+        if (streak < 2) return false;
         return true;
     }
 

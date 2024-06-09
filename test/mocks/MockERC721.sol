@@ -9,14 +9,12 @@ contract MockERC721 is ERC721 {
     constructor() ERC721("Mock", "MOCK") {}
 
     function mint(address _to) external {
-        ++nonce;
-        _mint(_to, nonce - 1);
+        _mint(_to, nonce++);
     }
 
     function mintMany(address _to, uint256 _amount) external {
         for (uint256 i; i < _amount; i++) {
-            ++nonce;
-            _mint(_to, nonce - 1);
+            _mint(_to, nonce++);
         }
     }
 }
