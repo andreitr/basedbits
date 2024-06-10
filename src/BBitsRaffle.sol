@@ -9,9 +9,14 @@ import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
 import {IBBitsRaffle} from "./interfaces/IBBitsRaffle.sol";
 
 /// @title  Based Bits Raffle
-/// @notice This contract ...
+/// @notice This contract allows users to participate in raffles to win NFTs from the Based Bits collection.
+/// @dev    The contract operates on a loop, cycling through the PendingRaffle, InRaffle, and PendingSettlement
+///         stages continuously. The Owner retains admin rights over pausability, the antiBotFee, and the
+///         duration of raffle entry periods. Randomness for winners is achieved on-chain via a commit-reveal
+///         of a random seed. Due to expiry of the blockhash() method, the random seed may be re-generated for a
+///         fee. The most recent user to set the random seed is repaid after a successful raffle settlement.  
 contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
-    /// @notice Based Bits NFT.
+    /// @notice Based Bits NFT collection.
     IERC721 public immutable collection;
 
     /// @notice Based Bits checkin contract.
@@ -42,7 +47,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     mapping(uint256 => Raffle) public idToRaffle;
 
     /// @notice A mapping to track addresses that have entered any given raffle.
-    /// @dev raffleId => address => entered
+    /// @dev    raffleId => address => entered
     mapping(uint256 => mapping(address => bool)) public hasEnteredRaffle;
 
     /// @notice A mapping to track the number of free entries for any given raffle.
@@ -64,7 +69,10 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
 
     /// DEPOSIT ///
 
-    /// @dev Can deposit under any contract status.
+    /// @notice This function allows anyone to deposit Based Bits NFTs to be raffled.
+    /// @param  _tokenIds An array of token IDs to deposit.
+    /// NOTE    The user must approve this contract to move the NFTs prior to calling this function.
+    /// @dev    Can deposit under any contract status.
     function depositBasedBits(uint256[] calldata _tokenIds) external nonReentrant whenNotPaused {
         uint256 length = _tokenIds.length;
         if (length == 0) revert DepositZero();
@@ -84,6 +92,9 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
 
     /// START RAFFLE ///
 
+    /// @notice This function allows any user to initiate the next raffle. 
+    /// @dev    Must be in PendingRaffle status. 
+    ///         There must be collection NFTs to raffle.
     function startNextRaffle() external nonReentrant whenNotPaused {
         if (status != RaffleStatus.PendingRaffle) revert WrongStatus();
         uint256 prizesLength = prizes.length;
@@ -103,12 +114,18 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
 
     /// ENTRIES ///
 
+    /// @notice This function allows eligible users to enter into the current raffle for free.
+    /// @dev    Must be in InRaffle status.
+    ///         Must be eligible for free entry.
     function newFreeEntry() external nonReentrant whenNotPaused {
         if (!isEligibleForFreeEntry(msg.sender)) revert NotEligibleForFreeEntry();
         ++raffleFreeEntryCount[getCurrentRaffleId()];
         _newEntry();
     }
 
+    /// @notice This function allows anyone to enter into the current raffle.
+    /// @dev    Must be in InRaffle status. 
+    ///         Must pay the antiBotFee.
     function newPaidEntry() external payable nonReentrant whenNotPaused {
         if (msg.value != antiBotFee) revert MustPayAntiBotFee();
         _newEntry();
@@ -127,7 +144,10 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
 
     /// SETTLEMENT ///
 
-    /// @dev Status can be either InRaffle or PendingSettlement to allow for re-rolling seed
+    /// @notice This function allows anyone to set the random seed necessary to settle the current raffle.
+    /// @dev    Status can be either InRaffle or PendingSettlement to allow for re-rolling seed.
+    ///         Must be called after the current raffle entry duration has expired.
+    ///         Must pay the antiBotFee.
     function setRandomSeed() external payable nonReentrant whenNotPaused {
         if (status == RaffleStatus.PendingRaffle) revert WrongStatus();
         uint256 currentRaffleId = getCurrentRaffleId();
@@ -140,9 +160,13 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         emit RandomSeedSet(currentRaffleId, futureBlockNumber);
     }
 
-    /// @dev Only pops the prize array if there are entries
-    ///      Must not check return values from the calls to lastBlockNumberSetter and sponsor to 
-    ///      ensure the function can not be soft-locked. Also prevents griefing abuse.
+    /// @notice This function allows anyone to settle the current raffle. Either a winner is chosen or the raffle
+    ///         is reset. Additionally, the most recent seed setter is repaid the antiBotFee, and all remaining
+    ///         contract funds are sent to the sponsor of the raffle (the user who initially deposited the NFT
+    ///         that was awarded to the winner).
+    /// @dev    Must be in PendingSettlement status. 
+    ///         Must not check return values from the calls to lastBlockNumberSetter and sponsor to ensure the
+    ///         function can not be soft-locked. Also prevents griefing abuse.
     function settleRaffle() external nonReentrant whenNotPaused {
         if (status != RaffleStatus.PendingSettlement) revert WrongStatus();
         bytes32 blockHash = blockhash(futureBlockNumber);
@@ -172,20 +196,25 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
 
     /// VIEW ///
     
-    /// @dev Will return zero when initially deployed but there is no raffle zero.
+    /// @notice A view function that returns the current raffle Id.
+    /// @dev    There is no raffle zero.
     function getCurrentRaffleId() public view returns (uint256) {
         return count - 1; 
     }
 
+    /// @notice A view function that returns the total number of entries for any given raffle.
     function getRaffleEntryNumber(uint256 _raffleId) public view returns (uint256) {
         return idToRaffle[_raffleId].entries.length;
     }
 
+    /// @notice A view function that returns the entry address for any raffle given raffle and entry position.
     function getRaffleEntryByIndex(uint256 _raffleId, uint256 _index) public view returns (address) {
         if (_index >= getRaffleEntryNumber(_raffleId)) revert IndexOutOfBounds();
         return idToRaffle[_raffleId].entries[_index];
     }
 
+    /// @notice A view function that returns whether any given user is eligible for free entry into the current 
+    ///         raffle.
     function isEligibleForFreeEntry(address _user) public view returns (bool) {
         if (collection.balanceOf(_user) <= raffleFreeEntryCount[getCurrentRaffleId()]) return false;
         (, uint16 streak,) = checkIn.checkIns(_user);

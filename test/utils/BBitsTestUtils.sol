@@ -80,6 +80,9 @@ contract BBitsTestUtils is Test {
         assert(s);
     }
 
+    fallback() external payable {}
+    receive() external payable {}
+
     modifier prank(address _user) {
         vm.startPrank(_user);
         _;

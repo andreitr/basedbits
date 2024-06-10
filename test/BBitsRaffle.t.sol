@@ -124,7 +124,34 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
     }
 
     function testStartNextRaffleNoTokensToRaffleFailureConditions() public prank(owner) {
+        /// No prizes ever
         vm.expectRevert(IBBitsRaffle.NoBasedBitsToRaffle.selector);
+        raffle.startNextRaffle();
+
+        /// Prizes run out
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = ownerTokenIds[0];
+        raffle.depositBasedBits(tokenIds);
+        raffle.startNextRaffle();
+
+        uint256 antiBotFee = raffle.antiBotFee();
+        raffle.newPaidEntry{value: antiBotFee}();
+
+        vm.warp(block.timestamp + 1.01 days);
+        raffle.setRandomSeed{value: antiBotFee}();
+
+        vm.roll(block.number + 10);
+        raffle.settleRaffle();
+
+        vm.expectRevert(IBBitsRaffle.NoBasedBitsToRaffle.selector);
+        raffle.startNextRaffle();
+
+        /// Open again
+        tokenIds[0] = ownerTokenIds[1];
+        raffle.depositBasedBits(tokenIds);
+
+        vm.expectEmit(true, true, true, true);
+        emit NewRaffleStarted(2);
         raffle.startNextRaffle();
     }
 
@@ -265,6 +292,7 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
     }
 
     function testNewFreeEntrySuccessConditions() public prank(owner) {
+        vm.warp(block.timestamp + 1.01 days);
         checkIn.checkIn();
         vm.warp(block.timestamp + 1.01 days);
         setRaffleStatus(RaffleStatus.InRaffle);
