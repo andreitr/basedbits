@@ -17,9 +17,10 @@ import {BBitsBadgeBearPunk} from "../../src/minters/BBitsBadgeBearPunk.sol";
 
 // Mocks
 import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
+import {IERC721Receiver} from "@openzeppelin/token/ERC721/IERC721Receiver.sol";
 import {MockERC721} from "../mocks/MockERC721.sol";
 
-contract BBitsTestUtils is Test {
+contract BBitsTestUtils is Test, IERC721Receiver {
     BBitsBadges public badges;
     BBitsCheckIn public checkIn;
     BBitsSocial public social;
@@ -39,6 +40,12 @@ contract BBitsTestUtils is Test {
 
     /// @dev Based Bits token Ids of Owner, useful for raffle tests
     uint256[5] public ownerTokenIds;
+
+    modifier prank(address _user) {
+        vm.startPrank(_user);
+        _;
+        vm.stopPrank();
+    }
 
     function setUp() public virtual {
         // Users
@@ -80,13 +87,18 @@ contract BBitsTestUtils is Test {
         assert(s);
     }
 
+    /// ON RECEIVED ///
+
     fallback() external payable {}
     receive() external payable {}
 
-    modifier prank(address _user) {
-        vm.startPrank(_user);
-        _;
-        vm.stopPrank();
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 
     /// CHECKIN ///
@@ -158,10 +170,11 @@ contract BBitsTestUtils is Test {
 
             /// Set random seed
             vm.warp(block.timestamp + 1.01 days);
-            raffle.setRandomSeed();
+            uint256 antiBotFee = raffle.antiBotFee();
+            raffle.setRandomSeed{value: antiBotFee}();
 
             /// Settle raffle
-            vm.roll(block.number + 1);
+            vm.roll(block.number + 2);
             raffle.settleRaffle();
         }
     }

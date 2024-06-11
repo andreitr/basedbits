@@ -560,6 +560,88 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         vm.stopPrank();
     }
 
+    function testReturnDepositsWrongStatusFailureConditions() public prank(owner) {
+        /// In Raffle
+        setRaffleStatus(RaffleStatus.InRaffle);
+        raffle.setPaused(true);
+
+        vm.expectRevert(WrongStatus.selector);
+        raffle.returnDeposits();
+
+        /// Pending Settlement
+        raffle.setPaused(false);
+        vm.warp(block.timestamp + 1.01 days);
+        uint256 antiBotFee = raffle.antiBotFee();
+        raffle.setRandomSeed{value: antiBotFee}();
+        raffle.setPaused(true);
+
+        vm.expectRevert(WrongStatus.selector);
+        raffle.returnDeposits();
+    }
+
+    function testReturnDepositsAdditionalFailureConditions() public prank(owner) {
+        /// No deposits
+        raffle.setPaused(true);
+        vm.expectRevert(DepositZero.selector);
+        raffle.returnDeposits();
+
+        /// Non-owner
+        vm.stopPrank();
+        vm.startPrank(user0);
+        vm.expectRevert();
+        raffle.returnDeposits();
+
+        /// No deposits after settlement
+        vm.stopPrank();
+        vm.startPrank(owner);
+        raffle.setPaused(false);
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = ownerTokenIds[0];
+        raffle.depositBasedBits(tokenIds);
+        raffle.startNextRaffle();
+
+        uint256 antiBotFee = raffle.antiBotFee();
+        raffle.newPaidEntry{value: antiBotFee}();
+
+        vm.warp(block.timestamp + 1.01 days);
+        raffle.setRandomSeed{value: antiBotFee}();
+
+        vm.roll(block.number + 2);
+        raffle.settleRaffle();
+
+        raffle.setPaused(true);
+        vm.expectRevert(DepositZero.selector);
+        raffle.returnDeposits();
+    }
+
+    function testReturnDepositsSuccessConditions() public prank(owner) {
+        /// 1 deposit
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = ownerTokenIds[0];
+        raffle.depositBasedBits(tokenIds);
+        raffle.startNextRaffle();
+
+        vm.warp(block.timestamp + 1.01 days);
+        uint256 antiBotFee = raffle.antiBotFee();
+        raffle.setRandomSeed{value: antiBotFee}();
+
+        vm.roll(block.number + 2);
+        raffle.settleRaffle();
+        raffle.setPaused(true);
+
+        (uint256 _tokenId, address _sponsor) = raffle.prizes(0);
+        assertEq(basedBits.ownerOf(_tokenId), address(raffle));
+        assertEq(basedBits.balanceOf(address(raffle)), 1);
+
+        raffle.returnDeposits();
+
+        assertEq(basedBits.ownerOf(_tokenId), _sponsor);
+        assertEq(basedBits.balanceOf(address(raffle)), 0);
+    }
+
+    /// PAUSED ///
+
     function testWhenNotPaused() public prank(owner) {
         raffle.setPaused(true);
 
@@ -582,6 +664,11 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
 
         vm.expectRevert(Pausable.EnforcedPause.selector);
         raffle.settleRaffle();
+    }
+
+    function testWhenPaused() public prank(owner) {
+        vm.expectRevert(Pausable.ExpectedPause.selector);
+        raffle.returnDeposits();
     }
 
     /// MISC ///

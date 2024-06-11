@@ -131,6 +131,14 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         _newEntry();
     }
 
+    /// @notice This function allows anyone to enter into the current raffle.
+    /// @dev    Must be in InRaffle status. 
+    ///         May pass an array of addresses to invite.
+    function newInviteEntry(address[] calldata _invites) external nonReentrant whenNotPaused {
+
+        _newEntry();
+    }
+
     function _newEntry() internal {
         if (status != RaffleStatus.InRaffle) revert WrongStatus();
         uint256 currentRaffleId = getCurrentRaffleId();
@@ -234,5 +242,20 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
 
     function setDuration(uint256 _newDuration) external onlyOwner {
         duration = _newDuration;
+    }
+    
+    /// @notice This function allows the Owner to return up to 20 deposited NFTs at a time.
+    /// @dev    Must be in PendingRaffle status.
+    ///         Contract must be paused. 
+    function returnDeposits() external onlyOwner nonReentrant whenPaused {
+        if (status != RaffleStatus.PendingRaffle) revert WrongStatus();
+        uint256 length = (prizes.length > 20) ? 20 : prizes.length;
+        if (length == 0) revert DepositZero();
+        SponsoredPrize memory prize;
+        for (uint256 i; i < length; i++) {
+            prize = prizes[prizes.length - 1];
+            collection.transferFrom(address(this), prize.sponsor, prize.tokenId);
+            prizes.pop();
+        }
     }
 }

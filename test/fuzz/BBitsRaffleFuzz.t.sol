@@ -259,4 +259,44 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
 
         assertEq(address(raffle).balance, balanceBefore + _amount);
     }
+
+    function testReturnDeposits(uint256 _amount) public prank(owner) {
+        _amount = bound(_amount, 21, 40);
+        /// 21 or more deposits
+        vm.stopPrank();
+        vm.startPrank(user2);
+
+        basedBits.setApprovalForAll(address(raffle), true);
+
+        (,bytes memory data) = address(basedBits).staticcall(abi.encodeWithSelector(bytes4(keccak256("nonce()"))));
+        uint256 nonce = abi.decode(data, (uint256));
+        (bool s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mintMany(address,uint256)")), user2, _amount));
+        assert(s);
+
+        uint256[] memory tokenIds = new uint256[](_amount);
+        for (uint256 i; i < _amount; i++) {
+            tokenIds[i] = nonce + i;
+        }
+        raffle.depositBasedBits(tokenIds);
+        vm.stopPrank();
+        vm.startPrank(owner);
+        raffle.setPaused(true);
+        
+        (uint256 _tokenId, address _sponsor) = raffle.prizes(0);
+        assertEq(basedBits.ownerOf(_tokenId), address(raffle));
+        assertEq(basedBits.balanceOf(address(raffle)), _amount);
+
+        /// Returns 20, stills holds 1
+        raffle.returnDeposits();
+
+        (_tokenId, _sponsor) = raffle.prizes(0);
+        assertEq(basedBits.ownerOf(_tokenId), address(raffle));
+        assertEq(basedBits.balanceOf(address(raffle)), _amount - 20);
+        assertEq(basedBits.balanceOf(user2), 20);
+
+        raffle.returnDeposits();
+        assertEq(basedBits.ownerOf(_tokenId), user2);
+        assertEq(basedBits.balanceOf(address(raffle)), 0);
+        assertEq(basedBits.balanceOf(user2), _amount);
+    }
 }
