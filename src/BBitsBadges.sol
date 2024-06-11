@@ -2,9 +2,9 @@
 pragma solidity 0.8.25;
 
 import {IBBitsBadges} from "./interfaces/IBBitsBadges.sol";
-import {ERC1155} from "lib/openzeppelin-contracts/contracts/token/ERC1155/ERC1155.sol";
-import {AccessControl} from "lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
-import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {ERC1155} from "@openzeppelin/token/ERC1155/ERC1155.sol";
+import {AccessControl} from "@openzeppelin/access/AccessControl.sol";
+import {Ownable} from "@openzeppelin/access/Ownable.sol";
 
 contract BBitsBadges is ERC1155, AccessControl, Ownable {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");

@@ -8,7 +8,7 @@ BBitsSocial
 } from "./utils/BBitsTestUtils.sol";
 
 contract BBitsSocialTest is BBitsTestUtils {
-    event SocialPost(address indexed sender, string message, uint256 timestamp);
+    event Message(address indexed sender, string message, uint256 timestamp);
     event ThresholdUpdated(uint16 newThreshold, uint256 timestamp);
     event CharacterLimitUpdated(uint8 newThreshold, uint256 timestamp);
 
@@ -52,12 +52,12 @@ contract BBitsSocialTest is BBitsTestUtils {
         vm.startPrank(user0);
 
         vm.expectEmit(true, true, true, true);
-        emit SocialPost(user0, "Message 1", block.timestamp);
+        emit Message(user0, "Message 1", block.timestamp);
         social.post("Message 1");
         assertEq(social.posts(user0), 1);
 
         vm.expectEmit(true, true, true, true);
-        emit SocialPost(user0, "Message 2", block.timestamp);
+        emit Message(user0, "Message 2", block.timestamp);
         social.post("Message 2");
         assertEq(social.posts(user0), 2);
         vm.stopPrank();
