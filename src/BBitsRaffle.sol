@@ -131,14 +131,6 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         _newEntry();
     }
 
-    /// @notice This function allows anyone to enter into the current raffle.
-    /// @dev    Must be in InRaffle status. 
-    ///         May pass an array of addresses to invite.
-    function newInviteEntry(address[] calldata _invites) external nonReentrant whenNotPaused {
-
-        _newEntry();
-    }
-
     function _newEntry() internal {
         if (status != RaffleStatus.InRaffle) revert WrongStatus();
         uint256 currentRaffleId = getCurrentRaffleId();
