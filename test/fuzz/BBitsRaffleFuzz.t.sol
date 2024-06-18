@@ -70,20 +70,17 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
         uint256 nonce = abi.decode(data, (uint256));
 
         _amount0 = bound(_amount0, 1, 10);
-        for (uint256 a; a < 2; a++) {
-            vm.warp(block.timestamp + 1.01 days);
-            for (uint256 b; b < _amount0; b++) {
-                vm.startPrank(users[b]);
+        for (uint256 b; b < _amount0; b++) {
+            vm.startPrank(users[b]);
 
-                (s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mintMany(address,uint256)")), users[b], 10));
-                assert(s);
+            (s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mintMany(address,uint256)")), users[b], 10));
+            assert(s);
 
-                vm.deal(users[b], 1e19);
-                checkIn.checkIn();
+            vm.deal(users[b], 1e19);
+            checkIn.checkIn();
 
-                nonce = nonce + 10;
-                vm.stopPrank();
-            }
+            nonce = nonce + 10;
+            vm.stopPrank();
         }
 
         _amount1 = bound(_amount1, 0, 1e18);
@@ -125,10 +122,6 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
         /// Settle
         vm.warp(block.timestamp + 1.01 days);
         vm.startPrank(users[_amount0 - 1]);
-        vm.expectRevert(MustPayAntiBotFee.selector);
-        raffle.setRandomSeed{value: _amount1}();
-
-        raffle.setRandomSeed{value: antiBotFee}();
 
         vm.roll(block.number + 2);
         raffle.settleRaffle();
@@ -211,41 +204,20 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
         /// Settle
         vm.warp(block.timestamp + 1.01 days);
 
-        address lastSetter;
-
-        for (uint256 x; x < _amount0; x++) {
-            vm.startPrank(users[x]);
-            if (x > 1 && _amount1 % (x + 3) == 0) {
-                vm.stopPrank();
-                break;
-            } else {
-                vm.expectRevert(MustPayAntiBotFee.selector);
-                raffle.setRandomSeed{value: _amount1}();
-
-                raffle.setRandomSeed{value: antiBotFee}();
-                lastSetter = users[x];
-                ++deposits;
-            }
-            vm.stopPrank();
-        }
-
         assertEq(address(raffle).balance, deposits * antiBotFee);
-        uint256 lastSetterBalance = lastSetter.balance;
 
         vm.startPrank(users[0]);
         vm.roll(block.number + 2);
         raffle.settleRaffle();
         vm.stopPrank();
 
-        assertEq(lastSetter.balance, lastSetterBalance + antiBotFee);
-
         (,, address winner,) = raffle.idToRaffle(1);
         if (winner == address(0)) {
-            assertEq(address(raffle).balance, (deposits - 1) * antiBotFee);
+            assertEq(address(raffle).balance, deposits * antiBotFee);
             assertEq(address(owner).balance, ownerBalanceBefore);
         } else {
             assertEq(address(raffle).balance, 0);
-            assertEq(address(owner).balance, ownerBalanceBefore + (deposits - 1) * antiBotFee);
+            assertEq(address(owner).balance, ownerBalanceBefore + deposits * antiBotFee);
         }
     }
 
@@ -298,5 +270,38 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
         assertEq(basedBits.ownerOf(_tokenId), user2);
         assertEq(basedBits.balanceOf(address(raffle)), 0);
         assertEq(basedBits.balanceOf(user2), _amount);
+    }
+
+    function testCheckInTime(uint256 _amount) public prank(owner) {
+        _amount = bound(_amount, 0, 2 days - 1);
+
+        (,bytes memory data) = address(basedBits).staticcall(abi.encodeWithSelector(bytes4(keccak256("nonce()"))));
+        uint256 nonce = abi.decode(data, (uint256));
+        (bool s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mint(address)")), user0));
+        assert(s);
+        (s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mint(address)")), user0));
+        assert(s);
+        (s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mint(address)")), owner));
+        assert(s);
+
+        checkIn.checkIn();
+        vm.stopPrank();
+        vm.startPrank(user0);
+        checkIn.checkIn();
+        
+        vm.warp(block.timestamp + _amount);
+
+        basedBits.setApprovalForAll(address(raffle), true);
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = nonce;
+
+        raffle.depositBasedBits(tokenIds);
+        raffle.startNextRaffle();
+        
+        /// Valid free entry
+        raffle.newFreeEntry();
+        vm.stopPrank();
+        vm.startPrank(owner);
     }
 }
