@@ -141,21 +141,6 @@ contract BBitsTestUtils is Test, IERC721Receiver {
 
             /// Start next raffle
             raffle.startNextRaffle();
-        } else if (_status == IBBitsRaffle.RaffleStatus.PendingSettlement) {
-            /// Deposit three tokenIds
-            uint256[] memory tokenIds = new uint256[](3);
-            tokenIds[0] = ownerTokenIds[0];
-            tokenIds[1] = ownerTokenIds[1];
-            tokenIds[2] = ownerTokenIds[2];
-            raffle.depositBasedBits(tokenIds);
-
-            /// Start next raffle
-            raffle.startNextRaffle();
-
-            /// Set Random Seed
-            vm.warp(block.timestamp + 1.01 days);
-            uint256 antiBotFee = raffle.antiBotFee();
-            raffle.setRandomSeed{value: antiBotFee}();
         } else {
             /// @dev For Pending Raffle status get to just after settled
             /// Deposit three tokenIds
@@ -168,12 +153,8 @@ contract BBitsTestUtils is Test, IERC721Receiver {
             /// Start next raffle
             raffle.startNextRaffle();
 
-            /// Set random seed
-            vm.warp(block.timestamp + 1.01 days);
-            uint256 antiBotFee = raffle.antiBotFee();
-            raffle.setRandomSeed{value: antiBotFee}();
-
             /// Settle raffle
+            vm.warp(block.timestamp + 1.01 days);
             vm.roll(block.number + 2);
             raffle.settleRaffle();
         }

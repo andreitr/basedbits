@@ -4,8 +4,7 @@ pragma solidity ^0.8.25;
 interface IBBitsRaffle {
     enum RaffleStatus {
         PendingRaffle,
-        InRaffle,
-        PendingSettlement
+        InRaffle
     }
 
     struct Raffle {
@@ -29,13 +28,11 @@ interface IBBitsRaffle {
     error RaffleOnGoing();
     error AlreadyEnteredRaffle();
     error MustPayAntiBotFee();
-    error SeedMustBeReset();
     error TransferFailed();
     error IndexOutOfBounds();
 
     event BasedBitsDeposited(address _sponsor, uint256 _tokenId);
     event NewRaffleStarted(uint256 _raffleId);
     event RaffleEntered(uint256 _raffleId, address _user);
-    event RandomSeedSet(uint256 _raffleId, uint256 _seed);
     event RaffleSettled(uint256 _raffleId, address _winner, uint256 _tokenId);
 }
