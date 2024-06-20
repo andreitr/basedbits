@@ -9,6 +9,7 @@ import {BBitsBadges} from "../../src/BBitsBadges.sol";
 import {BBitsCheckIn} from "../../src/BBitsCheckIn.sol";
 import {BBitsSocial} from "../../src/BBitsSocial.sol";
 import {BBitsRaffle, IBBitsRaffle} from "../../src/BBitsRaffle.sol";
+import {BBITS} from "../../src/BBITS.sol";
 
 // Minters
 import {BBitsBadge7Day} from "../../src/minters/BBitsBadge7Day.sol";
@@ -25,6 +26,7 @@ contract BBitsTestUtils is Test, IERC721Receiver {
     BBitsCheckIn public checkIn;
     BBitsSocial public social;
     BBitsRaffle public raffle;
+    BBITS public bbits;
 
     BBitsBadge7Day public badge7DayMinter;
     BBitsBadgeFirstClick public badgeFirstClickMinter;
@@ -63,6 +65,7 @@ contract BBitsTestUtils is Test, IERC721Receiver {
         checkIn = new BBitsCheckIn(address(basedBits), owner);
         social = new BBitsSocial(address(checkIn),8, 140, owner);
         raffle = new BBitsRaffle(owner, basedBits, checkIn);
+        bbits = new BBITS(basedBits, 1024);
 
         // Minters
         badge7DayMinter = new BBitsBadge7Day(checkIn, badges, 1, owner);
@@ -97,7 +100,7 @@ contract BBitsTestUtils is Test, IERC721Receiver {
         address,
         uint256,
         bytes calldata
-    ) external override returns (bytes4) {
+    ) external override pure returns (bytes4) {
         return this.onERC721Received.selector;
     }
 
