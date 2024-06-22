@@ -35,6 +35,7 @@ contract BBITS is IBBITS, ERC20, ReentrancyGuard {
         for (uint256 i; i < length; i++) {
             collection.transferFrom(msg.sender, address(this), _tokenIds[i]);
             tokenIds.push(_tokenIds[i]);
+            emit Deposit(msg.sender, _tokenIds[i]);
         }
         _mint(msg.sender, length * conversionRate);
     }
@@ -49,6 +50,7 @@ contract BBITS is IBBITS, ERC20, ReentrancyGuard {
         uint256 length = _amount / conversionRate;
         for (uint256 i; i < length; i++) {
             collection.transferFrom(address(this), msg.sender, tokenIds[0]);
+            emit Withdrawal(msg.sender, tokenIds[0]);
             tokenIds[0] = tokenIds[tokenIds.length - 1];
             tokenIds.pop();
         }
@@ -71,6 +73,7 @@ contract BBITS is IBBITS, ERC20, ReentrancyGuard {
         for (uint256 i; i < length; i++) {
             if ((i > 0) && (_indices[i - 1] <= _indices[i])) revert IndicesMustBeMonotonicallyDecreasing();
             collection.transferFrom(address(this), msg.sender, getTokenIdAtIndex(_indices[i]));
+            emit Withdrawal(msg.sender, tokenIds[_indices[i]]);
             tokenIds[_indices[i]] = tokenIds[tokenIds.length - 1];
             tokenIds.pop();
         }

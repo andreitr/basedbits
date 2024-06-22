@@ -7,4 +7,7 @@ interface IBBITS {
     error IndicesMustEqualNumberToBeExchanged();
     error IndicesMustBeMonotonicallyDecreasing();
     error IndexOutOfBounds();
+
+    event Deposit(address _user, uint256 _tokenId);
+    event Withdrawal(address _user, uint256 _tokenId);
 }

@@ -19,7 +19,7 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
 
         owner = 0x1d671d1B191323A38490972D58354971E5c1cd2A;
         /// @dev Use this to access owner token Ids to allow for easy test updating
-        ownerTokenIds = [159, 215, 432, 438, 6161];
+        ownerTokenIds = [159, 215, 432, 438, 5064];
 
         user0 = address(100);
         user1 = address(200);
