@@ -16,7 +16,7 @@ contract BBITSTest is BBitsTestUtils, IBBITS {
 
         owner = 0x1d671d1B191323A38490972D58354971E5c1cd2A;
         /// @dev Use this to access owner token Ids to allow for easy test updating
-        ownerTokenIds = [159, 215, 432, 438, 6161];
+        ownerTokenIds = [159, 215, 432, 438, 5064];
 
         user0 = address(100);
         user1 = address(200);
@@ -63,6 +63,10 @@ contract BBITSTest is BBitsTestUtils, IBBITS {
 
         assertEq(bbits.balanceOf(owner), 0);
 
+        for (uint256 i; i < 3; i++) {
+            vm.expectEmit(true, true, true, true);
+            emit Deposit(owner, tokenIds[i]);
+        }
         bbits.exchangeNFTsForTokens(tokenIds);
 
         assertEq(bbits.balanceOf(owner), 3072e18);
@@ -108,6 +112,8 @@ contract BBITSTest is BBitsTestUtils, IBBITS {
         assertEq(bbits.getTokenIdAtIndex(2), ownerTokenIds[2]);
 
         /// Exchange for one NFT
+        vm.expectEmit(true, true, true, true);
+        emit Withdrawal(owner, bbits.getTokenIdAtIndex(0));
         bbits.exchangeTokensForNFTs(1024e18);
 
         assertEq(bbits.balanceOf(owner), 2048e18);
@@ -118,6 +124,10 @@ contract BBITSTest is BBitsTestUtils, IBBITS {
         assertEq(basedBits.ownerOf(ownerTokenIds[0]), owner);
 
         /// Exchange for the remaining two
+        vm.expectEmit(true, true, true, true);
+        emit Withdrawal(owner, bbits.getTokenIdAtIndex(0));
+        vm.expectEmit(true, true, true, true);
+        emit Withdrawal(owner, bbits.getTokenIdAtIndex(1));
         bbits.exchangeTokensForNFTs(2048e18);
 
         assertEq(bbits.balanceOf(owner), 0);
@@ -192,6 +202,8 @@ contract BBITSTest is BBitsTestUtils, IBBITS {
         indices = new uint256[](1);
         indices[0] = 1;
 
+        vm.expectEmit(true, true, true, true);
+        emit Withdrawal(owner, bbits.getTokenIdAtIndex(1));
         bbits.exchangeTokensForSpecificNFTs(1024e18, indices);
 
         assertEq(bbits.balanceOf(owner), 4096e18);
@@ -209,6 +221,12 @@ contract BBITSTest is BBitsTestUtils, IBBITS {
         indices[1] = 2;
         indices[2] = 0;
 
+        vm.expectEmit(true, true, true, true);
+        emit Withdrawal(owner, bbits.getTokenIdAtIndex(3));
+        vm.expectEmit(true, true, true, true);
+        emit Withdrawal(owner, bbits.getTokenIdAtIndex(2));
+        vm.expectEmit(true, true, true, true);
+        emit Withdrawal(owner, bbits.getTokenIdAtIndex(0));
         bbits.exchangeTokensForSpecificNFTs(3072e18, indices);
 
         assertEq(bbits.balanceOf(owner), 1024e18);
