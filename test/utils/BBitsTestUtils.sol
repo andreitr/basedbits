@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
+// Utils
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
+import {IERC721Receiver} from "@openzeppelin/token/ERC721/IERC721Receiver.sol";
+import {Reverter} from "./Reverter.sol";
 
 // Core
 import {BBitsBadges} from "../../src/BBitsBadges.sol";
@@ -10,6 +13,7 @@ import {BBitsCheckIn} from "../../src/BBitsCheckIn.sol";
 import {BBitsSocial} from "../../src/BBitsSocial.sol";
 import {BBitsRaffle, IBBitsRaffle} from "../../src/BBitsRaffle.sol";
 import {BBITS} from "../../src/BBITS.sol";
+import {BBitsBurner, IBBitsBurner} from "../../src/BBitsBurner.sol";
 
 // Minters
 import {BBitsBadge7Day} from "../../src/minters/BBitsBadge7Day.sol";
@@ -17,8 +21,8 @@ import {BBitsBadgeFirstClick} from "../../src/minters/BBitsBadgeFirstClick.sol";
 import {BBitsBadgeBearPunk} from "../../src/minters/BBitsBadgeBearPunk.sol";
 
 // Mocks
+import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
-import {IERC721Receiver} from "@openzeppelin/token/ERC721/IERC721Receiver.sol";
 import {MockERC721} from "../mocks/MockERC721.sol";
 
 contract BBitsTestUtils is Test, IERC721Receiver {
@@ -27,6 +31,7 @@ contract BBitsTestUtils is Test, IERC721Receiver {
     BBitsSocial public social;
     BBitsRaffle public raffle;
     BBITS public bbits;
+    BBitsBurner public burner;
 
     BBitsBadge7Day public badge7DayMinter;
     BBitsBadgeFirstClick public badgeFirstClickMinter;
@@ -34,6 +39,7 @@ contract BBitsTestUtils is Test, IERC721Receiver {
 
     IERC721 public basedBits; 
     IERC721 public bearPunks;
+    IERC20 public WETH;
 
     address public owner;
     address public user0;
@@ -88,6 +94,15 @@ contract BBitsTestUtils is Test, IERC721Receiver {
         
         (s,) = address(bearPunks).call(abi.encodeWithSelector(bytes4(keccak256("mint(address)")), user0));
         assert(s);
+    }
+
+    function forkBase() public {
+        uint256 baseFork = vm.createFork("https://1rpc.io/base");
+        vm.selectFork(baseFork);
+
+        owner = 0x1d671d1B191323A38490972D58354971E5c1cd2A;
+        /// @dev Use this to access owner token Ids to allow for easy test updating
+        ownerTokenIds = [272, 268, 266, 265, 264];
     }
 
     /// ON RECEIVED ///
