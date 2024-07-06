@@ -14,12 +14,7 @@ import {MockBrokenSettleRafflePOC, Brick} from "./mocks/MockBrokenSettleRafflePO
 
 contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
     function setUp() public override {
-        uint256 baseFork = vm.createFork("https://1rpc.io/base");
-        vm.selectFork(baseFork);
-
-        owner = 0x1d671d1B191323A38490972D58354971E5c1cd2A;
-        /// @dev Use this to access owner token Ids to allow for easy test updating
-        ownerTokenIds = [159, 215, 432, 438, 5064];
+        forkBase();
 
         user0 = address(100);
         user1 = address(200);
@@ -202,6 +197,15 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
     }
 
     /// ENTRIES ///
+
+    function testGetRaffleEntryByIndexFailureConditions() public {
+        vm.startPrank(owner);
+        setRaffleStatus(RaffleStatus.InRaffle);
+        vm.stopPrank();
+
+        vm.expectRevert(IBBitsRaffle.IndexOutOfBounds.selector);
+        raffle.getRaffleEntryByIndex(1, 10);
+    }
 
     function testNewFreeEntryNotEligibleFailureConditions() public {
         vm.startPrank(owner);
