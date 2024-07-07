@@ -9,9 +9,8 @@ import {IV3Router} from "./interfaces/uniswap/IV3Router.sol";
 import {IBBitsBurner} from "./interfaces/IBBitsBurner.sol";
 
 /// @title  Based Bits Burner
-/// @notice This contract integrates with both Uniswap V2 and V3 to provide burning and redeeming
-///         functionality for the Based Bits fungible ERC20 token. The owner has exclusive permission
-///         to modify the swap parameters.
+/// @notice This contract integrates with both Uniswap V2 and V3 to provide burning functionality for the
+///         Based Bits fungible ERC20 token. The owner has exclusive permission to modify the swap parameters.
 contract BBitsBurner is ReentrancyGuard, Ownable, IBBitsBurner {
     /// @notice dEaD address.
     address public constant dead = 0x000000000000000000000000000000000000dEaD;
@@ -55,17 +54,6 @@ contract BBitsBurner is ReentrancyGuard, Ownable, IBBitsBurner {
 
     receive() external payable {}
 
-    /// @notice This function allows anyone to buy BBITS tokens from Uniswap via the defined router.
-    /// @param  _minAmountReturned defines the minimum number of BBITS tokens to be bought.
-    /// @dev    Some ETH must be passed to make the purchase.
-    function buy(uint256 _minAmountReturned) external payable nonReentrant {
-        if (msg.value == 0) revert BuyZero();
-        (bool success,) = address(WETH).call{value: address(this).balance}("");
-        if (!success) revert WETHDepositFailed();
-        swap(WETH.balanceOf(address(this)), _minAmountReturned);
-        BBITS.transfer(msg.sender, BBITS.balanceOf(address(this)));
-    }
-
     /// @notice This function allows anyone to buy and burn BBITS tokens from Uniswap via the defined router.
     /// @param  _minAmountBurned defines the minimum number of BBITS tokens to be burned.
     /// @dev    Some ETH must be passed to make the purchase.
@@ -74,7 +62,6 @@ contract BBitsBurner is ReentrancyGuard, Ownable, IBBitsBurner {
         (bool success,) = address(WETH).call{value: address(this).balance}("");
         if (!success) revert WETHDepositFailed();
         swap(WETH.balanceOf(address(this)), _minAmountBurned);
-        BBITS.transfer(dead, BBITS.balanceOf(address(this)));
     }
 
     /// @notice This functiona allows the owner to modify the Uniswap router used.
@@ -94,7 +81,7 @@ contract BBitsBurner is ReentrancyGuard, Ownable, IBBitsBurner {
                 _amountIn,
                 _amountOut,
                 path,
-                address(this),
+                dead,
                 block.timestamp
             );
         } else {
@@ -102,7 +89,7 @@ contract BBitsBurner is ReentrancyGuard, Ownable, IBBitsBurner {
                 tokenIn: address(WETH),
                 tokenOut: address(BBITS),
                 fee: swapParams.fee,
-                recipient: address(this),
+                recipient: dead,
                 amountIn: _amountIn,
                 amountOutMinimum: _amountOut,
                 sqrtPriceLimitX96: 0

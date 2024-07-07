@@ -12,11 +12,11 @@ contract BBitsBurnerDeploy is Script {
 
         /// @dev Assumes deployment to Base mainnet
         IERC20 WETH = IERC20(0x4200000000000000000000000000000000000006);
-        IERC20 bbits = BBITS(0x553C1f87C2EF99CcA23b8A7fFaA629C8c2D27666);
+        IERC20 bbits = IERC20(0x553C1f87C2EF99CcA23b8A7fFaA629C8c2D27666);
         IV2Router uniV2Router = IV2Router(0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24);
         IV3Router uniV3Router = IV3Router(0x2626664c2603336E57B271c5C0b26F421741e481);
 
-        burner = new BBitsBurner(msg.sender, WETH, bbits, uniV2Router, uniV3Router);
+        BBitsBurner burner = new BBitsBurner(msg.sender, WETH, bbits, uniV2Router, uniV3Router);
         vm.stopBroadcast();
     }
 }
