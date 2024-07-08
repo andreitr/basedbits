@@ -79,8 +79,6 @@ contract BBitsBurnerTest is BBitsTestUtils, IBBitsBurner {
 
         /// Buy zero
         vm.expectRevert(BuyZero.selector);
-        burner.buy(0);
-        vm.expectRevert(BuyZero.selector);
         burner.burn(0);
 
         /// WETH transfer fails
@@ -90,17 +88,11 @@ contract BBitsBurnerTest is BBitsTestUtils, IBBitsBurner {
         BBitsBurner cursedBurner = new BBitsBurner(owner, WETH, bbits, uniV2Router, uniV3Router);
 
         vm.expectRevert(WETHDepositFailed.selector);
-        cursedBurner.buy{value: 1}(0);
-
-        vm.expectRevert(WETHDepositFailed.selector);
         cursedBurner.burn{value: 1}(0);
 
         WETH = IERC20(0x4200000000000000000000000000000000000006);
 
         /// Slippage
-        vm.expectRevert();
-        burner.buy{value: 1}(1e36);
-
         vm.expectRevert();
         burner.burn{value: 1}(1e36);
     }
@@ -108,8 +100,6 @@ contract BBitsBurnerTest is BBitsTestUtils, IBBitsBurner {
     function testV3BuyandBurnFailureConditions() public prank(owner) {
         /// Buy zero
         vm.expectRevert(BuyZero.selector);
-        burner.buy(0);
-        vm.expectRevert(BuyZero.selector);
         burner.burn(0);
 
         /// WETH transfer fails
@@ -119,17 +109,11 @@ contract BBitsBurnerTest is BBitsTestUtils, IBBitsBurner {
         BBitsBurner cursedBurner = new BBitsBurner(owner, WETH, bbits, uniV2Router, uniV3Router);
 
         vm.expectRevert(WETHDepositFailed.selector);
-        cursedBurner.buy{value: 1}(0);
-
-        vm.expectRevert(WETHDepositFailed.selector);
         cursedBurner.burn{value: 1}(0);
 
         WETH = IERC20(0x4200000000000000000000000000000000000006);
 
         /// Slippage
-        vm.expectRevert();
-        burner.buy{value: 1}(1e36);
-
         vm.expectRevert();
         burner.burn{value: 1}(1e36);
     }
@@ -153,24 +137,18 @@ contract BBitsBurnerTest is BBitsTestUtils, IBBitsBurner {
         });
         burner.setSwapParams(newSwapParams);
 
-        uint256 ownerBalanceBefore = bbits.balanceOf(owner);
         uint256 deadBalanceBefore = bbits.balanceOf(burner.dead());
 
-        burner.buy{value: 1e18}(0);
         burner.burn{value: 1e18}(0);
 
-        assertGt(bbits.balanceOf(owner), ownerBalanceBefore);
         assertGt(bbits.balanceOf(burner.dead()), deadBalanceBefore);
     }
 
     function testV3BuyandBurnSuccessConditions() public prank(owner) {
-        uint256 ownerBalanceBefore = bbits.balanceOf(owner);
         uint256 deadBalanceBefore = bbits.balanceOf(burner.dead());
 
-        burner.buy{value: 1e18}(0);
         burner.burn{value: 1e18}(0);
 
-        assertGt(bbits.balanceOf(owner), ownerBalanceBefore);
         assertGt(bbits.balanceOf(burner.dead()), deadBalanceBefore);
     }
 }
