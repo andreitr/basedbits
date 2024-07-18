@@ -1,0 +1,12 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1024" height="1024" fill="#D9D9D9"/>
+    <rect x="112" y="112" width="800" height="800" fill="#E25858"/> // Background 1
+    <rect x="112" y="112" width="800" height="800" fill="#A71FEF"/> // Background 2
+    <rect x="165" y="165" width="700" height="700" fill="#FFFF00"/> // Head -- only one layer
+    <rect x="237" y="237" width="550" height="550" fill="#EF1F6A"/> // Hair 1
+    <rect x="237" y="237" width="550" height="550" fill="#FFB800"/> // Hair 2
+    <rect x="362" y="362" width="300" height="300" fill="#206300"/> // Eyes 1
+    <rect x="362" y="362" width="300" height="300" fill="black"/>   // Eyes 2
+    <rect x="462" y="462" width="100" height="100" fill="#ADFF00"/> // Mouth 1
+    <rect x="462" y="462" width="100" height="100" fill="#FF00FF"/> // Mouth 2
+</svg>
