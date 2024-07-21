@@ -5,16 +5,18 @@ pragma solidity 0.8.25;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import {IERC721Receiver} from "@openzeppelin/token/ERC721/IERC721Receiver.sol";
+import {IERC1155Receiver} from "@openzeppelin/token/ERC1155/IERC1155Receiver.sol";
 import {Reverter} from "./Reverter.sol";
 
 // Core
 import {BBitsBadges} from "../../src/BBitsBadges.sol";
-import {BBitsCheckIn} from "../../src/BBitsCheckIn.sol";
+import {BBitsCheckIn, IBBitsCheckIn} from "../../src/BBitsCheckIn.sol";
 import {BBitsSocial} from "../../src/BBitsSocial.sol";
 import {BBitsRaffle, IBBitsRaffle} from "../../src/BBitsRaffle.sol";
 import {BBITS} from "../../src/BBITS.sol";
 import {BBitsBurner, IBBitsBurner} from "../../src/BBitsBurner.sol";
 import {BBitsEmoji, Burner} from "../../src/BBitsEmoji.sol";
+import {IBBitsEmoji} from "../../src/interfaces/IBBitsEmoji.sol";
 
 // Minters
 import {BBitsBadge7Day} from "../../src/minters/BBitsBadge7Day.sol";
@@ -26,7 +28,7 @@ import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
 import {MockERC721} from "../mocks/MockERC721.sol";
 
-contract BBitsTestUtils is Test, IERC721Receiver {
+contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
     BBitsBadges public badges;
     BBitsCheckIn public checkIn;
     BBitsSocial public social;
@@ -124,6 +126,31 @@ contract BBitsTestUtils is Test, IERC721Receiver {
         return this.onERC721Received.selector;
     }
 
+    function onERC1155Received(
+        address,
+        address,
+        uint256,
+        uint256,
+        bytes calldata
+    ) external override pure returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC1155BatchReceived(
+        address,
+        address,
+        uint256[] calldata,
+        uint256[] calldata,
+        bytes calldata
+    ) external override pure returns (bytes4) {
+        return this.onERC1155BatchReceived.selector;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        interfaceId;
+        return true;
+    }
+
     /// CHECKIN ///
 
     /// @dev Assumed to already be an owner of a BBits, will revert if not
@@ -198,5 +225,66 @@ contract BBitsTestUtils is Test, IERC721Receiver {
         /// Owner makes an entry
         uint256 antiBotFee = raffle.antiBotFee();
         raffle.newPaidEntry{value: antiBotFee}();
+    }
+
+    /// EMOJI ///
+
+    function addArt() internal prank(owner) {
+        /// Load some art
+        IBBitsEmoji.NamedBytes[] memory placeholder = new IBBitsEmoji.NamedBytes[](1);
+        /// Background 1
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="112" y="112" width="800" height="800" fill="#E25858"/>',
+            name: 'AAA'
+        });
+        emoji.addArt(0, placeholder);
+        /// Background 2
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="112" y="112" width="800" height="800" fill="#A71FEF"/>',
+            name: 'BBB'
+        });
+        emoji.addArt(1, placeholder);
+        /// Head
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="165" y="165" width="700" height="700" fill="#FFFF00"/>',
+            name: 'CCC'
+        });
+        emoji.addArt(2, placeholder);
+        /// Hair 1
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="237" y="237" width="550" height="550" fill="#EF1F6A"/>',
+            name: 'DDD'
+        });
+        emoji.addArt(3, placeholder);
+        /// Hair 2
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="237" y="237" width="550" height="550" fill="#FFB800"/>',
+            name: 'EEE'
+        });
+        emoji.addArt(4, placeholder);
+        /// Eyes 1
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="362" y="362" width="300" height="300" fill="#206300"/>',
+            name: 'FFF'
+        });
+        emoji.addArt(5, placeholder);
+        /// Eyes 2
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="362" y="362" width="300" height="300" fill="black"/>',
+            name: 'GGG'
+        });
+        emoji.addArt(6, placeholder);
+        /// Mouth 1
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="462" y="462" width="100" height="100" fill="#ADFF00"/>',
+            name: 'HHH'
+        });
+        emoji.addArt(7, placeholder);
+        /// Mouth 2
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="462" y="462" width="100" height="100" fill="#FF00FF"/>',
+            name: 'III'
+        });
+        emoji.addArt(8, placeholder);
     }
 }

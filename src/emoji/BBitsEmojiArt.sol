@@ -48,17 +48,17 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
     function _draw(uint256 _tokenId) internal view returns (string memory) {
         Set memory art = metadataForTokenId[_tokenId];
         NamedBytes memory background1 = metadata[0][art.background1];
-        NamedBytes memory background2 = metadata[0][art.background2];
-        NamedBytes memory head = metadata[0][art.head];
-        NamedBytes memory hair1 = metadata[0][art.hair1];
-        NamedBytes memory hair2 = metadata[0][art.hair2];
-        NamedBytes memory eyes1 = metadata[0][art.eyes1];
-        NamedBytes memory eyes2 = metadata[0][art.eyes2];
-        NamedBytes memory mouth1 = metadata[0][art.mouth1];
-        NamedBytes memory mouth2 = metadata[0][art.mouth2];
+        NamedBytes memory background2 = metadata[1][art.background2];
+        NamedBytes memory head = metadata[2][art.head];
+        NamedBytes memory hair1 = metadata[3][art.hair1];
+        NamedBytes memory hair2 = metadata[4][art.hair2];
+        NamedBytes memory eyes1 = metadata[5][art.eyes1];
+        NamedBytes memory eyes2 = metadata[6][art.eyes2];
+        NamedBytes memory mouth1 = metadata[7][art.mouth1];
+        NamedBytes memory mouth2 = metadata[8][art.mouth2];
 
         bytes memory svgHTML = abi.encodePacked(
-            '<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">',
+            '<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="1024" height="1024" fill="#D9D9D9"/>',
             background1.core,
             background2.core,
             head.core,

@@ -7,20 +7,6 @@ interface IBBitsEmoji {
         bytes name;
     }
 
-    /*
-    struct Set {
-        NamedBytes background1;
-        NamedBytes background2;
-        NamedBytes head;
-        NamedBytes hair1;
-        NamedBytes hair2;
-        NamedBytes eyes1;
-        NamedBytes eyes2;
-        NamedBytes mouth1;
-        NamedBytes mouth2;
-    }
-    */
-
     struct Set {
         uint256 background1;
         uint256 background2;

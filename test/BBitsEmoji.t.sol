@@ -13,7 +13,6 @@ import {Strings} from "@openzeppelin/utils/Strings.sol";
 
 /// @dev forge test --match-contract BBitsEmojiTest -vvv --gas-report
 ///      forge coverage --report lcov
-
 contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
     function setUp() public override {
         forkBase();
@@ -77,6 +76,8 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
         vm.expectRevert(InvalidIndex.selector);
         Entry memory entry = emoji.userEntry(1, 1);
 
+        assertEq(emoji.totalBalanceOf(user0), 0);
+
         /// Mint and enter raffle
         uint256 mintPrice = emoji.mintPrice();
         emoji.mint{value: mintPrice}();
@@ -100,94 +101,44 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
         assertEq(entry.user, user0);
         assertEq(entry.weight, 1);
 
+        assertEq(emoji.totalBalanceOf(user0), 1);
         
         /// remint but no raffle changes except mints
+        emoji.mint{value: mintPrice}();
+
+        (
+            tokenId,
+            mints,
+            rewards,
+            burned,
+            winner,
+            start
+        ) = emoji.raffleInfo(1);
+        assertEq(tokenId, 1);
+        assertEq(mints, 3);
+        assertEq(rewards, 0);
+        assertEq(burned, 0);
+        assertEq(winner, address(0));
+        assertEq(start, block.timestamp);
+
+        entry = emoji.userEntry(1, 1);
+        assertEq(entry.user, user0);
+        assertEq(entry.weight, 1);
+
+        assertEq(emoji.totalBalanceOf(user0), 2);
     }
 
-    /// ART ///
+    /// checkin discount
+
+    /// settlement
 
     /// OWNER ///
 
-    /*
-    function testGasFuzz() public {
-        //_loops = bound(_loops, 10, 10000);
+    /// ART ///
 
-        vm.prank(owner);
-        emoji.mint();
-
-        for(uint256 i; i < 1; i++) {
-            address user = makeAddr(Strings.toString(uint256(keccak256(abi.encodePacked(i, block.number)))));
-            vm.deal(user, 1e18);
-            vm.startPrank(user);
-            emoji.mint{value: 1e16}();
-            vm.stopPrank();
-        }
-
-        vm.warp(block.timestamp + 1.01 days);
-
-        vm.prank(owner);
-        emoji.mint();
-    }
-    */
-
-    /// UTILS ///
-
-    function addArt() internal prank(owner) {
-        /// Load some art
-        NamedBytes[] memory placeholder = new NamedBytes[](1);
-        /// Background 1
-        placeholder[0] = NamedBytes({
-            core: '<rect x="112" y="112" width="800" height="800" fill="#E25858"/>',
-            name: 'AAA'
-        });
-        emoji.addArt(0, placeholder);
-        /// Background 2
-        placeholder[0] = NamedBytes({
-            core: '<rect x="112" y="112" width="800" height="800" fill="#A71FEF"/>',
-            name: 'BBB'
-        });
-        emoji.addArt(1, placeholder);
-        /// Head
-        placeholder[0] = NamedBytes({
-            core: '<rect x="165" y="165" width="700" height="700" fill="#FFFF00"/>',
-            name: 'CCC'
-        });
-        emoji.addArt(2, placeholder);
-        /// Hair 1
-        placeholder[0] = NamedBytes({
-            core: '<rect x="237" y="237" width="550" height="550" fill="#EF1F6A"/>',
-            name: 'DDD'
-        });
-        emoji.addArt(3, placeholder);
-        /// Hair 2
-        placeholder[0] = NamedBytes({
-            core: '<rect x="237" y="237" width="550" height="550" fill="#FFB800"/>',
-            name: 'EEE'
-        });
-        emoji.addArt(4, placeholder);
-        /// Eyes 1
-        placeholder[0] = NamedBytes({
-            core: '<rect x="362" y="362" width="300" height="300" fill="#206300"/>',
-            name: 'FFF'
-        });
-        emoji.addArt(5, placeholder);
-        /// Eyes 2
-        placeholder[0] = NamedBytes({
-            core: '<rect x="362" y="362" width="300" height="300" fill="black"/>',
-            name: 'GGG'
-        });
-        emoji.addArt(6, placeholder);
-        /// Mouth 1
-        placeholder[0] = NamedBytes({
-            core: '<rect x="462" y="462" width="100" height="100" fill="#ADFF00"/>',
-            name: 'HHH'
-        });
-        emoji.addArt(7, placeholder);
-        /// Mouth 2
-        placeholder[0] = NamedBytes({
-            core: '<rect x="462" y="462" width="100" height="100" fill="#FF00FF"/>',
-            name: 'III'
-        });
-        emoji.addArt(8, placeholder);
+    function testDraw() public view {
+        string memory image = emoji.uri(1);
+        image;
+        //console.log(image);
     }
 }
