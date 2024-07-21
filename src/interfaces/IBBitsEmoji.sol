@@ -36,6 +36,7 @@ interface IBBitsEmoji {
 
     error InvalidArray();
     error InvalidIndex();
+    error InvalidPercentage();
     error InputZero();
     error MustPayMintPrice();
     error TransferFailed();

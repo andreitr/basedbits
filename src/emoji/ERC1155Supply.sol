@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {ERC1155Supply} from "@openzeppelin/token/ERC1155/extensions/ERC1155Supply.sol";
+import {ERC1155} from "@openzeppelin/token/ERC1155/ERC1155.sol";
 
-/// @notice Module of the BBitsEmoji collection that provides total balance functionality for ERC1155.
-abstract contract ERC1155SupplyExtended is ERC1155Supply {
+/// @notice Module of the BBitsEmoji collection that provides total balance for all tokens functionality for ERC1155.
+abstract contract ERC1155Supply is ERC1155 {
     mapping(address => uint256) private totalBalances;
 
     /// @notice This function returns the total number of NFTs owned across all token Ids.

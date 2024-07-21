@@ -74,7 +74,7 @@ contract BBitsTestUtils is Test, IERC721Receiver {
         social = new BBitsSocial(address(checkIn),8, 140, owner);
         raffle = new BBitsRaffle(owner, basedBits, checkIn);
         bbits = new BBITS(basedBits, 1024);
-        emoji = new BBitsEmoji(owner, address(burner));
+        emoji = new BBitsEmoji(owner, address(burner), checkIn);
 
         // Minters
         badge7DayMinter = new BBitsBadge7Day(checkIn, badges, 1, owner);
@@ -102,6 +102,8 @@ contract BBitsTestUtils is Test, IERC721Receiver {
     function forkBase() public {
         uint256 baseFork = vm.createFork("https://1rpc.io/base");
         vm.selectFork(baseFork);
+
+        vm.warp(block.timestamp + 1000 days);
 
         owner = 0x1d671d1B191323A38490972D58354971E5c1cd2A;
         /// @dev Use this to access owner token Ids to allow for easy test updating

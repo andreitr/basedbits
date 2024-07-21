@@ -50,8 +50,8 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
 
     /// INTERNALS ///
 
-    function _isValidArray(uint256 _array) internal pure returns (bool valid) {
-        (_array > 8) ? valid = false : valid = true;
+    function _isValidArray(uint256 _array) internal pure returns (bool) {
+        return (_array > 8) ? false : true;
     }
     
     /// @dev REMEMBER TO DOUBLE-CHECK METADATA AND ADD DESCRIPTION
@@ -106,7 +106,7 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
     }
 
     function _set(uint256 _tokenId) internal {
-        uint256 seed = uint256(keccak256(abi.encodePacked(_tokenId, block.timestamp)));
+        uint256 seed = _getPseudoRandom(_tokenId, block.timestamp);
         Set memory newMetadataForTokenId = Set({
             background1: metadata[0][_getPseudoRandom(seed, 0) % metadata[0].length],
             background2: metadata[1][_getPseudoRandom(seed, 1) % metadata[1].length],
@@ -121,7 +121,7 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
         metadataForTokenId[_tokenId] = newMetadataForTokenId;
     }
 
-    function _getPseudoRandom(uint256 _seed, uint256 _salt) internal pure returns (uint256 _pseudo) {
-        _pseudo = uint256(keccak256(abi.encodePacked(_seed, _salt)));
+    function _getPseudoRandom(uint256 _seed, uint256 _salt) internal pure returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(_seed, _salt)));
     }
 }
