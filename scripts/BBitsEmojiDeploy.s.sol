@@ -17,7 +17,12 @@ contract BBitsRaffleDeploy is Script {
             IBBitsCheckIn(0xE842537260634175891925F058498F9099C102eB)
         );
 
-        /// @dev Add art here if too big to add to EmojiArt constructor
+        /// @dev Additional owner contract set up
+        /*
+        addArt();
+        emoji.setPaused(false);
+        emoji.mint();
+        */
 
         vm.stopBroadcast();
     }

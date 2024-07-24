@@ -15,8 +15,7 @@ import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
 ///         that lasts a day. Any user who mints that day's NFT will be entered into the raffle, with
 ///         their raffle weighting being equal to the total number of NFTs they have ever minted. 
 ///         After a day has passed, the next mint settles the former raffle and provides the user with a
-///         free mint. The Owner retains admin rights over pausability, the mintPrice, duration, and the
-///         percentage of daily raffle proceeds are used to buy and burn the BBITs token.     
+///         free mint. The Owner retains admin rights over pausability and the mintPrice.    
 contract BBitsEmoji is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmojiArt {
     /// @notice The BBITS burner contract that automates buy and burns
     Burner public immutable burner;
@@ -26,10 +25,10 @@ contract BBitsEmoji is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsE
 
     /// @notice Percentage of funds used to buy and burn the BBITS token.
     /// @dev    10_000 = 100%
-    uint256 public burnPercentage;
+    uint256 public immutable burnPercentage;
 
     /// @notice Length of time that a raffle lasts.
-    uint256 public mintDuration;
+    uint256 public immutable mintDuration;
 
     /// @notice The price to mint an NFT.
     uint256 public mintPrice;
@@ -67,8 +66,6 @@ contract BBitsEmoji is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsE
         if (willMintSettleRaffle()) {
             _startNewMint();
             _mintEntry();
-            (bool success,) = address(msg.sender).call{value: msg.value}("");
-            if (!success) revert TransferFailed();
         } else {
             if (msg.value < userMintPrice(msg.sender)) revert MustPayMintPrice();
             _mintEntry();
@@ -83,15 +80,6 @@ contract BBitsEmoji is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsE
 
     function setMintPrice(uint256 _mintPrice) external onlyOwner {
         mintPrice = _mintPrice;
-    }
-
-    function setMintDuration(uint256 _mintDuration) external onlyOwner {
-        mintDuration = _mintDuration;
-    }
-
-    function setBurnPercentage(uint256 _burnPercentage) external onlyOwner {
-        if (_burnPercentage > 10_000) revert InvalidPercentage();
-        burnPercentage = _burnPercentage;
     }
 
     /// VIEW ///
@@ -141,7 +129,7 @@ contract BBitsEmoji is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsE
     /// INTERNAL ///
 
     /// @dev User canan mint more than once per day, but their raffle entry is not updated.
-    ///      This Kkeeps the raffle logic simpler.
+    ///      This keeps the raffle logic simpler.
     function _mintEntry() internal {
         _mint(msg.sender, currentDay, 1, "");
         raffleInfo[currentDay].mints++;

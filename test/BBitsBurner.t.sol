@@ -37,6 +37,7 @@ contract BBitsBurnerTest is BBitsTestUtils, IBBitsBurner {
         tokenIds[0] = ownerTokenIds[0];
         tokenIds[1] = ownerTokenIds[1];
         tokenIds[2] = ownerTokenIds[2];
+        basedBits.setApprovalForAll(address(bbits), true);
         bbits.exchangeNFTsForTokens(tokenIds);
         WETH.approve(address(uniV2Router), ~uint256(0));
         bbits.approve(address(uniV2Router), ~uint256(0));

@@ -109,7 +109,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
 
         owner = 0x1d671d1B191323A38490972D58354971E5c1cd2A;
         /// @dev Use this to access owner token Ids to allow for easy test updating
-        ownerTokenIds = [272, 268, 266, 265, 264];
+        ownerTokenIds = [5190, 2418, 2419, 2421, 2620];
     }
 
     /// ON RECEIVED ///
@@ -146,8 +146,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
         return this.onERC1155BatchReceived.selector;
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        interfaceId;
+    function supportsInterface(bytes4) public view virtual override returns (bool) {
         return true;
     }
 

@@ -12,7 +12,6 @@ import {IBBitsEmoji} from "../../src/interfaces/IBBitsEmoji.sol";
 import {Strings} from "@openzeppelin/utils/Strings.sol";
 
 /// @dev forge test --match-contract BBitsEmojiFuzzTest --gas-report
-
 contract BBitsEmojiFuzzTest is BBitsTestUtils, IBBitsEmoji {
     Burner public mockBurner;
     IBBitsCheckIn public mockCheckIn;
@@ -25,7 +24,7 @@ contract BBitsEmojiFuzzTest is BBitsTestUtils, IBBitsEmoji {
         mockCheckIn = new MockCheckIn();
         emoji = new BBitsEmoji(owner, address(mockBurner), mockCheckIn);
 
-        /// @dev owner set up
+        /// @dev Owner contract set up
         addArt();
         vm.startPrank(owner);
         emoji.setPaused(false);
@@ -33,7 +32,8 @@ contract BBitsEmojiFuzzTest is BBitsTestUtils, IBBitsEmoji {
         vm.stopPrank();
     }
 
-    function testGasFuzz(uint256 _loops) public {
+    /// @dev Given first raffle weight is always 1 for each
+    function testFirstRaffleFuzz(uint256 _loops) public {
         _loops = bound(_loops, 10, 5000);
         uint256 mintPrice = emoji.mintPrice();
 
@@ -46,7 +46,89 @@ contract BBitsEmojiFuzzTest is BBitsTestUtils, IBBitsEmoji {
         }
 
         vm.warp(block.timestamp + 1.01 days);
+
+        uint256 pseudoRandom = uint256(keccak256(abi.encodePacked(block.number, block.timestamp))) % emoji.totalEntries(1);
+        uint256 weight;
+        address expectedWinner;
+        for (uint256 i; i < _loops + 1; ++i) {
+            weight = emoji.userEntry(1, i).weight;
+            if(pseudoRandom < weight) {
+                expectedWinner = emoji.userEntry(1, i).user;
+                break;
+            } else {
+                pseudoRandom -= weight;
+            }
+        }
+
+        vm.expectEmit(true, true, true, true);
+        emit Raffle(
+            1, 
+            _loops + 1, 
+            expectedWinner, 
+            (6000 * mintPrice * _loops) / 10_000, 
+            (4000 * mintPrice * _loops) / 10_000
+        );
         emoji.mint();
+
+        assert(expectedWinner != address(emoji.burner()));
+    }
+
+    function testNonFirstRaffleFuzz(uint256 _raffles, uint256 _loops) public {
+        _raffles = bound(_raffles, 1, 10);
+        _loops = bound(_loops, 10, 500);
+        uint256 mintPrice = emoji.mintPrice();
+
+        /// Can't pass _loops as length here
+        address[5000] memory users;
+
+        /// Initial raffles
+        for(uint256 i; i < _raffles; i++) {
+            for(uint256 j; j < _loops; j++) {
+                if (i == 0) {
+                    address user = makeAddr(Strings.toString(uint256(keccak256(abi.encodePacked(j, block.number)))));
+                    users[j] = user;
+                    vm.deal(user, 1e18);
+                }
+                vm.startPrank(users[j]);
+                emoji.mint{value: mintPrice}();
+                vm.stopPrank();
+            }
+
+            vm.warp(block.timestamp + 1.01 days);
+            emoji.mint();
+        }
+
+        for(uint256 j; j < _loops; j++) { 
+            vm.startPrank(users[j]);
+            emoji.mint{value: mintPrice}();
+            vm.stopPrank();
+        }
+        vm.warp(block.timestamp + 1.01 days);
+
+        uint256 pseudoRandom = uint256(keccak256(abi.encodePacked(block.number, block.timestamp))) % emoji.totalEntries(_raffles + 1);
+        uint256 weight;
+        address expectedWinner;
+        for (uint256 i; i < _loops + 1; ++i) {
+            weight = emoji.userEntry(_raffles + 1, i).weight;
+            if(pseudoRandom < weight) {
+                expectedWinner = emoji.userEntry(_raffles + 1, i).user;
+                break;
+            } else {
+                pseudoRandom -= weight;
+            }
+        }
+
+        vm.expectEmit(true, true, true, true);
+        emit Raffle(
+            _raffles + 1,
+            _loops + 1, 
+            expectedWinner, 
+            (6000 * mintPrice * _loops) / 10_000, 
+            (4000 * mintPrice * _loops) / 10_000
+        );
+        emoji.mint();
+
+        assert(expectedWinner != address(emoji.burner()));
     }
 }
 
