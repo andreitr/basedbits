@@ -51,9 +51,9 @@ contract BBitsEmojiFuzzTest is BBitsTestUtils, IBBitsEmoji {
         uint256 weight;
         address expectedWinner;
         for (uint256 i; i < _loops + 1; ++i) {
-            weight = emoji.userEntry(1, i).weight;
+            weight = emoji.userEntryByIndex(1, i).weight;
             if(pseudoRandom < weight) {
-                expectedWinner = emoji.userEntry(1, i).user;
+                expectedWinner = emoji.userEntryByIndex(1, i).user;
                 break;
             } else {
                 pseudoRandom -= weight;
@@ -61,12 +61,12 @@ contract BBitsEmojiFuzzTest is BBitsTestUtils, IBBitsEmoji {
         }
 
         vm.expectEmit(true, true, true, true);
-        emit Raffle(
+        emit End(
             1, 
             _loops + 1, 
             expectedWinner, 
-            (6000 * mintPrice * _loops) / 10_000, 
-            (4000 * mintPrice * _loops) / 10_000
+            (8000 * mintPrice * _loops) / 10_000, 
+            (2000 * mintPrice * _loops) / 10_000
         );
         emoji.mint();
 
@@ -109,9 +109,9 @@ contract BBitsEmojiFuzzTest is BBitsTestUtils, IBBitsEmoji {
         uint256 weight;
         address expectedWinner;
         for (uint256 i; i < _loops + 1; ++i) {
-            weight = emoji.userEntry(_raffles + 1, i).weight;
+            weight = emoji.userEntryByIndex(_raffles + 1, i).weight;
             if(pseudoRandom < weight) {
-                expectedWinner = emoji.userEntry(_raffles + 1, i).user;
+                expectedWinner = emoji.userEntryByIndex(_raffles + 1, i).user;
                 break;
             } else {
                 pseudoRandom -= weight;
@@ -119,12 +119,12 @@ contract BBitsEmojiFuzzTest is BBitsTestUtils, IBBitsEmoji {
         }
 
         vm.expectEmit(true, true, true, true);
-        emit Raffle(
+        emit End(
             _raffles + 1,
             _loops + 1, 
             expectedWinner, 
-            (6000 * mintPrice * _loops) / 10_000, 
-            (4000 * mintPrice * _loops) / 10_000
+            (8000 * mintPrice * _loops) / 10_000, 
+            (2000 * mintPrice * _loops) / 10_000
         );
         emoji.mint();
 

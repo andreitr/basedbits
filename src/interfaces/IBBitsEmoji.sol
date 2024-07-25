@@ -24,13 +24,14 @@ interface IBBitsEmoji {
         uint256 weight;
     }
 
-    struct Day {
+    struct Round {
         uint256 tokenId;
         uint256 mints;
         uint256 rewards;
         uint256 burned;
         address winner;
-        uint256 start;
+        uint256 startedAt;
+        uint256 settledAt;
         Entry[] entries;
     }
 
@@ -41,5 +42,6 @@ interface IBBitsEmoji {
     error MustPayMintPrice();
     error TransferFailed();
 
-    event Raffle(uint256 tokenId, uint256 mints, address winner, uint256 reward, uint256 burned);
+    event Start(uint256 tokenId);
+    event End(uint256 tokenId, uint256 mints, address winner, uint256 reward, uint256 burned); 
 }

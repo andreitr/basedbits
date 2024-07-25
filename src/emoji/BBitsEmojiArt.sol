@@ -24,6 +24,9 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
     /// @notice The metadata components for any given NFT. 
     mapping(uint256 => Set) public metadataForTokenId;
 
+    /// @notice The description for the collection.
+    bytes public constant description = 'Every 8 hours, a new Emobit is born! 80% of mint proceeds are raffled off to one lucky winner, the rest are used to burn BBITS tokens. The more Emobits you hold, the more raffle entries you get. Check out emobits.fun for more.';
+
     /// @notice This function allows the owner to add art components to the metadata storage.
     /// @param  _array The mapping key to access the relevant array of components to be added.
     /// @param  _data An array of components to be added.
@@ -71,9 +74,11 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
             '</svg>'
         );
         svgHTML = abi.encodePacked(
-            '{"name": "Based Bits Emoji #',
+            '{"name": "Emobit #',
             bytes(Strings.toString(_tokenId)), 
-            '", "description": "??????????????????????", "image": "data:image/svg+xml;base64,', 
+            '", "description": "',
+            description,
+            '", "image": "data:image/svg+xml;base64,', 
             Base64.encode(svgHTML), 
             '"'
         );

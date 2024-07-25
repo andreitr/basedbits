@@ -44,13 +44,13 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
     function testInit() public view {
         assertEq(address(emoji.burner()), address(burner));
         assertEq(address(emoji.checkIn()), address(checkIn));
-        assertEq(emoji.burnPercentage(), 4000);
-        assertEq(emoji.mintDuration(), 1 days);
+        assertEq(emoji.burnPercentage(), 2000);
+        assertEq(emoji.mintDuration(), 8 hours);
         assertEq(emoji.mintPrice(), 0.0005 ether);
         assertEq(emoji.totalEntries(0), 1);
         assertEq(emoji.raffleAmount(), 0);
         assertEq(emoji.burnAmount(), 0);
-        assertEq(emoji.currentDay(), 1);
+        assertEq(emoji.currentRound(), 1);
     }
 
     /// RAFFLE ///
@@ -69,17 +69,20 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
             uint256 rewards,
             uint256 burned,
             address winner,
-            uint256 start
+            uint256 startedAt,
+            uint256 settledAt
         ) = emoji.raffleInfo(1);
         assertEq(tokenId, 1);
         assertEq(mints, 1);
         assertEq(rewards, 0);
         assertEq(burned, 0);
         assertEq(winner, address(0));
-        assertEq(start, block.timestamp);
+        assertEq(startedAt, block.timestamp);
+        assertEq(settledAt, 0);
 
         vm.expectRevert(InvalidIndex.selector);
-        Entry memory entry = emoji.userEntry(1, 1);
+        Entry memory entry = emoji.userEntryByIndex(1, 1);
+        assertEq(entry.weight, emoji.userEntryByAddress(1, user0));
 
         assertEq(emoji.totalBalanceOf(user0), 0);
         assertEq(emoji.totalEntries(1), 1);
@@ -94,18 +97,21 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
             rewards,
             burned,
             winner,
-            start
+            startedAt,
+            settledAt
         ) = emoji.raffleInfo(1);
         assertEq(tokenId, 1);
         assertEq(mints, 2);
         assertEq(rewards, 0);
         assertEq(burned, 0);
         assertEq(winner, address(0));
-        assertEq(start, block.timestamp);
+        assertEq(startedAt, block.timestamp);
+        assertEq(settledAt, 0);
 
-        entry = emoji.userEntry(1, 1);
+        entry = emoji.userEntryByIndex(1, 1);
         assertEq(entry.user, user0);
         assertEq(entry.weight, 1);
+        assertEq(entry.weight, emoji.userEntryByAddress(1, user0));
 
         assertEq(emoji.totalBalanceOf(user0), 1);
         assertEq(emoji.totalEntries(1), 2);
@@ -119,18 +125,21 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
             rewards,
             burned,
             winner,
-            start
+            startedAt,
+            settledAt
         ) = emoji.raffleInfo(1);
         assertEq(tokenId, 1);
         assertEq(mints, 3);
         assertEq(rewards, 0);
         assertEq(burned, 0);
         assertEq(winner, address(0));
-        assertEq(start, block.timestamp);
+        assertEq(startedAt, block.timestamp);
+        assertEq(settledAt, 0);
 
-        entry = emoji.userEntry(1, 1);
+        entry = emoji.userEntryByIndex(1, 1);
         assertEq(entry.user, user0);
         assertEq(entry.weight, 1);
+        assertEq(entry.weight, emoji.userEntryByAddress(1, user0));
 
         assertEq(emoji.totalBalanceOf(user0), 2);
         /// @dev total entries not updated as expected
@@ -162,19 +171,20 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
         assertEq(emoji.willMintSettleRaffle(), false);
 
         (
-            uint256 tokenId,
+            ,
             uint256 mints,
             uint256 rewards,
             uint256 burned,
             address winner,
-            uint256 start
+            uint256 startedAt,
+            uint256 settledAt
         ) = emoji.raffleInfo(1);
-        assertEq(tokenId, 1);
         assertEq(mints, 1);
         assertEq(rewards, 0);
         assertEq(burned, 0);
         assertEq(winner, address(0));
-        assertEq(start, block.timestamp);
+        assertEq(startedAt, block.timestamp);
+        assertEq(settledAt, 0);
 
         /// Balances and reward/burn amounts before
         assertEq(address(emoji).balance, 0);
@@ -186,19 +196,20 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
         emoji.mint{value: mintPrice}();
 
         (
-            tokenId,
+            ,
             mints,
             rewards,
             burned,
             winner,
-            start
+            startedAt,
+            settledAt
         ) = emoji.raffleInfo(1);
-        assertEq(tokenId, 1);
         assertEq(mints, 2);
         assertEq(rewards, 0);
         assertEq(burned, 0);
         assertEq(winner, address(0));
-        assertEq(start, block.timestamp);
+        assertEq(startedAt, block.timestamp);
+        assertEq(settledAt, 0);
 
         assertEq(emoji.totalBalanceOf(user0), 1);
         assertEq(emoji.totalEntries(1), 2);
@@ -207,11 +218,11 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
         assertEq(address(emoji).balance, mintPrice);
         assertEq(
             emoji.raffleAmount(),
-            (6000 * mintPrice) / 10_000
+            (8000 * mintPrice) / 10_000
         );
         assertEq(
             emoji.burnAmount(),
-            (4000 * mintPrice) / 10_000
+            (2000 * mintPrice) / 10_000
         );
 
         uint256 ownerBalanceBeforeSettlement = address(owner).balance;
@@ -227,51 +238,56 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
             expectedWinner = user0;
 
         vm.expectEmit(true, true, true, true);
-        emit Raffle(
-            tokenId, 
+        emit End(
+            1, 
             mints, 
             expectedWinner, 
-            (6000 * mintPrice) / 10_000, 
-            (4000 * mintPrice) / 10_000
+            (8000 * mintPrice) / 10_000, 
+            (2000 * mintPrice) / 10_000
         );
+        vm.expectEmit(true, true, true, true);
+        emit Start(2);
         emoji.mint();
 
         (
-            tokenId,
+            ,
             mints,
             rewards,
             burned,
             winner,
+            ,
+            settledAt
         ) = emoji.raffleInfo(1);
-        assertEq(tokenId, 1);
         assertEq(mints, 2);
-        assertEq(rewards, (6000 * mintPrice) / 10_000);
-        assertEq(burned, (4000 * mintPrice) / 10_000);
+        assertEq(rewards, (8000 * mintPrice) / 10_000);
+        assertEq(burned, (2000 * mintPrice) / 10_000);
         assertEq(winner, expectedWinner);
+        assertEq(settledAt, block.timestamp);
 
         assertEq(address(emoji).balance, 0);
         assertEq(emoji.raffleAmount(), 0);
         assertEq(emoji.burnAmount(), 0);
 
         (expectedWinner == owner) ? 
-            assertEq(ownerBalanceBeforeSettlement + (6000 * mintPrice) / 10_000, address(owner).balance) : 
-            assertEq(user0BalanceBeforeSettlement + (6000 * mintPrice) / 10_000, address(user0).balance);
+            assertEq(ownerBalanceBeforeSettlement + (8000 * mintPrice) / 10_000, address(owner).balance) : 
+            assertEq(user0BalanceBeforeSettlement + (8000 * mintPrice) / 10_000, address(user0).balance);
 
         /// New raffle info
         (
-            tokenId,
+            ,
             mints,
             rewards,
             burned,
             winner,
-            start
+            startedAt,
+            settledAt
         ) = emoji.raffleInfo(2);
-        assertEq(tokenId, 2);
         assertEq(mints, 1);
         assertEq(rewards, 0);
         assertEq(burned, 0);
         assertEq(winner, address(0));
-        assertEq(start, block.timestamp);
+        assertEq(startedAt, block.timestamp);
+        assertEq(settledAt, 0);
     }
 
     /// OWNER ///
