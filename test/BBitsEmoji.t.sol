@@ -319,6 +319,23 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
         vm.stopPrank();
     }
 
+    function testSetMintDuration() public prank(owner) {
+        assertEq(emoji.mintDuration(), 8 hours);
+        emoji.setMintDuration(12 hours);
+        assertEq(emoji.mintDuration(), 12 hours);
+    }
+
+    function testSetBurnPercentage() public prank(owner) {
+        /// Burn percentage over 10K
+        vm.expectRevert(InvalidPercentage.selector);
+        emoji.setBurnPercentage(10_001);
+
+        /// Set
+        assertEq(emoji.burnPercentage(), 2000);
+        emoji.setBurnPercentage(8000);
+        assertEq(emoji.burnPercentage(), 8000);
+    }
+
     function testAddArtRevertConditions() public prank(owner) {
         /// Invalid Array
         NamedBytes[] memory placeholder = new NamedBytes[](1);
@@ -341,12 +358,198 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
             core: 'Arty art',
             name: 'ART'
         });
-
         emoji.addArt(0, placeholder);
 
         (bytes memory core, bytes memory name) = emoji.metadata(0, 1);
         assertEq(core, 'Arty art');
         assertEq(name, 'ART');
+    }
+
+    function testRemoveArtRevertConditions() public prank(owner) {
+        NamedBytes[] memory placeholder = new NamedBytes[](2);
+        placeholder[0] = NamedBytes({
+            core: 'Arty art',
+            name: 'ART'
+        });
+        placeholder[1] = NamedBytes({
+            core: 'Arty art',
+            name: 'ART'
+        });
+        emoji.addArt(0, placeholder);
+
+        /// Invalid array
+        uint256[] memory indices = new uint256[](0);
+        vm.expectRevert(InvalidArray.selector);
+        emoji.removeArt(9, indices);
+
+        /// Input zero
+        vm.expectRevert(InputZero.selector);
+        emoji.removeArt(0, indices);
+
+        /// Invalid index
+        indices = new uint256[](2);
+        indices[0] = 9;
+        vm.expectRevert(InvalidIndex.selector);
+        emoji.removeArt(0, indices);
+
+        /// Monotonically increasing
+        indices[0] = 0;
+        indices[1] = 1;
+        vm.expectRevert(IndicesMustBeMonotonicallyDecreasing.selector);
+        emoji.removeArt(0, indices);
+    }
+
+    function testRemoveArtSuccessConditions() public prank(owner) {
+        NamedBytes[] memory placeholder = new NamedBytes[](2);
+        placeholder[0] = NamedBytes({
+            core: 'Arty art',
+            name: 'ART'
+        });
+        placeholder[1] = NamedBytes({
+            core: 'Arty art',
+            name: 'ART'
+        });
+        emoji.addArt(0, placeholder);
+
+        (bytes memory core, bytes memory name) = emoji.metadata(0, 0);
+        assertEq(core, '<rect x="112" y="112" width="800" height="800" fill="#E25858"/>');
+        assertEq(name, 'AAA');
+
+        /// Remove one
+        uint256[] memory indices = new uint256[](1);
+        emoji.removeArt(0, indices);
+
+        (core, name) = emoji.metadata(0, 0);
+        assertEq(core, 'Arty art');
+        assertEq(name, 'ART');
+
+        vm.expectRevert();
+        (core, name) = emoji.metadata(0, 2);
+
+        /// Add Two more
+        placeholder[0] = NamedBytes({
+            core: 'Arty art and things',
+            name: 'ARTT'
+        });
+        placeholder[1] = NamedBytes({
+            core: 'Arty',
+            name: 'ARTY'
+        });
+        emoji.addArt(0, placeholder);
+
+        /// Now remove 3
+        indices = new uint256[](3);
+        indices[0] = 2;
+        indices[1] = 1;
+        indices[2] = 0;
+        emoji.removeArt(0, indices);
+
+        (core, name) = emoji.metadata(0, 0);
+        assertEq(core, 'Arty');
+        assertEq(name, 'ARTY');
+    }
+
+    function testSetArt() public prank(owner) {
+        uint256[] memory indices = new uint256[](1);
+        emoji.removeArt(0, indices);
+
+        vm.expectRevert();
+        emoji.uri(0);
+
+        /// Load some art
+        IBBitsEmoji.NamedBytes[] memory placeholder = new IBBitsEmoji.NamedBytes[](1);
+        /// Background 1
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="112" y="112" width="800" height="800" fill="#E25858"/>',
+            name: 'AAA'
+        });
+        emoji.addArt(0, placeholder);
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="112" y="112" width="800" height="800" fill="#E25858"/>',
+            name: 'AAAA'
+        });
+        emoji.addArt(0, placeholder);
+        /// Background 2
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="112" y="112" width="800" height="800" fill="#A71FEF"/>',
+            name: 'BBBB'
+        });
+        emoji.addArt(1, placeholder);
+        /// Head
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="165" y="165" width="700" height="700" fill="#FFFF00"/>',
+            name: 'CCCC'
+        });
+        emoji.addArt(2, placeholder);
+        /// Hair 1
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="237" y="237" width="550" height="550" fill="#EF1F6A"/>',
+            name: 'DDDD'
+        });
+        emoji.addArt(3, placeholder);
+        /// Hair 2
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="237" y="237" width="550" height="550" fill="#FFB800"/>',
+            name: 'EEEE'
+        });
+        emoji.addArt(4, placeholder);
+        /// Eyes 1
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="362" y="362" width="300" height="300" fill="#206300"/>',
+            name: 'FFFF'
+        });
+        emoji.addArt(5, placeholder);
+        /// Eyes 2
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="362" y="362" width="300" height="300" fill="black"/>',
+            name: 'GGGG'
+        });
+        emoji.addArt(6, placeholder);
+        /// Mouth 1
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="462" y="462" width="100" height="100" fill="#ADFF00"/>',
+            name: 'HHHH'
+        });
+        emoji.addArt(7, placeholder);
+        /// Mouth 2
+        placeholder[0] = IBBitsEmoji.NamedBytes({
+            core: '<rect x="462" y="462" width="100" height="100" fill="#FF00FF"/>',
+            name: 'IIII'
+        });
+        emoji.addArt(8, placeholder);
+
+        uint256 mintPrice = emoji.mintPrice();
+        vm.warp(block.timestamp + 1);
+        emoji.mint{value: mintPrice}();
+        vm.warp(block.timestamp + 1);
+        emoji.mint{value: mintPrice}();
+        vm.warp(block.timestamp + 1);
+
+        string memory image0 = emoji.uri(0);
+
+        /// Input Zero
+        uint256[] memory tokenIds = new uint256[](0);
+        vm.expectRevert(InputZero.selector);
+        emoji.setArt(tokenIds);
+
+        tokenIds = new uint256[](1);
+        emoji.setArt(tokenIds);
+
+        string memory image1 = emoji.uri(0);
+        assertNotEq(image0, image1);
+    }
+
+    function testSetDescription() public prank(owner) {
+        assertEq(
+            emoji.description(), 
+            'Every 8 hours, a new Emobit is born! 80% of mint proceeds are raffled off to one lucky winner, the rest are used to burn BBITS tokens. The more Emobits you hold, the more raffle entries you get. Check out emobits.fun for more.'
+        );
+        bytes memory newDescription = 'ARTY ART';
+        emoji.setDescription(newDescription);
+        assertEq(
+            emoji.description(), 
+            newDescription
+        );
     }
 
     /// ERC1155SUPPLY ///
