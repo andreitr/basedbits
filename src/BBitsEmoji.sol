@@ -25,10 +25,10 @@ contract BBitsEmoji is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsE
 
     /// @notice Percentage of funds used to buy and burn the BBITS token.
     /// @dev    10_000 = 100%
-    uint256 public immutable burnPercentage;
+    uint256 public burnPercentage;
 
     /// @notice Length of time that a raffle lasts.
-    uint256 public immutable mintDuration;
+    uint256 public mintDuration;
 
     /// @notice The price to mint an NFT.
     uint256 public mintPrice;
@@ -86,6 +86,15 @@ contract BBitsEmoji is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsE
         mintPrice = _mintPrice;
     }
 
+    function setMintDuration(uint256 _mintDuration) external onlyOwner {
+        mintDuration = _mintDuration;
+    }
+
+    function setBurnPercentage(uint256 _burnPercentage) external onlyOwner {
+        if (_burnPercentage > 10_000) revert InvalidPercentage();
+        burnPercentage = _burnPercentage;
+    }
+
     /// VIEW ///
 
     /// @notice This view function returns the art for any given token Id.
@@ -131,7 +140,7 @@ contract BBitsEmoji is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsE
         return userEntryAmount[_round][_user];
     }
 
-    /// @notice This view function returns a boolean outlining wether calling the mint function will settle
+    /// @notice This view function returns a boolean outlining whether calling the mint function will
     ///         presently settle the raffle.
     function willMintSettleRaffle() public view returns (bool) {
         return !(block.timestamp - raffleInfo[currentRound].startedAt < mintDuration);

@@ -41,6 +41,7 @@ interface IBBitsEmoji {
     error InputZero();
     error MustPayMintPrice();
     error TransferFailed();
+    error IndicesMustBeMonotonicallyDecreasing();
 
     event Start(uint256 tokenId);
     event End(uint256 tokenId, uint256 mints, address winner, uint256 reward, uint256 burned); 

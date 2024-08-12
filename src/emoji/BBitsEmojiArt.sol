@@ -25,13 +25,11 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
     mapping(uint256 => Set) public metadataForTokenId;
 
     /// @notice The description for the collection.
-    bytes public constant description = 'Every 8 hours, a new Emobit is born! 80% of mint proceeds are raffled off to one lucky winner, the rest are used to burn BBITS tokens. The more Emobits you hold, the more raffle entries you get. Check out emobits.fun for more.';
+    bytes public description = 'Every 8 hours, a new Emobit is born! 80% of mint proceeds are raffled off to one lucky winner, the rest are used to burn BBITS tokens. The more Emobits you hold, the more raffle entries you get. Check out emobits.fun for more.';
 
     /// @notice This function allows the owner to add art components to the metadata storage.
     /// @param  _array The mapping key to access the relevant array of components to be added.
     /// @param  _data An array of components to be added.
-    /// @dev    Ensure each component in the _data array belongs to the _array mapping key family.
-    ///         Any art components added can not be removed!
     function addArt(uint256 _array, NamedBytes[] calldata _data) external onlyOwner {
         if (!_isValidArray(_array)) revert InvalidArray();
         uint256 length = _data.length;
@@ -39,6 +37,39 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
         for (uint256 i; i < length; ++i) {
             metadata[_array].push(_data[i]);
         }
+    }
+
+    /// @notice This function allows the owner to remove art components to the metadata storage.
+    /// @param  _array The mapping key to access the relevant array of components to be removed.
+    /// @param  _indices An array of indices to be removed.
+    function removeArt(uint256 _array, uint256[] calldata _indices) external onlyOwner {
+        if (!_isValidArray(_array)) revert InvalidArray();
+        uint256 length = _indices.length;
+        if (length == 0) revert InputZero();
+        uint256 arrayLength;
+        for (uint256 i; i < length; ++i) {
+            arrayLength = metadata[_array].length;
+            if (_indices[i] >= arrayLength) revert InvalidIndex();
+            if ((i > 0) && (_indices[i - 1] <= _indices[i])) revert IndicesMustBeMonotonicallyDecreasing();
+            metadata[_array][_indices[i]] = metadata[_array][arrayLength - 1];
+            metadata[_array].pop();
+        }
+    }
+
+    /// @notice This function allows the owner to set the art for any token Id.
+    /// @param  _tokenIds An array of token Ids.
+    function setArt(uint256[] calldata _tokenIds) external onlyOwner {
+        uint256 length = _tokenIds.length;
+        if (length == 0) revert InputZero();
+        for (uint256 i; i < length; ++i) {
+            _set(_tokenIds[i]);
+        }
+    }
+    
+    /// @notice This function allows the owner to set the art description for the collection.
+    /// @param  _description The new art description.
+    function setDescription(bytes calldata _description) external onlyOwner {
+        description = _description;
     }
 
     /// INTERNALS ///
