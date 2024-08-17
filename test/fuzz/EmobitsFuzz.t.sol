@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import {
     BBitsTestUtils, 
-    BBitsEmoji, 
+    Emobits, 
     IBBitsCheckIn,
     Burner,
     console
@@ -12,7 +12,7 @@ import {IBBitsEmoji} from "../../src/interfaces/IBBitsEmoji.sol";
 import {Strings} from "@openzeppelin/utils/Strings.sol";
 
 /// @dev forge test --match-contract BBitsEmojiFuzzTest --gas-report
-contract BBitsEmojiFuzzTest is BBitsTestUtils, IBBitsEmoji {
+contract EmobitsFuzzTest is BBitsTestUtils, IBBitsEmoji {
     Burner public mockBurner;
     IBBitsCheckIn public mockCheckIn;
 
@@ -22,7 +22,7 @@ contract BBitsEmojiFuzzTest is BBitsTestUtils, IBBitsEmoji {
 
         mockBurner = new MockBurner();
         mockCheckIn = new MockCheckIn();
-        emoji = new BBitsEmoji(owner, address(mockBurner), mockCheckIn);
+        emoji = new Emobits(owner, address(mockBurner), mockCheckIn);
 
         /// @dev Owner contract set up
         addArt();

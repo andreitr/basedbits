@@ -10,15 +10,11 @@ import {Base64} from "@openzeppelin/utils/Base64.sol";
 abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
     /// @notice The storage for all art components
     /// @dev    Layout:
-    ///         0: background1
-    ///         1: background2
-    ///         2: head
-    ///         3: hair1
-    ///         4: hair2
-    ///         5: eyes1
-    ///         6: eyes2
-    ///         7: mouth1
-    ///         8: mouth2
+    ///         0: background
+    ///         1: face
+    ///         2: hair
+    ///         3: eyes
+    ///         4: mouth
     mapping(uint256 => NamedBytes[]) public metadata;
 
     /// @notice The metadata components for any given NFT. 
@@ -75,33 +71,25 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
     /// INTERNALS ///
 
     function _isValidArray(uint256 _array) internal pure returns (bool) {
-        return (_array > 8) ? false : true;
+        return (_array > 5) ? false : true;
     }
     
     /// @dev REMEMBER TO DOUBLE-CHECK METADATA AND ADD DESCRIPTION
     function _draw(uint256 _tokenId) internal view returns (string memory) {
         Set memory art = metadataForTokenId[_tokenId];
-        NamedBytes memory background1 = metadata[0][art.background1];
-        NamedBytes memory background2 = metadata[1][art.background2];
-        NamedBytes memory head = metadata[2][art.head];
-        NamedBytes memory hair1 = metadata[3][art.hair1];
-        NamedBytes memory hair2 = metadata[4][art.hair2];
-        NamedBytes memory eyes1 = metadata[5][art.eyes1];
-        NamedBytes memory eyes2 = metadata[6][art.eyes2];
-        NamedBytes memory mouth1 = metadata[7][art.mouth1];
-        NamedBytes memory mouth2 = metadata[8][art.mouth2];
+        NamedBytes memory background = metadata[0][art.background];
+        NamedBytes memory face = metadata[1][art.face];
+        NamedBytes memory hair = metadata[2][art.hair];
+        NamedBytes memory eyes = metadata[3][art.eyes];
+        NamedBytes memory mouth = metadata[4][art.mouth];
 
         bytes memory svgHTML = abi.encodePacked(
-            '<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="1024" height="1024" fill="#D9D9D9"/>',
-            background1.core,
-            background2.core,
-            head.core,
-            hair1.core,
-            hair2.core,
-            eyes1.core,
-            eyes2.core,
-            mouth1.core,
-            mouth2.core,
+            '<svg width="420" height="420" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">',
+            background.core,
+            face.core,
+            hair.core,
+            eyes.core,
+            mouth.core,
             '</svg>'
         );
         svgHTML = abi.encodePacked(
@@ -115,27 +103,16 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
         );
         svgHTML = abi.encodePacked(
             svgHTML,
-            ', "attributes": [{"trait_type": "Background 1", "value": "',
-            background1.name,
-            '"}, {"trait_type": "Background 2", "value": "',
-            background2.name,
-            '"}, {"trait_type": "Head", "value": "',
-            head.name,
-            '"}, {"trait_type": "Hair 1", "value": "',
-            hair1.name
-        );
-        svgHTML = abi.encodePacked(
-            svgHTML,
-            '"}, {"trait_type": "Hair 2", "value": "',
-            hair2.name,
+            ', "attributes": [{"trait_type": "Background", "value": "',
+            background.name,
+            '"}, {"trait_type": "Face", "value": "',
+            face.name,
+            '"}, {"trait_type": "Hair", "value": "',
+            hair.name,
             '"}, {"trait_type": "Eyes 1", "value": "',
-            eyes1.name,
-            '"}, {"trait_type": "Eyes 2", "value": "',
-            eyes2.name,
-            '"}, {"trait_type": "Mouth 1", "value": "',
-            mouth1.name,
+            eyes.name,
             '"}, {"trait_type": "Mouth 2", "value": "',
-            mouth2.name,
+            mouth.name,
             '"}]}'
         );
 
@@ -145,15 +122,11 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
     function _set(uint256 _tokenId) internal {
         uint256 seed = _getPseudoRandom(_tokenId, block.timestamp);
         Set memory newMetadataForTokenId = Set({
-            background1: _getPseudoRandom(seed, 0) % metadata[0].length,
-            background2: _getPseudoRandom(seed, 1) % metadata[1].length,
-            head:        _getPseudoRandom(seed, 2) % metadata[2].length,
-            hair1:       _getPseudoRandom(seed, 3) % metadata[3].length,
-            hair2:       _getPseudoRandom(seed, 4) % metadata[4].length,
-            eyes1:       _getPseudoRandom(seed, 5) % metadata[5].length,
-            eyes2:       _getPseudoRandom(seed, 6) % metadata[6].length,
-            mouth1:      _getPseudoRandom(seed, 7) % metadata[7].length,
-            mouth2:      _getPseudoRandom(seed, 8) % metadata[8].length
+            background: _getPseudoRandom(seed, 0) % metadata[0].length,
+            face:        _getPseudoRandom(seed, 1) % metadata[1].length,
+            hair:       _getPseudoRandom(seed, 2) % metadata[2].length,
+            eyes:       _getPseudoRandom(seed, 3) % metadata[3].length,
+            mouth:      _getPseudoRandom(seed, 4) % metadata[4].length
         });
         metadataForTokenId[_tokenId] = newMetadataForTokenId;
     }
