@@ -2,9 +2,9 @@
 pragma solidity 0.8.25;
 
 import "forge-std/Script.sol";
-import {IBBitsCheckIn} from "../src/interfaces/IBBitsCheckIn.sol";
-import {Emobits} from "../src/Emobits.sol";
-import {IBBitsEmoji} from "../src/interfaces/IBBitsEmoji.sol";
+import {IBBitsCheckIn} from "../../src/interfaces/IBBitsCheckIn.sol";
+import {Emobits, Burner} from "../../src/Emobits.sol";
+import {IBBitsEmoji} from "../../src/interfaces/IBBitsEmoji.sol";
 import {EmobitsArtInstall} from "./EmobitsArtInstall.sol";
 
 contract EmobitsSepoliaDeploy is Script, EmobitsArtInstall {
@@ -12,13 +12,26 @@ contract EmobitsSepoliaDeploy is Script, EmobitsArtInstall {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        mockBurner = new MockBurner();
-        mockCheckIn = new MockCheckIn();
-        emoji = new Emobits(msg.sender, address(mockBurner), mockCheckIn);
+        MockBurner mockBurner = new MockBurner();
+        MockCheckIn mockCheckIn = new MockCheckIn();
+        emoji = new Emobits(0x42e84F0bCe28696cF1D254F93DfDeaeEB6F0D67d, address(mockBurner), mockCheckIn);
 
         _addArt();
         emoji.setPaused(false);
         emoji.mint();
+
+        vm.stopBroadcast();
+    }
+}
+
+contract Mint is Script {
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+
+        Emobits emoji = Emobits(payable(0x5C9B48e083091d47E43e2f960f890f7D0A5a0c64));
+
+        emoji.mint{value: 0.0005 ether}();
 
         vm.stopBroadcast();
     }
