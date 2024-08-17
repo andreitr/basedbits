@@ -109,9 +109,9 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
             face.name,
             '"}, {"trait_type": "Hair", "value": "',
             hair.name,
-            '"}, {"trait_type": "Eyes 1", "value": "',
+            '"}, {"trait_type": "Eyes", "value": "',
             eyes.name,
-            '"}, {"trait_type": "Mouth 2", "value": "',
+            '"}, {"trait_type": "Mouth", "value": "',
             mouth.name,
             '"}]}'
         );
