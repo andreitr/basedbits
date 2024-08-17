@@ -16,7 +16,7 @@ import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
 ///         weighting being equal to the total number of NFTs they have ever minted. After a
 ///         round has passed, the next mint settles the former raffle and provides the user with a
 ///         free mint. The Owner retains admin rights over pausability and the mintPrice.    
-contract BBitsEmoji is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmojiArt {
+contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmojiArt {
     /// @notice The BBITS burner contract that automates buy and burns
     Burner public immutable burner;
 
@@ -117,12 +117,17 @@ contract BBitsEmoji is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsE
 
     /// @notice This view function returns the current price to mint an NFT for any given user. Users can
     ///         decrease their mint price by up to 90% by gaining a streak in the associated BBits CheckIn
-    ///         contract: 0xE842537260634175891925F058498F9099C102eB.
+    ///         contract: 0xE842537260634175891925F058498F9099C102eB. This discount only applies to the
+    ///         first mint of every round however.
     /// @param  _user The user paying to mint a new NFT.
     function userMintPrice(address _user) public view returns (uint256) {
-        (, uint16 streak,) = checkIn.checkIns(_user);
-        if (streak > 90) streak = 90;
-        return mintPrice - ((mintPrice * streak) / 100);
+        if (balanceOf(_user, currentRound) == 0) {
+            (, uint16 streak,) = checkIn.checkIns(_user);
+            if (streak > 90) streak = 90;
+            return mintPrice - ((mintPrice * streak) / 100);
+        } else {
+            return mintPrice;
+        }
     }
 
     /// @notice This view function returns the entry struct that corresponds to the round and index pair.

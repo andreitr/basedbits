@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import {
     BBitsTestUtils, 
-    BBitsEmoji, 
+    Emobits, 
     BBitsCheckIn, 
     BBitsBurner,
     console
@@ -13,7 +13,7 @@ import {IBBitsEmoji} from "../src/interfaces/IBBitsEmoji.sol";
 import {Strings} from "@openzeppelin/utils/Strings.sol";
 
 /// @dev forge test --match-contract BBitsEmojiTest -vvv --gas-report
-contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
+contract EmobitsTest is BBitsTestUtils, IBBitsEmoji {
     function setUp() public override {
         forkBase();
 
@@ -27,7 +27,7 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
         basedBits = ERC721(0x617978b8af11570c2dAb7c39163A8bdE1D282407);
         burner = BBitsBurner(payable(0x1595409cbAEf3dD2485107fb1e328fA0fA505c10));
         checkIn = BBitsCheckIn(0xE842537260634175891925F058498F9099C102eB);
-        emoji = new BBitsEmoji(owner, address(burner), checkIn);
+        emoji = new Emobits(owner, address(burner), checkIn);
 
         /// @dev Owner contract set up
         addArt();
@@ -164,6 +164,32 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
         assertEq(
             emoji.userMintPrice(user1),
             mintPrice - ((mintPrice * 90) / 100)
+        );
+    }
+
+    function testSteakDiscountFirstOnly() public prank(user0) {
+        /// Set streak for 10% discount
+        uint256 mintPrice = emoji.mintPrice();
+        setCheckInStreak(user0, 10);
+
+        /// Avoid free mint for a new round
+        vm.stopPrank();
+        vm.startPrank(user1);
+        emoji.mint{value: mintPrice}();
+        vm.stopPrank();
+        vm.startPrank(user0);
+
+        /// Discount for first in new round
+        assertEq(
+            emoji.userMintPrice(user0),
+            mintPrice - ((mintPrice * 10) / 100)
+        );
+
+        /// Second Mint the discount not applied
+        emoji.mint{value: mintPrice}();
+        assertEq(
+            emoji.userMintPrice(user0),
+            mintPrice
         );
     }
 
@@ -412,7 +438,7 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
         emoji.addArt(0, placeholder);
 
         (bytes memory core, bytes memory name) = emoji.metadata(0, 0);
-        assertEq(core, '<rect x="112" y="112" width="800" height="800" fill="#E25858"/>');
+        assertEq(core, '<rect width="21" height="21" fill="#0052FF"/>');
         assertEq(name, 'AAA');
 
         /// Remove one
@@ -463,60 +489,36 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
             core: '<rect x="112" y="112" width="800" height="800" fill="#E25858"/>',
             name: 'AAA'
         });
-        emoji.addArt(0, placeholder);
+        /// Background
         placeholder[0] = IBBitsEmoji.NamedBytes({
             core: '<rect x="112" y="112" width="800" height="800" fill="#E25858"/>',
             name: 'AAAA'
         });
         emoji.addArt(0, placeholder);
-        /// Background 2
-        placeholder[0] = IBBitsEmoji.NamedBytes({
-            core: '<rect x="112" y="112" width="800" height="800" fill="#A71FEF"/>',
-            name: 'BBBB'
-        });
-        emoji.addArt(1, placeholder);
-        /// Head
+        /// Face
         placeholder[0] = IBBitsEmoji.NamedBytes({
             core: '<rect x="165" y="165" width="700" height="700" fill="#FFFF00"/>',
             name: 'CCCC'
         });
-        emoji.addArt(2, placeholder);
-        /// Hair 1
+        emoji.addArt(1, placeholder);
+        /// Hair
         placeholder[0] = IBBitsEmoji.NamedBytes({
             core: '<rect x="237" y="237" width="550" height="550" fill="#EF1F6A"/>',
             name: 'DDDD'
         });
-        emoji.addArt(3, placeholder);
-        /// Hair 2
-        placeholder[0] = IBBitsEmoji.NamedBytes({
-            core: '<rect x="237" y="237" width="550" height="550" fill="#FFB800"/>',
-            name: 'EEEE'
-        });
-        emoji.addArt(4, placeholder);
-        /// Eyes 1
+        emoji.addArt(2, placeholder);
+        /// Eyes
         placeholder[0] = IBBitsEmoji.NamedBytes({
             core: '<rect x="362" y="362" width="300" height="300" fill="#206300"/>',
             name: 'FFFF'
         });
-        emoji.addArt(5, placeholder);
-        /// Eyes 2
-        placeholder[0] = IBBitsEmoji.NamedBytes({
-            core: '<rect x="362" y="362" width="300" height="300" fill="black"/>',
-            name: 'GGGG'
-        });
-        emoji.addArt(6, placeholder);
-        /// Mouth 1
+        emoji.addArt(3, placeholder);
+        /// Mouth 
         placeholder[0] = IBBitsEmoji.NamedBytes({
             core: '<rect x="462" y="462" width="100" height="100" fill="#ADFF00"/>',
             name: 'HHHH'
         });
-        emoji.addArt(7, placeholder);
-        /// Mouth 2
-        placeholder[0] = IBBitsEmoji.NamedBytes({
-            core: '<rect x="462" y="462" width="100" height="100" fill="#FF00FF"/>',
-            name: 'IIII'
-        });
-        emoji.addArt(8, placeholder);
+        emoji.addArt(4, placeholder);
 
         uint256 mintPrice = emoji.mintPrice();
         vm.warp(block.timestamp + 1);
@@ -596,6 +598,6 @@ contract BBitsEmojiTest is BBitsTestUtils, IBBitsEmoji {
     function testDraw() public view {
         string memory image = emoji.uri(1);
         image;
-        //console.log(image);
+        console.log(image);
     }
 }
