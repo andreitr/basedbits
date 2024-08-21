@@ -21,7 +21,7 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
     mapping(uint256 => Set) public metadataForTokenId;
 
     /// @notice The description for the collection.
-    bytes public description = 'Every 8 hours, a new Emobit is born! 80% of mint proceeds are raffled off to one lucky winner, the rest are used to burn BBITS tokens. The more Emobits you hold, the more raffle entries you get. Check out emobits.fun for more.';
+    bytes public description = 'Inspired by the oldest known emojis (Sharp PI-4000, 1994), Emoji Bits (Onchain Summer Edition) is a fully on-chain NFT collection featuring experimental minting and gamification mechanisms. Every 8 hours, a new Emoji Bit is born! 50% of mint proceeds are raffled off to one lucky winner, while the rest are used to burn BBITS tokens. More → https://www.basedbits.fun/emojibits';
 
     /// @notice This function allows the owner to add art components to the metadata storage.
     /// @param  _array The mapping key to access the relevant array of components to be added.
@@ -92,7 +92,7 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
             '</svg>'
         );
         svgHTML = abi.encodePacked(
-            '{"name": "Emobit #',
+            '{"name": "Emoji Bit #',
             bytes(Strings.toString(_tokenId)), 
             '", "description": "',
             description,
