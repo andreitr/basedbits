@@ -12,9 +12,9 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
     /// @dev    Layout:
     ///         0: background
     ///         1: face
-    ///         2: hair
-    ///         3: eyes
-    ///         4: mouth
+    ///         2: eyes
+    ///         3: mouth
+    ///         4: hair
     mapping(uint256 => NamedBytes[]) public metadata;
 
     /// @notice The metadata components for any given NFT. 
@@ -74,22 +74,21 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
         return (_array > 5) ? false : true;
     }
     
-    /// @dev REMEMBER TO DOUBLE-CHECK METADATA AND ADD DESCRIPTION
     function _draw(uint256 _tokenId) internal view returns (string memory) {
         Set memory art = metadataForTokenId[_tokenId];
         NamedBytes memory background = metadata[0][art.background];
         NamedBytes memory face = metadata[1][art.face];
-        NamedBytes memory hair = metadata[2][art.hair];
-        NamedBytes memory eyes = metadata[3][art.eyes];
-        NamedBytes memory mouth = metadata[4][art.mouth];
+        NamedBytes memory eyes = metadata[2][art.eyes];
+        NamedBytes memory mouth = metadata[3][art.mouth];
+        NamedBytes memory hair = metadata[4][art.hair];
 
         bytes memory svgHTML = abi.encodePacked(
             '<svg width="420" height="420" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">',
             background.core,
             face.core,
-            hair.core,
             eyes.core,
             mouth.core,
+            hair.core,
             '</svg>'
         );
         svgHTML = abi.encodePacked(
@@ -107,12 +106,12 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
             background.name,
             '"}, {"trait_type": "Face", "value": "',
             face.name,
-            '"}, {"trait_type": "Hair", "value": "',
-            hair.name,
             '"}, {"trait_type": "Eyes", "value": "',
             eyes.name,
             '"}, {"trait_type": "Mouth", "value": "',
             mouth.name,
+            '"}, {"trait_type": "Hair", "value": "',
+            hair.name,
             '"}]}'
         );
 
@@ -123,10 +122,10 @@ abstract contract BBitsEmojiArt is Ownable, IBBitsEmoji {
         uint256 seed = _getPseudoRandom(_tokenId, block.timestamp);
         Set memory newMetadataForTokenId = Set({
             background: _getPseudoRandom(seed, 0) % metadata[0].length,
-            face:        _getPseudoRandom(seed, 1) % metadata[1].length,
-            hair:       _getPseudoRandom(seed, 2) % metadata[2].length,
-            eyes:       _getPseudoRandom(seed, 3) % metadata[3].length,
-            mouth:      _getPseudoRandom(seed, 4) % metadata[4].length
+            face:       _getPseudoRandom(seed, 1) % metadata[1].length,
+            eyes:       _getPseudoRandom(seed, 2) % metadata[2].length,
+            mouth:      _getPseudoRandom(seed, 3) % metadata[3].length,
+            hair:       _getPseudoRandom(seed, 4) % metadata[4].length
         });
         metadataForTokenId[_tokenId] = newMetadataForTokenId;
     }
