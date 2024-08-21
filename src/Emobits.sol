@@ -55,9 +55,9 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
     constructor(address _owner, address _burner, IBBitsCheckIn _checkin) ERC1155("") Ownable(_owner) {
         burner = Burner(_burner);
         checkIn = _checkin;
-        burnPercentage = 2000;
+        burnPercentage = 5000;
         mintDuration = 8 hours;
-        mintPrice = 0.0005 ether;
+        mintPrice = 0.0008 ether;
         totalEntries[currentMint] = 1;
         _pause();
     }
