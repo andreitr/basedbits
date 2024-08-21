@@ -34,10 +34,10 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
     uint256 public mintPrice;
 
     /// @notice The token id of the current NFT.
-    uint256 public currentRound;
+    uint256 public currentMint;
 
     /// @notice Daily raffle information.
-    mapping(uint256 => Round) public raffleInfo;
+    mapping(uint256 => Round) public mintById;
 
     /// @notice A mapping to track addresses that have entered any given raffle.
     /// @dev    raffleId => address => entered
@@ -58,7 +58,7 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
         burnPercentage = 2000;
         mintDuration = 8 hours;
         mintPrice = 0.0005 ether;
-        totalEntries[currentRound] = 1;
+        totalEntries[currentMint] = 1;
         _pause();
     }
 
@@ -105,13 +105,13 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
 
     /// @notice This view function returns the current amount of ETH that will be awwarded to the daily
     ///         raffle winner.
-    function raffleAmount() public view returns (uint256) {
-        return address(this).balance - burnAmount();
+    function currentMintRaffleAmount() public view returns (uint256) {
+        return address(this).balance - currentMintBurnAmount();
     }
 
     /// @notice This view function returns the current amount of ETH that will be used to buy and burn
     ///         the BBITS token.
-    function burnAmount() public view returns (uint256) {
+    function currentMintBurnAmount() public view returns (uint256) {
         return (burnPercentage * address(this).balance) / 10_000;
     }
 
@@ -121,7 +121,7 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
     ///         first mint of every round however.
     /// @param  _user The user paying to mint a new NFT.
     function userMintPrice(address _user) public view returns (uint256) {
-        if (balanceOf(_user, currentRound) == 0) {
+        if (balanceOf(_user, currentMint) == 0) {
             (, uint16 streak,) = checkIn.checkIns(_user);
             if (streak > 90) streak = 90;
             return mintPrice - ((mintPrice * streak) / 100);
@@ -132,10 +132,10 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
 
     /// @notice This view function returns the entry struct that corresponds to the round and index pair.
     /// @param  _round The raffle round (token Id).
-    /// @param  _index The user index in the raffleInfo array of raffle entries.
+    /// @param  _index The user index in the mintById array of raffle entries.
     function userEntryByIndex(uint256 _round, uint256 _index) public view returns (Entry memory) {
-        if (_index >= raffleInfo[_round].entries.length) revert InvalidIndex();
-        return raffleInfo[_round].entries[_index];
+        if (_index >= mintById[_round].entries.length) revert InvalidIndex();
+        return mintById[_round].entries[_index];
     }
 
     /// @notice This view function returns the entry amount that corresponds to the round and user pair.
@@ -148,7 +148,7 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
     /// @notice This view function returns a boolean outlining whether calling the mint function will
     ///         presently settle the raffle.
     function willMintSettleRaffle() public view returns (bool) {
-        return !(block.timestamp - raffleInfo[currentRound].startedAt < mintDuration);
+        return !(block.timestamp - mintById[currentMint].startedAt < mintDuration);
     }
 
     /// INTERNAL ///
@@ -156,48 +156,48 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
     /// @dev User can mint more than once per round, but their raffle entry is not updated.
     ///      This keeps the raffle logic simpler.
     function _mintEntry() internal {
-        _mint(msg.sender, currentRound, 1, "");
-        raffleInfo[currentRound].mints++;
-        if (!hasEnteredRaffle[currentRound][msg.sender]) {
-            hasEnteredRaffle[currentRound][msg.sender] = true;
-            userEntryAmount[currentRound][msg.sender] = totalBalanceOf(msg.sender);
+        _mint(msg.sender, currentMint, 1, "");
+        mintById[currentMint].mints++;
+        if (!hasEnteredRaffle[currentMint][msg.sender]) {
+            hasEnteredRaffle[currentMint][msg.sender] = true;
+            userEntryAmount[currentMint][msg.sender] = totalBalanceOf(msg.sender);
             Entry memory entry = Entry({
                 user: msg.sender,
                 weight: totalBalanceOf(msg.sender)
             });
-            raffleInfo[currentRound].entries.push(entry);
-            totalEntries[currentRound] += totalBalanceOf(msg.sender);
+            mintById[currentMint].entries.push(entry);
+            totalEntries[currentMint] += totalBalanceOf(msg.sender);
         }    
     }
 
     function _startNewMint() internal {
         /// Settle old raffle
-        uint256 burned = burnAmount();
-        uint256 reward = raffleAmount();
+        uint256 burned = currentMintBurnAmount();
+        uint256 reward = currentMintRaffleAmount();
         address winner = _settle();
         if (burned > 0) burner.burn{value: burned}(0);
         (bool success,) = winner.call{value: reward}("");
         if (!success) revert TransferFailed();
-        raffleInfo[currentRound].rewards = reward;
-        raffleInfo[currentRound].burned = burned;
-        raffleInfo[currentRound].winner = winner;
-        raffleInfo[currentRound].settledAt = block.timestamp;
-        emit End(currentRound, raffleInfo[currentRound].mints, winner, reward, burned);
+        mintById[currentMint].rewards = reward;
+        mintById[currentMint].burned = burned;
+        mintById[currentMint].winner = winner;
+        mintById[currentMint].settledAt = block.timestamp;
+        emit End(currentMint, mintById[currentMint].mints, winner, reward, burned);
         /// Start new raffle
-        ++currentRound;
-        _set(currentRound);
-        raffleInfo[currentRound].tokenId = currentRound;
-        raffleInfo[currentRound].startedAt = block.timestamp;
-        emit Start(currentRound);
+        ++currentMint;
+        _set(currentMint);
+        mintById[currentMint].tokenId = currentMint;
+        mintById[currentMint].startedAt = block.timestamp;
+        emit Start(currentMint);
     }
 
     function _settle() internal view returns (address) {
-        uint256 pseudoRandom = _getPseudoRandom(block.number, block.timestamp) % totalEntries[currentRound];
+        uint256 pseudoRandom = _getPseudoRandom(block.number, block.timestamp) % totalEntries[currentMint];
         uint256 weight;
-        uint256 length = raffleInfo[currentRound].entries.length;
+        uint256 length = mintById[currentMint].entries.length;
         for (uint256 i; i < length; ++i) {
-            weight = raffleInfo[currentRound].entries[i].weight;
-            if(pseudoRandom < weight) return raffleInfo[currentRound].entries[i].user;
+            weight = mintById[currentMint].entries[i].weight;
+            if(pseudoRandom < weight) return mintById[currentMint].entries[i].user;
             pseudoRandom -= weight;
         }
         return address(burner);

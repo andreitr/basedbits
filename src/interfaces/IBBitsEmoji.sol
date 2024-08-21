@@ -10,9 +10,9 @@ interface IBBitsEmoji {
     struct Set {
         uint256 background;
         uint256 face;
-        uint256 hair;
         uint256 eyes;
         uint256 mouth;
+        uint256 hair;
     }
 
     struct Entry {
