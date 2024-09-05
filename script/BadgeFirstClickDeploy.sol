@@ -5,7 +5,6 @@ import "forge-std/Script.sol";
 import {BBitsBadgeFirstClick, BBitsBadges} from "@src/minters/BBitsBadgeFirstClick.sol";
 
 contract BadgeDeploy is Script {
-
     function run() external {
         address[] memory minters = new address[](209);
         minters[0] = 0x1d671d1B191323A38490972D58354971E5c1cd2A;

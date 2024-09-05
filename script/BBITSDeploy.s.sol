@@ -10,10 +10,7 @@ contract BBITSDeploy is Script {
         vm.startBroadcast();
 
         /// @dev Assumes deployment to Base mainnet
-        BBITS bbits = new BBITS(
-            IERC721(0x617978b8af11570c2dAb7c39163A8bdE1D282407),
-            1024
-        );
+        BBITS bbits = new BBITS(IERC721(0x617978b8af11570c2dAb7c39163A8bdE1D282407), 1024);
         bbits;
 
         vm.stopBroadcast();

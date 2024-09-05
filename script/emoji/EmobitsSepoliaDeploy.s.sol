@@ -39,11 +39,11 @@ contract Mint is Script {
 
 contract MockBurner is Burner {
     address public immutable owner;
-    
+
     constructor() {
         owner = msg.sender;
     }
-    
+
     receive() external payable {
         (bool s,) = owner.call{value: address(this).balance}("");
         require(s);
