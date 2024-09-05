@@ -7,7 +7,9 @@ contract MockBrokenSettleRafflePOC {
     IERC721 public immutable collection;
     uint256 entriesLength = 1;
     address sponsor;
+
     error TransferFailed();
+
     bool public reset;
 
     constructor(IERC721 _collection) {
@@ -22,9 +24,8 @@ contract MockBrokenSettleRafflePOC {
     }
 
     function settleRaffleMock() external {
-        if (entriesLength == 0) {
-        } else {
-            (bool success, ) = sponsor.call{value: address(this).balance}("");
+        if (entriesLength == 0) {} else {
+            (bool success,) = sponsor.call{value: address(this).balance}("");
             if (!success) revert TransferFailed();
         }
 

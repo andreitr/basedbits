@@ -5,13 +5,13 @@ import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
-import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
-import {IBBitsRaffle} from "./interfaces/IBBitsRaffle.sol";
+import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
+import {IBBitsRaffle} from "@src/interfaces/IBBitsRaffle.sol";
 
 /// @title  Based Bits Raffle
 /// @notice This contract allows users to participate in raffles to win NFTs from the Based Bits collection.
 /// @dev    The contract operates on a loop, cycling through the PendingRaffle and InRaffle stages continuously.
-///         The Owner retains admin rights over pausability, the antiBotFee, and the duration of raffle entry 
+///         The Owner retains admin rights over pausability, the antiBotFee, and the duration of raffle entry
 ///         periods.
 contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     /// @notice Based Bits NFT collection.
@@ -69,10 +69,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         for (uint256 i; i < length; ++i) {
             tokenId = _tokenIds[i];
             collection.transferFrom(msg.sender, address(this), tokenId);
-            newSponsoredPrize = SponsoredPrize({
-                tokenId: tokenId,
-                sponsor: msg.sender
-            });
+            newSponsoredPrize = SponsoredPrize({tokenId: tokenId, sponsor: msg.sender});
             prizes.push(newSponsoredPrize);
             emit BasedBitsDeposited(msg.sender, tokenId);
         }
@@ -80,8 +77,8 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
 
     /// START RAFFLE ///
 
-    /// @notice This function allows any user to initiate the next raffle. 
-    /// @dev    Must be in PendingRaffle status. 
+    /// @notice This function allows any user to initiate the next raffle.
+    /// @dev    Must be in PendingRaffle status.
     ///         There must be collection NFTs to raffle.
     function startNextRaffle() external nonReentrant whenNotPaused {
         if (status != RaffleStatus.PendingRaffle) revert WrongStatus();
@@ -115,7 +112,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     }
 
     /// @notice This function allows anyone to enter into the current raffle.
-    /// @dev    Must be in InRaffle status. 
+    /// @dev    Must be in InRaffle status.
     ///         Must pay the antiBotFee.
     function newPaidEntry() external payable nonReentrant whenNotPaused {
         if (msg.value != antiBotFee) revert MustPayAntiBotFee();
@@ -158,7 +155,8 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
             currentRaffle.settledAt = block.timestamp;
             currentRaffle.winner = winner;
             collection.transferFrom(address(this), winner, tokenId);
-            sponsor.call{value: address(this).balance}("");
+            (bool s,) = sponsor.call{value: address(this).balance}("");
+            s;
             emit RaffleSettled(currentRaffleId, winner, tokenId);
         }
         status = RaffleStatus.PendingRaffle;
@@ -166,11 +164,11 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     }
 
     /// VIEW ///
-    
+
     /// @notice A view function that returns the current raffle Id.
     /// @dev    There is no raffle zero.
     function getCurrentRaffleId() public view returns (uint256) {
-        return count - 1; 
+        return count - 1;
     }
 
     /// @notice A view function that returns the total number of entries for any given raffle.
@@ -184,7 +182,7 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
         return idToRaffle[_raffleId].entries[_index];
     }
 
-    /// @notice A view function that returns whether any given user is eligible for free entry into the current 
+    /// @notice A view function that returns whether any given user is eligible for free entry into the current
     ///         raffle.
     function isEligibleForFreeEntry(address _user) public view returns (bool) {
         (uint256 lastCheckIn,,) = checkIn.checkIns(_user);
@@ -205,9 +203,9 @@ contract BBitsRaffle is IBBitsRaffle, Ownable, ReentrancyGuard, Pausable {
     function setDuration(uint256 _newDuration) external onlyOwner {
         duration = _newDuration;
     }
-    
+
     /// @notice This function allows the Owner to return up to 20 deposited NFTs at a time.
-    /// @dev    Contract must be paused. 
+    /// @dev    Contract must be paused.
     function returnDeposits() external onlyOwner nonReentrant whenPaused {
         uint256 length = (prizes.length > 20) ? 20 : prizes.length;
         if (length == 0) revert DepositZero();

@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
-import {BBitsBadges} from "../BBitsBadges.sol";
+import {BBitsBadges} from "@src/BBitsBadges.sol";
 
 contract BBitsBadgeFirstClick is Ownable, ReentrancyGuard {
     BBitsBadges public badgeContract;
@@ -11,12 +11,9 @@ contract BBitsBadgeFirstClick is Ownable, ReentrancyGuard {
     mapping(address => bool) public minted;
     uint256 public tokenId;
 
-    constructor(
-        address[] memory _minters,
-        BBitsBadges _badgeContract,
-        uint256 _tokenId,
-        address _initialOwner
-    ) Ownable(_initialOwner) {
+    constructor(address[] memory _minters, BBitsBadges _badgeContract, uint256 _tokenId, address _initialOwner)
+        Ownable(_initialOwner)
+    {
         badgeContract = _badgeContract;
         tokenId = _tokenId;
 

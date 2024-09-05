@@ -5,17 +5,17 @@ import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {ERC1155} from "@openzeppelin/token/ERC1155/ERC1155.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
-import {ERC1155Supply} from "./emoji/ERC1155Supply.sol";
-import {BBitsEmojiArt} from "./emoji/BBitsEmojiArt.sol";
-import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
+import {ERC1155Supply} from "@src/emoji/ERC1155Supply.sol";
+import {BBitsEmojiArt} from "@src/emoji/BBitsEmojiArt.sol";
+import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
 
 /// @title  Emobits
 /// @notice This contract allows users to participate in raffles by minting NFTs to win ETH.
 /// @dev    The contract operates on a loop, where the creation of a new set of NFTs initiates a raffle.
-///         Any user who mints that round's NFT will be entered into the raffle, with their raffle 
+///         Any user who mints that round's NFT will be entered into the raffle, with their raffle
 ///         weighting being equal to the total number of NFTs they have ever minted. After a
 ///         round has passed, the next mint settles the former raffle and provides the user with a
-///         free mint. The Owner retains admin rights over pausability and the mintPrice.    
+///         free mint. The Owner retains admin rights over pausability and the mintPrice.
 contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmojiArt {
     /// @notice The BBITS burner contract that automates buy and burns
     Burner public immutable burner;
@@ -42,7 +42,7 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
     /// @notice A mapping to track addresses that have entered any given raffle.
     /// @dev    raffleId => address => entered
     mapping(uint256 => mapping(address => bool)) public hasEnteredRaffle;
-    
+
     /// @notice A mapping of user entries per raffle to assist with front-end displays.
     /// @dev    raffleId => address => entered
     mapping(uint256 => mapping(address => uint256)) private userEntryAmount;
@@ -121,7 +121,7 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
     ///         first mint of every round however.
     /// @param  _user The user paying to mint a new NFT.
     function userMintPrice(address _user) public view returns (uint256) {
-        if (balanceOf(_user, currentMint) == 0) {
+        if (hasEnteredRaffle[currentMint][_user] == false) {
             (, uint16 streak,) = checkIn.checkIns(_user);
             if (streak > 90) streak = 90;
             return mintPrice - ((mintPrice * streak) / 100);
@@ -161,13 +161,10 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
         if (!hasEnteredRaffle[currentMint][msg.sender]) {
             hasEnteredRaffle[currentMint][msg.sender] = true;
             userEntryAmount[currentMint][msg.sender] = totalBalanceOf(msg.sender);
-            Entry memory entry = Entry({
-                user: msg.sender,
-                weight: totalBalanceOf(msg.sender)
-            });
+            Entry memory entry = Entry({user: msg.sender, weight: totalBalanceOf(msg.sender)});
             mintById[currentMint].entries.push(entry);
             totalEntries[currentMint] += totalBalanceOf(msg.sender);
-        }    
+        }
     }
 
     function _startNewMint() internal {
@@ -197,7 +194,7 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
         uint256 length = mintById[currentMint].entries.length;
         for (uint256 i; i < length; ++i) {
             weight = mintById[currentMint].entries[i].weight;
-            if(pseudoRandom < weight) return mintById[currentMint].entries[i].user;
+            if (pseudoRandom < weight) return mintById[currentMint].entries[i].user;
             pseudoRandom -= weight;
         }
         return address(burner);

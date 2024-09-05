@@ -2,10 +2,10 @@
 pragma solidity 0.8.25;
 
 import "forge-std/Script.sol";
-import {IBBitsCheckIn} from "../src/interfaces/IBBitsCheckIn.sol";
-import {Emobits} from "../src/Emobits.sol";
-import {IBBitsEmoji} from "../src/interfaces/IBBitsEmoji.sol";
-import {EmobitsArtInstall} from "./emoji/EmobitsArtInstall.sol";
+import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
+import {Emobits} from "@src/Emobits.sol";
+import {IBBitsEmoji} from "@src/interfaces/IBBitsEmoji.sol";
+import {EmobitsArtInstall} from "@script/emoji/EmobitsArtInstall.sol";
 
 /// @dev Deploy and initialise.
 contract EmobitsDeploy is Script, EmobitsArtInstall {
@@ -37,12 +37,9 @@ contract EmobitsSetArt is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        /// @dev input contract here
-        ///emoji = new Emobits();
-
-        uint256 count = emoji.currentRound();
+        uint256 count = emoji.currentMint();
         uint256[] memory tokenIds = new uint256[](count);
-        for (uint356 i; i < count; i++) {
+        for (uint256 i; i < count; i++) {
             tokenIds[i] = i;
         }
         emoji.setArt(tokenIds);

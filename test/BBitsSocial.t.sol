@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {
-BBitsTestUtils,
-console,
-BBitsSocial
-} from "./utils/BBitsTestUtils.sol";
+import {BBitsTestUtils, console, BBitsSocial} from "@test/utils/BBitsTestUtils.sol";
 
 contract BBitsSocialTest is BBitsTestUtils {
     event Message(address indexed sender, string message, uint256 timestamp);
@@ -37,7 +33,6 @@ contract BBitsSocialTest is BBitsTestUtils {
         vm.prank(user0);
         assertFalse(social.canPost(user0));
     }
-
 
     function testPostMessageWithUpdatedThreshold() public {
         setCheckInStreak(user0, 6);
@@ -72,7 +67,9 @@ contract BBitsSocialTest is BBitsTestUtils {
     function testFailPostMessageTooManyCharacters() public {
         setCheckInStreak(user0, 22);
         vm.prank(user0);
-        social.post("Today, I stumbled upon an old journal. Reading my past thoughts feels like meeting an old friend. Memories flood back, reminding me of who I am.");
+        social.post(
+            "Today, I stumbled upon an old journal. Reading my past thoughts feels like meeting an old friend. Memories flood back, reminding me of who I am."
+        );
     }
 
     function testFailPostMessageUserBanned() public {

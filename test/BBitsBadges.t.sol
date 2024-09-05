@@ -3,10 +3,9 @@ pragma solidity 0.8.25;
 
 import {IERC1155MetadataURI, IERC1155} from "@openzeppelin/token/ERC1155/ERC1155.sol";
 import {IAccessControl} from "@openzeppelin/access/AccessControl.sol";
-import {BBitsTestUtils, console} from "./utils/BBitsTestUtils.sol";
+import {BBitsTestUtils, console} from "@test/utils/BBitsTestUtils.sol";
 
 contract BBitsBadgesTest is BBitsTestUtils {
-
     address public minter;
 
     function setUp() public override {
@@ -29,11 +28,13 @@ contract BBitsBadgesTest is BBitsTestUtils {
         assertEq(badges.balanceOf(user0, 55), 1);
     }
 
-    function testTokenURI() public view { // Marked as view
+    function testTokenURI() public view {
+        // Marked as view
         assertEq(badges.uri(1), "https://basedbits.fun/api/badges/{id}");
     }
 
-    function testContractMetadataURI() public view { // Marked as view
+    function testContractMetadataURI() public view {
+        // Marked as view
         assertEq(badges.contractURI(), "https://basedbits.fun/api/badges");
     }
 
@@ -51,7 +52,7 @@ contract BBitsBadgesTest is BBitsTestUtils {
 
     function testSetTokenURI() public {
         vm.prank(owner);
-        badges.setURI('https://newuri.com/token/{id}.json');
+        badges.setURI("https://newuri.com/token/{id}.json");
         assertEq(badges.uri(1), "https://newuri.com/token/{id}.json");
     }
 

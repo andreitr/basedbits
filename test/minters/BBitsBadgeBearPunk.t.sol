@@ -1,16 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {
-    BBitsTestUtils, 
-    console,
-    BBitsCheckIn,
-    BBitsBadges,
-    BBitsBadgeBearPunk
-} from "../utils/BBitsTestUtils.sol";
+import {BBitsTestUtils, console, BBitsCheckIn, BBitsBadges, BBitsBadgeBearPunk} from "@test/utils/BBitsTestUtils.sol";
 
 contract BBitsBadgeBearPunkTest is BBitsTestUtils {
-
     uint256 constant tokenId = 0x0000000000000000000000000000000000000000000000000000000000000003;
 
     function testInit() public {

@@ -40,5 +40,5 @@ interface IBBitsEmoji {
     error IndicesMustBeMonotonicallyDecreasing();
 
     event Start(uint256 tokenId);
-    event End(uint256 tokenId, uint256 mints, address winner, uint256 reward, uint256 burned); 
+    event End(uint256 tokenId, uint256 mints, address winner, uint256 reward, uint256 burned);
 }

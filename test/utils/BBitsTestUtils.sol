@@ -6,27 +6,27 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import {IERC721Receiver} from "@openzeppelin/token/ERC721/IERC721Receiver.sol";
 import {IERC1155Receiver} from "@openzeppelin/token/ERC1155/IERC1155Receiver.sol";
-import {Reverter} from "./Reverter.sol";
+import {Reverter} from "@test/utils/Reverter.sol";
 
 // Core
-import {BBitsBadges} from "../../src/BBitsBadges.sol";
-import {BBitsCheckIn, IBBitsCheckIn} from "../../src/BBitsCheckIn.sol";
-import {BBitsSocial} from "../../src/BBitsSocial.sol";
-import {BBitsRaffle, IBBitsRaffle} from "../../src/BBitsRaffle.sol";
-import {BBITS} from "../../src/BBITS.sol";
-import {BBitsBurner, IBBitsBurner} from "../../src/BBitsBurner.sol";
-import {Emobits, Burner} from "../../src/Emobits.sol";
-import {IBBitsEmoji} from "../../src/interfaces/IBBitsEmoji.sol";
+import {BBitsBadges} from "@src/BBitsBadges.sol";
+import {BBitsCheckIn, IBBitsCheckIn} from "@src/BBitsCheckIn.sol";
+import {BBitsSocial} from "@src/BBitsSocial.sol";
+import {BBitsRaffle, IBBitsRaffle} from "@src/BBitsRaffle.sol";
+import {BBITS} from "@src/BBITS.sol";
+import {BBitsBurner, IBBitsBurner} from "@src/BBitsBurner.sol";
+import {Emobits, Burner} from "@src/Emobits.sol";
+import {IBBitsEmoji} from "@src/interfaces/IBBitsEmoji.sol";
 
 // Minters
-import {BBitsBadge7Day} from "../../src/minters/BBitsBadge7Day.sol";
-import {BBitsBadgeFirstClick} from "../../src/minters/BBitsBadgeFirstClick.sol";
-import {BBitsBadgeBearPunk} from "../../src/minters/BBitsBadgeBearPunk.sol";
+import {BBitsBadge7Day} from "@src/minters/BBitsBadge7Day.sol";
+import {BBitsBadgeFirstClick} from "@src/minters/BBitsBadgeFirstClick.sol";
+import {BBitsBadgeBearPunk} from "@src/minters/BBitsBadgeBearPunk.sol";
 
 // Mocks
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
-import {MockERC721} from "../mocks/MockERC721.sol";
+import {MockERC721} from "@test/mocks/MockERC721.sol";
 
 contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
     BBitsBadges public badges;
@@ -41,7 +41,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
     BBitsBadgeFirstClick public badgeFirstClickMinter;
     BBitsBadgeBearPunk public badgeBearPunkMinter;
 
-    IERC721 public basedBits; 
+    IERC721 public basedBits;
     IERC721 public bearPunks;
     IERC20 public WETH;
 
@@ -73,7 +73,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
         // Core
         badges = new BBitsBadges(owner);
         checkIn = new BBitsCheckIn(address(basedBits), owner);
-        social = new BBitsSocial(address(checkIn),8, 140, owner);
+        social = new BBitsSocial(address(checkIn), 8, 140, owner);
         raffle = new BBitsRaffle(owner, basedBits, checkIn);
         bbits = new BBITS(basedBits, 1024);
         emoji = new Emobits(owner, address(burner), checkIn);
@@ -96,7 +96,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
         assert(s);
         (s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mint(address)")), user1));
         assert(s);
-        
+
         (s,) = address(bearPunks).call(abi.encodeWithSelector(bytes4(keccak256("mint(address)")), user0));
         assert(s);
     }
@@ -117,32 +117,25 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
     fallback() external payable {}
     receive() external payable {}
 
-    function onERC721Received(
-        address,
-        address,
-        uint256,
-        bytes calldata
-    ) external override pure returns (bytes4) {
+    function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {
         return this.onERC721Received.selector;
     }
 
-    function onERC1155Received(
-        address,
-        address,
-        uint256,
-        uint256,
-        bytes calldata
-    ) external override pure returns (bytes4) {
+    function onERC1155Received(address, address, uint256, uint256, bytes calldata)
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return this.onERC1155Received.selector;
     }
 
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) external override pure returns (bytes4) {
+    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return this.onERC1155BatchReceived.selector;
     }
 
@@ -234,31 +227,31 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
         /// Background
         placeholder[0] = IBBitsEmoji.NamedBytes({
             core: '<rect x="112" y="112" width="800" height="800" fill="#E25858"/>',
-            name: 'AAA'
+            name: "AAA"
         });
         emoji.addArt(0, placeholder);
         /// Face
         placeholder[0] = IBBitsEmoji.NamedBytes({
             core: '<rect x="165" y="165" width="700" height="700" fill="#FFFF00"/>',
-            name: 'CCC'
+            name: "CCC"
         });
         emoji.addArt(1, placeholder);
         /// Hair
         placeholder[0] = IBBitsEmoji.NamedBytes({
             core: '<rect x="237" y="237" width="550" height="550" fill="#EF1F6A"/>',
-            name: 'DDD'
+            name: "DDD"
         });
         emoji.addArt(2, placeholder);
         /// Eyes
         placeholder[0] = IBBitsEmoji.NamedBytes({
             core: '<rect x="362" y="362" width="300" height="300" fill="#206300"/>',
-            name: 'FFF'
+            name: "FFF"
         });
         emoji.addArt(3, placeholder);
-        /// Mouth 
+        /// Mouth
         placeholder[0] = IBBitsEmoji.NamedBytes({
             core: '<rect x="462" y="462" width="100" height="100" fill="#ADFF00"/>',
-            name: 'HHH'
+            name: "HHH"
         });
         emoji.addArt(4, placeholder);
     }
