@@ -2,7 +2,7 @@
 pragma solidity 0.8.25;
 
 import "forge-std/Script.sol";
-import {BBitsBadgeFirstClick, BBitsBadges} from "../src/minters/BBitsBadgeFirstClick.sol";
+import {BBitsBadgeFirstClick, BBitsBadges} from "@src/minters/BBitsBadgeFirstClick.sol";
 
 contract BadgeDeploy is Script {
 

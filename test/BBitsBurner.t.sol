@@ -1,16 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {
-    BBitsTestUtils,
-    Reverter,
-    BBitsBurner,
-    IBBitsBurner,
-    BBITS,
-    IERC20,
-    console
-} from "./utils/BBitsTestUtils.sol";
-import {IV2Router, IV3Router} from "../src/BBitsBurner.sol";
+import {BBitsTestUtils, Reverter, BBitsBurner, IBBitsBurner, BBITS, IERC20, console} from "@test/utils/BBitsTestUtils.sol";
+import {IV2Router, IV3Router} from "@src/BBitsBurner.sol";
 import {ERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
 
 contract BBitsBurnerTest is BBitsTestUtils, IBBitsBurner {
@@ -42,14 +34,7 @@ contract BBitsBurnerTest is BBitsTestUtils, IBBitsBurner {
         WETH.approve(address(uniV2Router), ~uint256(0));
         bbits.approve(address(uniV2Router), ~uint256(0));
         uniV2Router.addLiquidity(
-            address(WETH),
-            address(bbits),
-            WETH.balanceOf(owner),
-            bbits.balanceOf(owner),
-            0,
-            0,
-            owner,
-            block.timestamp
+            address(WETH), address(bbits), WETH.balanceOf(owner), bbits.balanceOf(owner), 0, 0, owner, block.timestamp
         );
         vm.stopPrank();
     }
@@ -72,10 +57,7 @@ contract BBitsBurnerTest is BBitsTestUtils, IBBitsBurner {
 
     function testV2BuyandBurnFailureConditions() public prank(owner) {
         /// Change pool route
-        SwapParams memory newSwapParams = SwapParams({
-            pool: 2,
-            fee: 0
-        });
+        SwapParams memory newSwapParams = SwapParams({pool: 2, fee: 0});
         burner.setSwapParams(newSwapParams);
 
         /// Buy zero
@@ -120,10 +102,7 @@ contract BBitsBurnerTest is BBitsTestUtils, IBBitsBurner {
     }
 
     function testSetSwapParamsFailureConditions() public prank(owner) {
-        SwapParams memory newSwapParams = SwapParams({
-            pool: 4,
-            fee: 0
-        });
+        SwapParams memory newSwapParams = SwapParams({pool: 4, fee: 0});
         vm.expectRevert(InValidPoolParams.selector);
         burner.setSwapParams(newSwapParams);
     }
@@ -132,10 +111,7 @@ contract BBitsBurnerTest is BBitsTestUtils, IBBitsBurner {
 
     function testV2BuyandBurnSuccessConditions() public prank(owner) {
         /// Change pool route
-        SwapParams memory newSwapParams = SwapParams({
-            pool: 2,
-            fee: 0
-        });
+        SwapParams memory newSwapParams = SwapParams({pool: 2, fee: 0});
         burner.setSwapParams(newSwapParams);
 
         uint256 deadBalanceBefore = bbits.balanceOf(burner.dead());

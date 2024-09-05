@@ -2,10 +2,10 @@
 pragma solidity 0.8.25;
 
 import "forge-std/Script.sol";
-import {IBBitsCheckIn} from "../../src/interfaces/IBBitsCheckIn.sol";
-import {Emobits, Burner} from "../../src/Emobits.sol";
-import {IBBitsEmoji} from "../../src/interfaces/IBBitsEmoji.sol";
-import {EmobitsArtInstall} from "./EmobitsArtInstall.sol";
+import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
+import {Emobits, Burner} from "@src/Emobits.sol";
+import {IBBitsEmoji} from "@src/interfaces/IBBitsEmoji.sol";
+import {EmobitsArtInstall} from "@script/emoji/EmobitsArtInstall.sol";
 
 contract EmobitsSepoliaDeploy is Script, EmobitsArtInstall {
     function run() external {

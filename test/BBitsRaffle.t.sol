@@ -1,16 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {
-    BBitsTestUtils,
-    BBitsCheckIn,
-    BBitsRaffle,
-    console
-} from "./utils/BBitsTestUtils.sol";
+import {BBitsTestUtils, BBitsCheckIn, BBitsRaffle, console} from "@test/utils/BBitsTestUtils.sol";
 import {ERC721, IERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
-import {IBBitsRaffle} from "../src/interfaces/IBBitsRaffle.sol";
-import {MockBrokenSettleRafflePOC, Brick} from "./mocks/MockBrokenSettleRafflePOC.sol";
+import {IBBitsRaffle} from "@src/interfaces/IBBitsRaffle.sol";
+import {MockBrokenSettleRafflePOC, Brick} from "@test/mocks/MockBrokenSettleRafflePOC.sol";
 
 contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
     function setUp() public override {
@@ -152,14 +147,10 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         tokenIds[1] = ownerTokenIds[1];
         tokenIds[2] = ownerTokenIds[2];
         raffle.depositBasedBits(tokenIds);
-        
+
         /// @dev the entries array isn't returned
-        (
-            uint256 startedAt, 
-            uint256 settledAt, 
-            address winner, 
-            IBBitsRaffle.SponsoredPrize memory prize
-        ) = raffle.idToRaffle(1);
+        (uint256 startedAt, uint256 settledAt, address winner, IBBitsRaffle.SponsoredPrize memory prize) =
+            raffle.idToRaffle(1);
         uint256 numberOfEntries = raffle.getRaffleEntryNumber(1);
 
         assertEq(raffle.count(), 1);
@@ -171,18 +162,13 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         assertEq(prize.tokenId, 0);
         assertEq(numberOfEntries, 0);
         assert(raffle.status() == RaffleStatus.PendingRaffle);
-        //uint256 
+        //uint256
 
         vm.expectEmit(true, true, true, true);
         emit NewRaffleStarted(1);
         raffle.startNextRaffle();
 
-        (
-            startedAt, 
-            settledAt, 
-            winner, 
-            prize
-        ) = raffle.idToRaffle(1);
+        (startedAt, settledAt, winner, prize) = raffle.idToRaffle(1);
         numberOfEntries = raffle.getRaffleEntryNumber(1);
 
         assertEq(raffle.count(), 2);
@@ -348,7 +334,7 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
 
     function testSettleRaffleOneEntrySuccessConditions() public prank(owner) {
         setRaffleInMotionWithOnePaidEntry();
-        
+
         uint256 antiBotFee = raffle.antiBotFee();
         vm.warp(block.timestamp + 1.01 days);
         vm.roll(block.number + 2);
@@ -386,7 +372,7 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         vm.stopPrank();
         vm.startPrank(user0);
         raffle.newPaidEntry{value: antiBotFee}();
-        
+
         assertEq(basedBits.balanceOf(address(raffle)), 3);
         assertEq(address(raffle).balance, 2 * antiBotFee);
         uint256 ownerBalanceBefore = owner.balance;

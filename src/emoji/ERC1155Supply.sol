@@ -14,12 +14,11 @@ abstract contract ERC1155Supply is ERC1155 {
         total = totalBalances[account];
     }
 
-    function _update(
-        address from,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory values
-    ) internal virtual override {
+    function _update(address from, address to, uint256[] memory ids, uint256[] memory values)
+        internal
+        virtual
+        override
+    {
         super._update(from, to, ids, values);
         uint256 length = values.length;
         for (uint256 i; i < length; ++i) {

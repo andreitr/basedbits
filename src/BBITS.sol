@@ -4,11 +4,11 @@ pragma solidity 0.8.25;
 import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {ERC20} from "@openzeppelin/token/ERC20/ERC20.sol";
 import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
-import {IBBITS} from "./interfaces/IBBITS.sol";
+import {IBBITS} from "@src/interfaces/IBBITS.sol";
 
 /// @title  Based Bits Fungible Token
-/// @notice This contract allows Based Bits NFT holders to exchange their NFTs for a fungible ERC20 token 
-///         equivalent. The fungible tokens may also be exchanged back for NFTs, with the option of users 
+/// @notice This contract allows Based Bits NFT holders to exchange their NFTs for a fungible ERC20 token
+///         equivalent. The fungible tokens may also be exchanged back for NFTs, with the option of users
 ///         being able to decide which specific NFTs held by this contract are to be exchanged.
 contract BBITS is IBBITS, ERC20, ReentrancyGuard {
     /// @notice Based Bits NFT collection.
@@ -25,7 +25,7 @@ contract BBITS is IBBITS, ERC20, ReentrancyGuard {
         conversionRate = _conversionRate * (10 ** decimals());
     }
 
-    /// @notice This function allows users to exchange their NFTs for fungible tokens given the defined 
+    /// @notice This function allows users to exchange their NFTs for fungible tokens given the defined
     ///         conversion rate.
     /// @param  _tokenIds An array of Based Bits token Ids to exchange for fungible tokens.
     /// @dev    The user must grant this contract approval to move their NFTs.
@@ -40,8 +40,8 @@ contract BBITS is IBBITS, ERC20, ReentrancyGuard {
         _mint(msg.sender, length * conversionRate);
     }
 
-    /// @notice This function allows users to exchange their fungible BBITS tokens back to Based Bits NFTs. 
-    /// @param  _amount The amount of fungible tokens to exchange. This amount must be a multiple of the 
+    /// @notice This function allows users to exchange their fungible BBITS tokens back to Based Bits NFTs.
+    /// @param  _amount The amount of fungible tokens to exchange. This amount must be a multiple of the
     ///         conversion rate.
     function exchangeTokensForNFTs(uint256 _amount) external nonReentrant {
         if (_amount == 0) revert DepositZero();
@@ -55,13 +55,13 @@ contract BBITS is IBBITS, ERC20, ReentrancyGuard {
             tokenIds.pop();
         }
     }
-    
+
     /// @notice This function allows users to exchange their fungible BBITS tokens back to Based Bits NFTs.
     ///         Users can specify which NFTs held by this contract get exchanged with the _indices input array.
-    /// @param  _amount The amount of fungible tokens to exchange. This amount must be a multiple of the 
+    /// @param  _amount The amount of fungible tokens to exchange. This amount must be a multiple of the
     ///         conversion rate.
     /// @param  _indices An array of indices that specify which NFTs get exchanged. The indices correspond to
-    ///         the position of the NFTs held by this contract as recorded in the tokenIds array, and not the 
+    ///         the position of the NFTs held by this contract as recorded in the tokenIds array, and not the
     ///         the token Ids of the NFTs themselves.
     /// @dev    Elements in this indices array must be monotonically decreasing.
     function exchangeTokensForSpecificNFTs(uint256 _amount, uint256[] calldata _indices) external nonReentrant {
@@ -87,9 +87,9 @@ contract BBITS is IBBITS, ERC20, ReentrancyGuard {
         _count = tokenIds.length;
     }
 
-    /// @notice This view function returns the token Id of the Based Bit NFT in any given index location in the 
+    /// @notice This view function returns the token Id of the Based Bit NFT in any given index location in the
     ///         tokenIds array.
-    /// @param  _index The index location to query. 
+    /// @param  _index The index location to query.
     /// @return _tokenId The token Id that is held in the index location in the tokenIds array.
     function getTokenIdAtIndex(uint256 _index) public view returns (uint256 _tokenId) {
         if (_index >= tokenIds.length) revert IndexOutOfBounds();

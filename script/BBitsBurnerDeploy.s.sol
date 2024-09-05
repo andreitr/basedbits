@@ -2,7 +2,7 @@
 pragma solidity 0.8.25;
 
 import "forge-std/Script.sol";
-import {BBitsBurner, IV2Router, IV3Router} from "../src/BBitsBurner.sol";
+import {BBitsBurner, IV2Router, IV3Router} from "@src/BBitsBurner.sol";
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 
 contract BBitsBurnerDeploy is Script {
@@ -16,6 +16,7 @@ contract BBitsBurnerDeploy is Script {
         IV3Router uniV3Router = IV3Router(0x2626664c2603336E57B271c5C0b26F421741e481);
         address owner = 0x4FCfb1b0A8B44fE0A7c0DcfA4EF36d48d758C64D;
         BBitsBurner burner = new BBitsBurner(owner, WETH, bbits, uniV2Router, uniV3Router);
+        burner;
         vm.stopBroadcast();
     }
 }

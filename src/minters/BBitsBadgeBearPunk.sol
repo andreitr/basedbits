@@ -4,8 +4,8 @@ pragma solidity 0.8.25;
 import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
-import {BBitsCheckIn} from "../BBitsCheckIn.sol";
-import {BBitsBadges} from "../BBitsBadges.sol";
+import {BBitsCheckIn} from "@src/BBitsCheckIn.sol";
+import {BBitsBadges} from "@src/BBitsBadges.sol";
 
 contract BBitsBadgeBearPunk is Ownable, ReentrancyGuard {
     IERC721 public immutable bearPunks;
@@ -18,7 +18,7 @@ contract BBitsBadgeBearPunk is Ownable, ReentrancyGuard {
         IERC721 _bearPunks,
         BBitsCheckIn _checkInContractAddress,
         BBitsBadges _badgeContractAddress,
-        uint256 _tokenId, 
+        uint256 _tokenId,
         address _initialOwner
     ) Ownable(_initialOwner) {
         bearPunks = _bearPunks;

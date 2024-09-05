@@ -1,15 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {
-    BBitsTestUtils,
-    BBitsCheckIn,
-    BBitsRaffle,
-    console
-} from "../utils/BBitsTestUtils.sol";
+import {BBitsTestUtils, BBitsCheckIn, BBitsRaffle, console} from "@test/utils/BBitsTestUtils.sol";
 import {ERC721, IERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
-import {IBBitsRaffle} from "../../src/interfaces/IBBitsRaffle.sol";
+import {IBBitsRaffle} from "@src/interfaces/IBBitsRaffle.sol";
 
 contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
     function testFuzzDepositBasedBits(uint256 _length, address _sponsor) public {
@@ -17,9 +12,11 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
         vm.assume(_sponsor != address(0));
         vm.startPrank(_sponsor);
 
-        (,bytes memory data) = address(basedBits).staticcall(abi.encodeWithSelector(bytes4(keccak256("nonce()"))));
+        (, bytes memory data) = address(basedBits).staticcall(abi.encodeWithSelector(bytes4(keccak256("nonce()"))));
         uint256 nonce = abi.decode(data, (uint256));
-        (bool s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mintMany(address,uint256)")), _sponsor, _length));
+        (bool s,) = address(basedBits).call(
+            abi.encodeWithSelector(bytes4(keccak256("mintMany(address,uint256)")), _sponsor, _length)
+        );
         assert(s);
 
         uint256[] memory tokenIds;
@@ -66,14 +63,16 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
         ];
 
         bool s;
-        (,bytes memory data) = address(basedBits).staticcall(abi.encodeWithSelector(bytes4(keccak256("nonce()"))));
+        (, bytes memory data) = address(basedBits).staticcall(abi.encodeWithSelector(bytes4(keccak256("nonce()"))));
         uint256 nonce = abi.decode(data, (uint256));
 
         _amount0 = bound(_amount0, 1, 10);
         for (uint256 b; b < _amount0; b++) {
             vm.startPrank(users[b]);
 
-            (s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mintMany(address,uint256)")), users[b], 10));
+            (s,) = address(basedBits).call(
+                abi.encodeWithSelector(bytes4(keccak256("mintMany(address,uint256)")), users[b], 10)
+            );
             assert(s);
 
             vm.deal(users[b], 1e19);
@@ -86,7 +85,7 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
         _amount1 = bound(_amount1, 0, 1e18);
         uint256 antiBotFee = raffle.antiBotFee();
         vm.assume(_amount1 != antiBotFee);
-    
+
         (s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mint(address)")), owner));
         assert(s);
 
@@ -128,11 +127,11 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
         vm.stopPrank();
 
         /// Checks
-        
+
         assertEq(raffle.getRaffleEntryNumber(1), totalEntries + _amount0);
         assertEq(address(raffle).balance, 0);
 
-        (, , address winner,) = raffle.idToRaffle(1);
+        (,, address winner,) = raffle.idToRaffle(1);
         assertEq(basedBits.ownerOf(nonce - 1), winner);
 
         vm.expectRevert(NoBasedBitsToRaffle.selector);
@@ -155,7 +154,7 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
         ];
 
         bool s;
-        (,bytes memory data) = address(basedBits).staticcall(abi.encodeWithSelector(bytes4(keccak256("nonce()"))));
+        (, bytes memory data) = address(basedBits).staticcall(abi.encodeWithSelector(bytes4(keccak256("nonce()"))));
         uint256 nonce = abi.decode(data, (uint256));
 
         _amount0 = bound(_amount0, 1, 10);
@@ -163,7 +162,7 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
         for (uint256 b; b < _amount0; b++) {
             vm.deal(users[b], 1e19);
         }
-        
+
         _amount1 = bound(_amount1, 0, 1e18);
         uint256 antiBotFee = raffle.antiBotFee();
         vm.assume(_amount1 != antiBotFee);
@@ -240,9 +239,11 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
 
         basedBits.setApprovalForAll(address(raffle), true);
 
-        (,bytes memory data) = address(basedBits).staticcall(abi.encodeWithSelector(bytes4(keccak256("nonce()"))));
+        (, bytes memory data) = address(basedBits).staticcall(abi.encodeWithSelector(bytes4(keccak256("nonce()"))));
         uint256 nonce = abi.decode(data, (uint256));
-        (bool s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mintMany(address,uint256)")), user2, _amount));
+        (bool s,) = address(basedBits).call(
+            abi.encodeWithSelector(bytes4(keccak256("mintMany(address,uint256)")), user2, _amount)
+        );
         assert(s);
 
         uint256[] memory tokenIds = new uint256[](_amount);
@@ -253,7 +254,7 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
         vm.stopPrank();
         vm.startPrank(owner);
         raffle.setPaused(true);
-        
+
         (uint256 _tokenId, address _sponsor) = raffle.prizes(0);
         assertEq(basedBits.ownerOf(_tokenId), address(raffle));
         assertEq(basedBits.balanceOf(address(raffle)), _amount);
@@ -275,7 +276,7 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
     function testCheckInTime(uint256 _amount) public prank(owner) {
         _amount = bound(_amount, 0, 2 days - 1);
 
-        (,bytes memory data) = address(basedBits).staticcall(abi.encodeWithSelector(bytes4(keccak256("nonce()"))));
+        (, bytes memory data) = address(basedBits).staticcall(abi.encodeWithSelector(bytes4(keccak256("nonce()"))));
         uint256 nonce = abi.decode(data, (uint256));
         (bool s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mint(address)")), user0));
         assert(s);
@@ -288,7 +289,7 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
         vm.stopPrank();
         vm.startPrank(user0);
         checkIn.checkIn();
-        
+
         vm.warp(block.timestamp + _amount);
 
         basedBits.setApprovalForAll(address(raffle), true);
@@ -298,7 +299,7 @@ contract BBitsRaffleFuzz is BBitsTestUtils, IBBitsRaffle {
 
         raffle.depositBasedBits(tokenIds);
         raffle.startNextRaffle();
-        
+
         /// Valid free entry
         raffle.newFreeEntry();
         vm.stopPrank();

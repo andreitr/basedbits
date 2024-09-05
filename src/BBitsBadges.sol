@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {IBBitsBadges} from "./interfaces/IBBitsBadges.sol";
+import {IBBitsBadges} from "@src/interfaces/IBBitsBadges.sol";
 import {ERC1155} from "@openzeppelin/token/ERC1155/ERC1155.sol";
 import {AccessControl} from "@openzeppelin/access/AccessControl.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";

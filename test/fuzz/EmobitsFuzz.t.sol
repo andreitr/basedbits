@@ -1,17 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {
-    BBitsTestUtils, 
-    Emobits, 
-    IBBitsCheckIn,
-    Burner,
-    console
-} from "../utils/BBitsTestUtils.sol";
-import {IBBitsEmoji} from "../../src/interfaces/IBBitsEmoji.sol";
+import {BBitsTestUtils, Emobits, IBBitsCheckIn, Burner, console} from "@test/utils/BBitsTestUtils.sol";
+import {IBBitsEmoji} from "@src/interfaces/IBBitsEmoji.sol";
 import {Strings} from "@openzeppelin/utils/Strings.sol";
 
-/// @dev forge test --match-contract BBitsEmojiFuzzTest --gas-report
+/// @dev forge test --match-contract EmobitsFuzzTest --gas-report
 contract EmobitsFuzzTest is BBitsTestUtils, IBBitsEmoji {
     Burner public mockBurner;
     IBBitsCheckIn public mockCheckIn;
@@ -37,7 +31,7 @@ contract EmobitsFuzzTest is BBitsTestUtils, IBBitsEmoji {
         _loops = bound(_loops, 10, 5000);
         uint256 mintPrice = emoji.mintPrice();
 
-        for(uint256 i; i < _loops; i++) {
+        for (uint256 i; i < _loops; i++) {
             address user = makeAddr(Strings.toString(uint256(keccak256(abi.encodePacked(i, block.number)))));
             vm.deal(user, 1e18);
             vm.startPrank(user);
@@ -47,12 +41,13 @@ contract EmobitsFuzzTest is BBitsTestUtils, IBBitsEmoji {
 
         vm.warp(block.timestamp + 1.01 days);
 
-        uint256 pseudoRandom = uint256(keccak256(abi.encodePacked(block.number, block.timestamp))) % emoji.totalEntries(1);
+        uint256 pseudoRandom =
+            uint256(keccak256(abi.encodePacked(block.number, block.timestamp))) % emoji.totalEntries(1);
         uint256 weight;
         address expectedWinner;
         for (uint256 i; i < _loops + 1; ++i) {
             weight = emoji.userEntryByIndex(1, i).weight;
-            if(pseudoRandom < weight) {
+            if (pseudoRandom < weight) {
                 expectedWinner = emoji.userEntryByIndex(1, i).user;
                 break;
             } else {
@@ -62,11 +57,7 @@ contract EmobitsFuzzTest is BBitsTestUtils, IBBitsEmoji {
 
         vm.expectEmit(true, true, true, true);
         emit End(
-            1, 
-            _loops + 1, 
-            expectedWinner, 
-            (8000 * mintPrice * _loops) / 10_000, 
-            (2000 * mintPrice * _loops) / 10_000
+            1, _loops + 1, expectedWinner, (5000 * mintPrice * _loops) / 10_000, (5000 * mintPrice * _loops) / 10_000
         );
         emoji.mint();
 
@@ -82,8 +73,8 @@ contract EmobitsFuzzTest is BBitsTestUtils, IBBitsEmoji {
         address[5000] memory users;
 
         /// Initial raffles
-        for(uint256 i; i < _raffles; i++) {
-            for(uint256 j; j < _loops; j++) {
+        for (uint256 i; i < _raffles; i++) {
+            for (uint256 j; j < _loops; j++) {
                 if (i == 0) {
                     address user = makeAddr(Strings.toString(uint256(keccak256(abi.encodePacked(j, block.number)))));
                     users[j] = user;
@@ -98,19 +89,20 @@ contract EmobitsFuzzTest is BBitsTestUtils, IBBitsEmoji {
             emoji.mint();
         }
 
-        for(uint256 j; j < _loops; j++) { 
+        for (uint256 j; j < _loops; j++) {
             vm.startPrank(users[j]);
             emoji.mint{value: mintPrice}();
             vm.stopPrank();
         }
         vm.warp(block.timestamp + 1.01 days);
 
-        uint256 pseudoRandom = uint256(keccak256(abi.encodePacked(block.number, block.timestamp))) % emoji.totalEntries(_raffles + 1);
+        uint256 pseudoRandom =
+            uint256(keccak256(abi.encodePacked(block.number, block.timestamp))) % emoji.totalEntries(_raffles + 1);
         uint256 weight;
         address expectedWinner;
         for (uint256 i; i < _loops + 1; ++i) {
             weight = emoji.userEntryByIndex(_raffles + 1, i).weight;
-            if(pseudoRandom < weight) {
+            if (pseudoRandom < weight) {
                 expectedWinner = emoji.userEntryByIndex(_raffles + 1, i).user;
                 break;
             } else {
@@ -121,10 +113,10 @@ contract EmobitsFuzzTest is BBitsTestUtils, IBBitsEmoji {
         vm.expectEmit(true, true, true, true);
         emit End(
             _raffles + 1,
-            _loops + 1, 
-            expectedWinner, 
-            (8000 * mintPrice * _loops) / 10_000, 
-            (2000 * mintPrice * _loops) / 10_000
+            _loops + 1,
+            expectedWinner,
+            (5000 * mintPrice * _loops) / 10_000,
+            (5000 * mintPrice * _loops) / 10_000
         );
         emoji.mint();
 

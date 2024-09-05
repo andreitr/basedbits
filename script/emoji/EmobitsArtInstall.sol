@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {Emobits} from "../../src/Emobits.sol";
-import {IBBitsEmoji} from "../../src/interfaces/IBBitsEmoji.sol";
+import {Emobits} from "@src/Emobits.sol";
+import {IBBitsEmoji} from "@src/interfaces/IBBitsEmoji.sol";
 
 contract EmobitsArtInstall {
     Emobits public emoji;

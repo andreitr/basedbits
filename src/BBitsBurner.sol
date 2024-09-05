@@ -4,9 +4,9 @@ pragma solidity 0.8.25;
 import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
-import {IV2Router} from "./interfaces/uniswap/IV2Router.sol";
-import {IV3Router} from "./interfaces/uniswap/IV3Router.sol";
-import {IBBitsBurner} from "./interfaces/IBBitsBurner.sol";
+import {IV2Router} from "@src/interfaces/uniswap/IV2Router.sol";
+import {IV3Router} from "@src/interfaces/uniswap/IV3Router.sol";
+import {IBBitsBurner} from "@src/interfaces/IBBitsBurner.sol";
 
 /// @title  Based Bits Burner
 /// @notice This contract integrates with both Uniswap V2 and V3 to provide burning functionality for the
@@ -33,23 +33,16 @@ contract BBitsBurner is ReentrancyGuard, Ownable, IBBitsBurner {
     ///         uint24 fee
     SwapParams public swapParams;
 
-    constructor(
-        address _owner,
-        IERC20 _WETH,
-        IERC20 _BBITS,
-        IV2Router _uniV2Router,
-        IV3Router _uniV3Router
-    ) Ownable(_owner) {
+    constructor(address _owner, IERC20 _WETH, IERC20 _BBITS, IV2Router _uniV2Router, IV3Router _uniV3Router)
+        Ownable(_owner)
+    {
         WETH = _WETH;
         BBITS = _BBITS;
         uniV2Router = _uniV2Router;
         uniV3Router = _uniV3Router;
         WETH.approve(address(uniV2Router), ~uint256(0));
         WETH.approve(address(uniV3Router), ~uint256(0));
-        swapParams = SwapParams({
-            pool: 3,
-            fee: 3000
-        });
+        swapParams = SwapParams({pool: 3, fee: 3000});
     }
 
     receive() external payable {}
@@ -78,11 +71,7 @@ contract BBitsBurner is ReentrancyGuard, Ownable, IBBitsBurner {
             path[0] = address(WETH);
             path[1] = address(BBITS);
             uniV2Router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-                _amountIn,
-                _amountOut,
-                path,
-                dead,
-                block.timestamp
+                _amountIn, _amountOut, path, dead, block.timestamp
             );
         } else {
             IV3Router.ExactInputSingleParams memory params = IV3Router.ExactInputSingleParams({

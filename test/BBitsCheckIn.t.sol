@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {BBitsTestUtils, console} from "./utils/BBitsTestUtils.sol";
+import {BBitsTestUtils, console} from "@test/utils/BBitsTestUtils.sol";
 
 contract BBitsCheckInTest is BBitsTestUtils {
-
     function testInitialSettings() public view {
         assertEq(checkIn.collection(), address(basedBits));
     }
@@ -48,7 +47,7 @@ contract BBitsCheckInTest is BBitsTestUtils {
     function testStreakPreserveReset() public {
         vm.prank(user0);
         checkIn.checkIn();
-        vm.warp(block.timestamp + 1.01 days); 
+        vm.warp(block.timestamp + 1.01 days);
         vm.prank(user0);
         checkIn.checkIn();
         vm.warp(block.timestamp + 1.01 days);
@@ -59,7 +58,6 @@ contract BBitsCheckInTest is BBitsTestUtils {
         assertEq(streak, 3);
         assertEq(count, 3);
     }
-
 
     function testFailCheckInTooSoon() public {
         vm.prank(user0);
@@ -83,10 +81,11 @@ contract BBitsCheckInTest is BBitsTestUtils {
         assertTrue(checkIn.canCheckIn(user0));
     }
 
-
     function testFailCheckInBanned() public {
         address bannedUser = address(0x2);
-        (bool s,) = address(basedBits).call(abi.encodeWithSelector(bytes4(keccak256("mintMany(address,uint256)")), bannedUser, 2));
+        (bool s,) = address(basedBits).call(
+            abi.encodeWithSelector(bytes4(keccak256("mintMany(address,uint256)")), bannedUser, 2)
+        );
         assert(s);
         checkIn.ban(bannedUser);
         vm.prank(bannedUser);

@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
-import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
+import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
 
 contract BBitsSocial is Ownable, Pausable {
     address public checkInContract;
@@ -16,12 +16,9 @@ contract BBitsSocial is Ownable, Pausable {
     event ThresholdUpdated(uint16 newThreshold, uint256 timestamp);
     event CharacterLimitUpdated(uint8 newThreshold, uint256 timestamp);
 
-    constructor(
-        address _checkInContractAddress,
-        uint16 _streakThreshold,
-        uint16 _characterLimit,
-        address _initialOwner
-    ) Ownable(_initialOwner) {
+    constructor(address _checkInContractAddress, uint16 _streakThreshold, uint16 _characterLimit, address _initialOwner)
+        Ownable(_initialOwner)
+    {
         checkInContract = _checkInContractAddress;
         streakThreshold = _streakThreshold;
         characterLimit = _characterLimit;

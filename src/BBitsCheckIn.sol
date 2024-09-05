@@ -4,7 +4,7 @@ pragma solidity 0.8.25;
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
-import {IBBitsCheckIn} from "./interfaces/IBBitsCheckIn.sol";
+import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
 
 contract BBitsCheckIn is IBBitsCheckIn, Ownable, Pausable {
     address public collection;

@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {
-    BBitsTestUtils,
-    BBITS,
-    console
-} from "./utils/BBitsTestUtils.sol";
+import {BBitsTestUtils, BBITS, console} from "@test/utils/BBitsTestUtils.sol";
 import {ERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
-import {IBBITS} from "../src/interfaces/IBBITS.sol";
+import {IBBITS} from "@src/interfaces/IBBITS.sol";
 
 contract BBITSTest is BBitsTestUtils, IBBITS {
     function setUp() public override {
