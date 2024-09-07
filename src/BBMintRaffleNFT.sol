@@ -6,22 +6,29 @@ import {ERC1155} from "@openzeppelin/token/ERC1155/ERC1155.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {ERC1155Supply} from "@src/modules/ERC1155Supply.sol";
-import {BBitsEmojiArt} from "@src/modules/BBitsEmojiArt.sol";
+import {Filter8Art} from "@src/modules/Filter8Art.sol";
+/// @dev Need a new art contract also
 import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
 
-/// @title  Emobits
-/// @notice This contract allows users to participate in raffles by minting NFTs to win ETH.
+/// @title  BBMintRaffleNFT
+/// @notice This contract allows users to participate in raffles by minting NFTs to win 1 of 1s.
 /// @dev    The contract operates on a loop, where the creation of a new set of NFTs initiates a raffle.
 ///         Any user who mints that round's NFT will be entered into the raffle, with their raffle
 ///         weighting being equal to the total number of NFTs they have ever minted. After a
 ///         round has passed, the next mint settles the former raffle and provides the user with a
 ///         free mint. The Owner retains admin rights over pausability and the mintPrice.
-contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmojiArt {
+contract BBMintRaffleNFT is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, Filter8Art {
     /// @notice The BBITS burner contract that automates buy and burns
     Burner public immutable burner;
 
     /// @notice Based Bits checkin contract.
     IBBitsCheckIn public immutable checkIn;
+
+    /// @notice Filter8
+    address public immutable artist;
+
+    /// @notice The maximum number of NFTs.
+    uint256 public immutable cap;
 
     /// @notice Percentage of funds used to buy and burn the BBITS token.
     /// @dev    10_000 = 100%
@@ -52,21 +59,29 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
     mapping(uint256 => uint256) public totalEntries;
 
     /// @dev Begins paused to allow owner to add art.
-    constructor(address _owner, address _burner, IBBitsCheckIn _checkin) ERC1155("") Ownable(_owner) {
+    constructor(address _owner, address _artist, address _burner, uint256 _cap, IBBitsCheckIn _checkin)
+        ERC1155("")
+        Ownable(_owner)
+    {
+        artist = _artist;
         burner = Burner(_burner);
         checkIn = _checkin;
-        burnPercentage = 5000;
-        mintDuration = 8 hours;
+        burnPercentage = 2000;
+        mintDuration = 4 hours;
         mintPrice = 0.0008 ether;
+        cap = _cap;
         totalEntries[currentMint] = 1;
         _pause();
     }
 
-    receive() external payable {}
+    receive() external payable {
+        if (currentMint >= cap) revert CapExceeded();
+    }
 
     /// @notice This function provides the core functionality for this contract, including minting, creating
     ///         raffles, settling raffles, and generating new daily art.
     function mint() external payable nonReentrant whenNotPaused {
+        if (currentMint >= cap) revert CapExceeded();
         if (willMintSettleRaffle()) {
             _startNewMint();
             _mintEntry();
@@ -170,16 +185,20 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
     function _startNewMint() internal {
         /// Settle old raffle
         uint256 burned = currentMintBurnAmount();
-        uint256 reward = currentMintRaffleAmount();
+        uint256 artistReward = currentMintRaffleAmount();
         address winner = _settle();
         if (burned > 0) burner.burn{value: burned}(0);
-        (bool success,) = winner.call{value: reward}("");
+        (bool success,) = artist.call{value: artistReward}("");
         if (!success) revert TransferFailed();
-        mintById[currentMint].rewards = reward;
+        mintById[currentMint].rewards = artistReward;
+        mintById[currentMint].winningId = currentMint + 1;
         mintById[currentMint].burned = burned;
         mintById[currentMint].winner = winner;
         mintById[currentMint].settledAt = block.timestamp;
-        emit End(currentMint, mintById[currentMint].mints, winner, reward, burned);
+        emit End(currentMint, mintById[currentMint].mints, winner, artistReward, burned);
+        ++currentMint;
+        _set(currentMint);
+        _mint(winner, currentMint, 1, "");
         /// Start new raffle
         ++currentMint;
         _set(currentMint);
@@ -197,7 +216,7 @@ contract Emobits is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, BBitsEmoj
             if (pseudoRandom < weight) return mintById[currentMint].entries[i].user;
             pseudoRandom -= weight;
         }
-        return address(burner);
+        return address(artist);
     }
 }
 
