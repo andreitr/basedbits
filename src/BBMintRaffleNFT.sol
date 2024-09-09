@@ -6,8 +6,8 @@ import {ERC1155} from "@openzeppelin/token/ERC1155/ERC1155.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {ERC1155Supply} from "@src/modules/ERC1155Supply.sol";
-import {Filter8Art} from "@src/modules/Filter8Art.sol";
 /// @dev Need a new art contract also
+import {Filter8Art} from "@src/modules/Filter8Art.sol";
 import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
 
 /// @title  BBMintRaffleNFT
@@ -118,8 +118,7 @@ contract BBMintRaffleNFT is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, F
         return _draw(_tokenId);
     }
 
-    /// @notice This view function returns the current amount of ETH that will be awwarded to the daily
-    ///         raffle winner.
+    /// @notice This view function returns the current amount of ETH that will be awwarded to the artist.
     function currentMintRaffleAmount() public view returns (uint256) {
         return address(this).balance - currentMintBurnAmount();
     }

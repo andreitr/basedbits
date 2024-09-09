@@ -66,6 +66,10 @@ contract BBMintRaffleNFTTest is BBitsTestUtils, IBBMintRaffleNFT {
 
         vm.expectRevert(CapExceeded.selector);
         mintRaffle.mint{value: 0.001 ether}();
+
+        vm.expectRevert(CapExceeded.selector);
+        (bool s,) = address(mintRaffle).call{value: 1e16}("");
+        s;
     }
 
     function testMintEntrySuccessConditions() public prank(user1) {
@@ -447,6 +451,7 @@ contract BBMintRaffleNFTTest is BBitsTestUtils, IBBMintRaffleNFT {
 
         /// @dev To account for collisions
         while (keccak256(bytes(image0)) == keccak256(bytes(image1))) {
+            vm.warp(block.timestamp + 1);
             mintRaffle.setArt(tokenIds);
             image1 = mintRaffle.uri(0);
         }

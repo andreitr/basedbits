@@ -434,6 +434,7 @@ contract EmobitsTest is BBitsTestUtils, IBBitsEmoji {
         string memory image1 = emoji.uri(0);
         /// @dev To account for collisions
         while (keccak256(bytes(image0)) == keccak256(bytes(image1))) {
+            vm.warp(block.timestamp + 1);
             emoji.setArt(tokenIds);
             image1 = emoji.uri(0);
         }
