@@ -17,6 +17,8 @@ import {BBITS} from "@src/BBITS.sol";
 import {BBitsBurner, IBBitsBurner} from "@src/BBitsBurner.sol";
 import {Emobits, Burner} from "@src/Emobits.sol";
 import {IBBitsEmoji} from "@src/interfaces/IBBitsEmoji.sol";
+import {BBMintRaffleNFT} from "@src/BBMintRaffleNFT.sol";
+import {IBBMintRaffleNFT} from "@src/interfaces/IBBMintRaffleNFT.sol";
 
 // Minters
 import {BBitsBadge7Day} from "@src/minters/BBitsBadge7Day.sol";
@@ -36,6 +38,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
     BBITS public bbits;
     BBitsBurner public burner;
     Emobits public emoji;
+    BBMintRaffleNFT public mintRaffle;
 
     BBitsBadge7Day public badge7DayMinter;
     BBitsBadgeFirstClick public badgeFirstClickMinter;
@@ -77,6 +80,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
         raffle = new BBitsRaffle(owner, basedBits, checkIn);
         bbits = new BBITS(basedBits, 1024);
         emoji = new Emobits(owner, address(burner), checkIn);
+        mintRaffle = new BBMintRaffleNFT(owner, user0, address(burner), 100, checkIn);
 
         // Minters
         badge7DayMinter = new BBitsBadge7Day(checkIn, badges, 1, owner);
@@ -221,7 +225,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
 
     /// EMOJI ///
 
-    function addArt() internal prank(owner) {
+    function addArt() internal virtual prank(owner) {
         /// Load some art
         IBBitsEmoji.NamedBytes[] memory placeholder = new IBBitsEmoji.NamedBytes[](1);
         /// Background
