@@ -9,10 +9,10 @@ interface IBBMintRaffleNFT {
 
     struct Set {
         uint256 background;
-        uint256 face;
+        uint256 body;
         uint256 eyes;
-        uint256 mouth;
         uint256 hair;
+        uint256 mouth;
     }
 
     struct Entry {

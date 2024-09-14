@@ -6,23 +6,22 @@ import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {Strings} from "@openzeppelin/utils/Strings.sol";
 import {Base64} from "@openzeppelin/utils/Base64.sol";
 
-/// @notice Module of the BBitsEmoji collection that handles the art.
+/// @notice Module for the Filter8 collection that handles the art.
 abstract contract Filter8Art is Ownable, IBBMintRaffleNFT {
     /// @notice The storage for all art components
     /// @dev    Layout:
     ///         0: background
-    ///         1: face
+    ///         1: body
     ///         2: eyes
-    ///         3: mouth
-    ///         4: hair
+    ///         3: hair
+    ///         4: mouth
     mapping(uint256 => NamedBytes[]) public metadata;
 
     /// @notice The metadata components for any given NFT.
     mapping(uint256 => Set) public metadataForTokenId;
 
     /// @notice The description for the collection.
-    bytes public description =
-        "Inspired by the oldest known emojis (Sharp PI-4000, 1994), Emoji Bits (Onchain Summer Edition) is a fully on-chain NFT collection featuring experimental minting and gamification mechanisms. Every 8 hours, a new Emoji Bit is born! 50% of mint proceeds are raffled off to one lucky winner, while the rest are used to burn BBITS tokens. More -> https://www.basedbits.fun/emojibits";
+    bytes public description = "!!! ADD IN DESCRIPTION HERE !!!";
 
     /// @notice This function allows the owner to add art components to the metadata storage.
     /// @param  _array The mapping key to access the relevant array of components to be added.
@@ -78,22 +77,22 @@ abstract contract Filter8Art is Ownable, IBBMintRaffleNFT {
     function _draw(uint256 _tokenId) internal view returns (string memory) {
         Set memory art = metadataForTokenId[_tokenId];
         NamedBytes memory background = metadata[0][art.background];
-        NamedBytes memory face = metadata[1][art.face];
+        NamedBytes memory body = metadata[1][art.body];
         NamedBytes memory eyes = metadata[2][art.eyes];
-        NamedBytes memory mouth = metadata[3][art.mouth];
-        NamedBytes memory hair = metadata[4][art.hair];
+        NamedBytes memory hair = metadata[3][art.hair];
+        NamedBytes memory mouth = metadata[4][art.mouth];
 
         bytes memory svgHTML = abi.encodePacked(
-            '<svg width="420" height="420" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">',
+            '<svg width="800" height="800" viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">',
             background.core,
-            face.core,
+            body.core,
             eyes.core,
-            mouth.core,
             hair.core,
+            mouth.core,
             "</svg>"
         );
         svgHTML = abi.encodePacked(
-            '{"name": "Emoji Bit #',
+            '{"name": "Bit 98 #',
             bytes(Strings.toString(_tokenId)),
             '", "description": "',
             description,
@@ -105,14 +104,14 @@ abstract contract Filter8Art is Ownable, IBBMintRaffleNFT {
             svgHTML,
             ', "attributes": [{"trait_type": "Background", "value": "',
             background.name,
-            '"}, {"trait_type": "Face", "value": "',
-            face.name,
+            '"}, {"trait_type": "Body", "value": "',
+            body.name,
             '"}, {"trait_type": "Eyes", "value": "',
             eyes.name,
-            '"}, {"trait_type": "Mouth", "value": "',
-            mouth.name,
             '"}, {"trait_type": "Hair", "value": "',
             hair.name,
+            '"}, {"trait_type": "Mouth", "value": "',
+            mouth.name,
             '"}]}'
         );
 
@@ -123,10 +122,10 @@ abstract contract Filter8Art is Ownable, IBBMintRaffleNFT {
         uint256 seed = _getPseudoRandom(_tokenId, block.timestamp);
         Set memory newMetadataForTokenId = Set({
             background: _getPseudoRandom(seed, 0) % metadata[0].length,
-            face: _getPseudoRandom(seed, 1) % metadata[1].length,
+            body: _getPseudoRandom(seed, 1) % metadata[1].length,
             eyes: _getPseudoRandom(seed, 2) % metadata[2].length,
-            mouth: _getPseudoRandom(seed, 3) % metadata[3].length,
-            hair: _getPseudoRandom(seed, 4) % metadata[4].length
+            hair: _getPseudoRandom(seed, 3) % metadata[3].length,
+            mouth: _getPseudoRandom(seed, 4) % metadata[4].length
         });
         metadataForTokenId[_tokenId] = newMetadataForTokenId;
     }

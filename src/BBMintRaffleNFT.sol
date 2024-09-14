@@ -6,7 +6,6 @@ import {ERC1155} from "@openzeppelin/token/ERC1155/ERC1155.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {ERC1155Supply} from "@src/modules/ERC1155Supply.sol";
-/// @dev Need a new art contract also
 import {Filter8Art} from "@src/modules/Filter8Art.sol";
 import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
 
