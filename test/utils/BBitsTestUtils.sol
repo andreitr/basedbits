@@ -113,7 +113,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
 
         owner = 0x1d671d1B191323A38490972D58354971E5c1cd2A;
         /// @dev Use this to access owner token Ids to allow for easy test updating
-        ownerTokenIds = [5190, 2418, 2419, 2421, 2620];
+        ownerTokenIds = [275, 2352, 2648, 6845, 5537];
     }
 
     /// ON RECEIVED ///

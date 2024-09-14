@@ -461,7 +461,7 @@ contract BBMintRaffleNFTTest is BBitsTestUtils, IBBMintRaffleNFT {
     function testSetDescription() public prank(owner) {
         assertEq(
             mintRaffle.description(),
-            "Inspired by the oldest known emojis (Sharp PI-4000, 1994), Emoji Bits (Onchain Summer Edition) is a fully on-chain NFT collection featuring experimental minting and gamification mechanisms. Every 8 hours, a new Emoji Bit is born! 50% of mint proceeds are raffled off to one lucky winner, while the rest are used to burn BBITS tokens. More -> https://www.basedbits.fun/emojibits"
+            "!!! ADD IN DESCRIPTION HERE !!!"
         );
         bytes memory newDescription = "ARTY ART";
         mintRaffle.setDescription(newDescription);
