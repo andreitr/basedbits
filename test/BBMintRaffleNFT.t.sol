@@ -459,10 +459,7 @@ contract BBMintRaffleNFTTest is BBitsTestUtils, IBBMintRaffleNFT {
     }
 
     function testSetDescription() public prank(owner) {
-        assertEq(
-            mintRaffle.description(),
-            "!!! ADD IN DESCRIPTION HERE !!!"
-        );
+        assertEq(mintRaffle.description(), "!!! ADD IN DESCRIPTION HERE !!!");
         bytes memory newDescription = "ARTY ART";
         mintRaffle.setDescription(newDescription);
         assertEq(mintRaffle.description(), newDescription);
