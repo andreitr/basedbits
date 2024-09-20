@@ -118,7 +118,7 @@ contract BBMintRaffleNFT is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, F
     }
 
     /// @notice This view function returns the current amount of ETH that will be awwarded to the artist.
-    function currentMintRaffleAmount() public view returns (uint256) {
+    function currentMintArtistReward() public view returns (uint256) {
         return address(this).balance - currentMintBurnAmount();
     }
 
@@ -183,7 +183,7 @@ contract BBMintRaffleNFT is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, F
     function _startNewMint() internal {
         /// Settle old raffle
         uint256 burned = currentMintBurnAmount();
-        uint256 artistReward = currentMintRaffleAmount();
+        uint256 artistReward = currentMintArtistReward();
         address winner = _settle();
         if (burned > 0) burner.burn{value: burned}(0);
         (bool success,) = artist.call{value: artistReward}("");
@@ -197,6 +197,8 @@ contract BBMintRaffleNFT is ERC1155Supply, ReentrancyGuard, Ownable, Pausable, F
         ++currentMint;
         _set(currentMint);
         _mint(winner, currentMint, 1, "");
+        mintById[currentMint].winner = winner;
+        mintById[currentMint].settledAt = block.timestamp;
         /// Start new raffle
         ++currentMint;
         _set(currentMint);

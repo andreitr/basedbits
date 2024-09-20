@@ -15,7 +15,8 @@ gas_reports = [
     "BBitsBadgeFirstClick",
     "BBitsBadgeBearPunk",
     "BBitsRaffle",
-    "BBitsEmoji"
+    "BBitsEmoji",
+    "BBitsSocialRewards"
 ]
 
 remappings = [
