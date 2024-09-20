@@ -7,6 +7,9 @@ import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {IBBitsSocialRewards} from "@src/interfaces/IBBitsSocialRewards.sol";
 
+/// @title  BBitsSocialRewards
+/// @notice This contract allows users to post links for approval by the owner. If approved, users recieve a pro rata
+///         share of BBITs tokens.
 contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialRewards {
     /// @notice Based Bits fungible token.
     IERC20 public immutable BBITS;
@@ -44,6 +47,10 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialR
 
     /// EXTERNAL ///
 
+    /// @notice This function allows users to post links for approval in the current round.
+    /// @param  _link The link to the post as a string.
+    /// @dev    Must be in InRound status.
+    ///         Round must be active.
     function submitPost(string calldata _link) external nonReentrant whenNotPaused {
         if (status != RewardsStatus.InRound) revert WrongStatus();
         if (block.timestamp - round[count].startedAt > duration) revert RoundExpired();
@@ -53,6 +60,9 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialR
         emit NewEntry(count, round[count].entriesCount, msg.sender, _link);
     }
 
+    /// @notice This function allows anyone to deposit BBITs to rewarded approved posts.
+    /// @param  _amount The amount of BBITs to deposit.
+    /// @dev    The user must have granted this contract approval to move their BBITS tokens.
     function depositBBITS(uint256 _amount) external nonReentrant {
         if (_amount == 0) revert AmountZero();
         BBITS.transferFrom(msg.sender, address(this), _amount);
@@ -60,6 +70,10 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialR
 
     /// OWNER ///
 
+    /// @notice This function allows the owner to approve a set of posts.
+    /// @param  _entryIds An array of entry Ids that correspond to posts.
+    /// @dev    Once posts are approved they can not be revoked.
+    ///         Must be in InRound status.
     function approvePosts(uint256[] calldata _entryIds) external nonReentrant onlyOwner {
         if (status != RewardsStatus.InRound) revert WrongStatus();
         uint256 length = _entryIds.length;
@@ -70,12 +84,19 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialR
         round[count].rewardedCount += length;
     }
 
+    /// @notice This function allows the owner to settle the current round. This distributes BBITS to users whose posts
+    ///         have been approved. The owner also receives some BBITs tokens.
+    /// @dev    Must be in InRound status.
+    ///         Round must no longer be active.
     function settleCurrentRound() external nonReentrant onlyOwner {
         if (status != RewardsStatus.InRound) revert WrongStatus();
         if (block.timestamp - round[count].startedAt <= duration) revert RoundActive();
         _settle();
     }
 
+    /// @notice This function allows the owner to begin the next round.
+    /// @dev    Must be in PendingRound status.
+    ///         A sufficient number of BBITs tokens must be held by the contract for the next round to begin.
     function startNextRound() external nonReentrant onlyOwner {
         if (status != RewardsStatus.PendingRound) revert WrongStatus();
         if (BBITS.balanceOf(address(this)) <= totalRewardsPerRound) revert InsufficientRewards();
@@ -101,6 +122,10 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialR
 
     /// VIEW ///
 
+    /// @notice This view function returns the entry information for any given round and entry Id.
+    /// @param  _round The round Id.
+    /// @param  _entryId The entry Id in the round.
+    /// @return entry The user entry information.
     function getEntryInfoForId(uint256 _round, uint256 _entryId) external view returns (Entry memory entry) {
         if (_entryId >= round[_round].entries.length) revert IndexOutOfBounds();
         entry = round[_round].entries[_entryId];
@@ -110,7 +135,7 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialR
 
     function _settle() internal {
         uint256 userRewards;
-        uint256 adminReward = totalRewardsPerRound;
+        uint256 adminReward;
         uint256 rewardedCount = round[count].rewardedCount;
         if (rewardedCount != 0) {
             uint256 totalUserRewards = (totalRewardsPerRound * rewardPercentage) / 10_000;

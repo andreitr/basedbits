@@ -44,7 +44,7 @@ contract BBMintRaffleNFTTest is BBitsTestUtils, IBBMintRaffleNFT {
         assertEq(mintRaffle.mintDuration(), 4 hours);
         assertEq(mintRaffle.mintPrice(), 0.0008 ether);
         assertEq(mintRaffle.totalEntries(0), 1);
-        assertEq(mintRaffle.currentMintRaffleAmount(), 0);
+        assertEq(mintRaffle.currentMintArtistReward(), 0);
         assertEq(mintRaffle.currentMintBurnAmount(), 0);
         assertEq(mintRaffle.currentMint(), 2);
     }
@@ -192,7 +192,7 @@ contract BBMintRaffleNFTTest is BBitsTestUtils, IBBMintRaffleNFT {
 
         /// Balances and reward/burn amounts before
         assertEq(address(mintRaffle).balance, 0);
-        assertEq(mintRaffle.currentMintRaffleAmount(), 0);
+        assertEq(mintRaffle.currentMintArtistReward(), 0);
         assertEq(mintRaffle.currentMintBurnAmount(), 0);
 
         /// Mint and enter raffle
@@ -212,7 +212,7 @@ contract BBMintRaffleNFTTest is BBitsTestUtils, IBBMintRaffleNFT {
 
         /// Balances and reward/burn amounts after
         assertEq(address(mintRaffle).balance, mintPrice);
-        assertEq(mintRaffle.currentMintRaffleAmount(), (8000 * mintPrice) / 10_000);
+        assertEq(mintRaffle.currentMintArtistReward(), (8000 * mintPrice) / 10_000);
         assertEq(mintRaffle.currentMintBurnAmount(), (2000 * mintPrice) / 10_000);
 
         uint256 user0BalanceBeforeSettlement = address(user0).balance;
@@ -241,7 +241,7 @@ contract BBMintRaffleNFTTest is BBitsTestUtils, IBBMintRaffleNFT {
         assertEq(mintRaffle.balanceOf(winner, 3), 1);
 
         assertEq(address(mintRaffle).balance, 0);
-        assertEq(mintRaffle.currentMintRaffleAmount(), 0);
+        assertEq(mintRaffle.currentMintArtistReward(), 0);
         assertEq(mintRaffle.currentMintBurnAmount(), 0);
         assertEq(user0BalanceBeforeSettlement + (8000 * mintPrice) / 10_000, address(user0).balance);
 

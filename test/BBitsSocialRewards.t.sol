@@ -166,45 +166,159 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
     }
 
     /// SETTLE CURRENT ROUND ///
-    
-    /*
-    (
-        uint256 startedAt,
-        uint256 settledAt,
-        uint256 userReward,
-        uint256 adminReward,
-        uint256 entriesCount,
-        uint256 rewardedCount
-    ) = socialRewards.round(1);
-    */
 
     function testSettleCurrentRoundRevertConditions() public prank(owner) {
         /// Wrong status
-
+        vm.expectRevert(WrongStatus.selector);
+        socialRewards.settleCurrentRound();
 
         /// Round active
+        socialRewards.depositBBITS(2048e18);
+        socialRewards.startNextRound();
+
+        vm.expectRevert(RoundActive.selector);
+        socialRewards.settleCurrentRound();
     }
 
-    /// START NEW ROUND ///
+    function testSettleCurrentRoundSuccessConditionsWithoutApprovals() public prank(owner) {
+        socialRewards.depositBBITS(2048e18);
+        socialRewards.startNextRound();
 
-    /*
-    function testGas() public prank(user0) {
-        for (uint256 i; i < 1000; i++) {
-            socialRewards.submitPost(link);
-        }
-        
+        uint256 startTime = block.timestamp;
+
+        (
+            uint256 startedAt,
+            uint256 settledAt,
+            uint256 userReward,
+            uint256 adminReward,
+            uint256 entriesCount,
+            uint256 rewardedCount
+        ) = socialRewards.round(1);
+        assertEq(startedAt, startTime);
+        assertEq(settledAt, 0);
+        assertEq(userReward, 0);
+        assertEq(adminReward, 0);
+        assertEq(entriesCount, 0);
+        assertEq(rewardedCount, 0);
+        assert(socialRewards.status() == RewardsStatus.InRound);
+        assertEq(bbits.balanceOf(address(socialRewards)), 2048e18);
+
         vm.warp(block.timestamp + 100 days);
+
+        vm.expectEmit(true, true, true, true);
+        emit End(1, 0, 0);
+        socialRewards.settleCurrentRound();
+
+        (startedAt, settledAt, userReward, adminReward, entriesCount, rewardedCount) = socialRewards.round(1);
+        assertEq(startedAt, startTime);
+        assertEq(settledAt, block.timestamp);
+        assertEq(userReward, 0);
+        assertEq(adminReward, 0);
+        assertEq(entriesCount, 0);
+        assertEq(rewardedCount, 0);
+        assert(socialRewards.status() == RewardsStatus.PendingRound);
+        assertEq(bbits.balanceOf(address(socialRewards)), 2048e18);
+    }
+
+    function testSettleCurrentRoundSuccessConditionsWithApprovals() public prank(owner) {
+        socialRewards.depositBBITS(2048e18);
+        socialRewards.startNextRound();
+
+        uint256 startTime = block.timestamp;
+
+        vm.stopPrank();
+        vm.startPrank(user0);
+
+        (uint256 startedAt, uint256 settledAt, uint256 userReward, uint256 adminReward,, uint256 rewardedCount) =
+            socialRewards.round(1);
+        assertEq(startedAt, startTime);
+        assertEq(settledAt, 0);
+        assertEq(userReward, 0);
+        assertEq(adminReward, 0);
+        assertEq(rewardedCount, 0);
+        assert(socialRewards.status() == RewardsStatus.InRound);
+        assertEq(bbits.balanceOf(address(socialRewards)), 2048e18);
+
+        socialRewards.submitPost(link);
 
         vm.stopPrank();
         vm.startPrank(owner);
 
-        uint256[] memory entryIds = new uint256[](100);
-        for (uint256 j; j < 100; j++) {
-            entryIds[j] = j;
-        }
+        vm.warp(block.timestamp + 100 days);
 
+        uint256[] memory entryIds = new uint256[](1);
         socialRewards.approvePosts(entryIds);
+
+        uint256 predictedUserRewards = ((1024e18 * 9000) / 10_000) / 1;
+        uint256 predictedAdminRewards = 1024e18 - ((1024e18 * 9000) / 10_000);
+
+        uint256 user0BalanceBefore = bbits.balanceOf(user0);
+        uint256 ownerBalanceBefore = bbits.balanceOf(owner);
+
+        vm.expectEmit(true, true, true, true);
+        emit End(1, 1, predictedUserRewards);
         socialRewards.settleCurrentRound();
+
+        (startedAt, settledAt, userReward, adminReward,, rewardedCount) = socialRewards.round(1);
+        assertEq(startedAt, startTime);
+        assertEq(settledAt, block.timestamp);
+        assertEq(userReward, predictedUserRewards);
+        assertEq(adminReward, predictedAdminRewards);
+        assertEq(rewardedCount, 1);
+        assert(socialRewards.status() == RewardsStatus.PendingRound);
+        assertEq(bbits.balanceOf(address(socialRewards)), 1024e18);
+        assertEq(bbits.balanceOf(user0), user0BalanceBefore + predictedUserRewards);
+        assertEq(bbits.balanceOf(owner), ownerBalanceBefore + predictedAdminRewards);
     }
-    */
+
+    /// START NEW ROUND ///
+
+    function testStartNextRoundRevertConditions() public prank(owner) {
+        /// Insufficient rewards
+        vm.expectRevert(InsufficientRewards.selector);
+        socialRewards.startNextRound();
+
+        /// Wrong status
+        socialRewards.depositBBITS(2048e18);
+        socialRewards.startNextRound();
+
+        vm.expectRevert(WrongStatus.selector);
+        socialRewards.startNextRound();
+    }
+
+    /// OWNER ///
+
+    function testSetPaused() public prank(owner) {
+        assertEq(socialRewards.paused(), false);
+
+        socialRewards.setPaused(true);
+        assertEq(socialRewards.paused(), true);
+
+        socialRewards.setPaused(false);
+        assertEq(socialRewards.paused(), false);
+    }
+
+    function testSetDuration() public prank(owner) {
+        assertEq(socialRewards.duration(), 7 days);
+
+        socialRewards.setDuration(100 days);
+        assertEq(socialRewards.duration(), 100 days);
+    }
+
+    function testSetTotalRewardsPerRound() public prank(owner) {
+        assertEq(socialRewards.totalRewardsPerRound(), 1024e18);
+
+        socialRewards.setTotalRewardsPerRound(2048e18);
+        assertEq(socialRewards.totalRewardsPerRound(), 2048e18);
+    }
+
+    function testSetRewardPercentage() public prank(owner) {
+        assertEq(socialRewards.rewardPercentage(), 9000);
+
+        socialRewards.setRewardPercentage(1000);
+        assertEq(socialRewards.rewardPercentage(), 1000);
+
+        vm.expectRevert(InvalidPercentage.selector);
+        socialRewards.setRewardPercentage(10001);
+    }
 }
