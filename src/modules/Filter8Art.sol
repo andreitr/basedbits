@@ -21,7 +21,7 @@ abstract contract Filter8Art is Ownable, IBBMintRaffleNFT {
     mapping(uint256 => Set) public metadataForTokenId;
 
     /// @notice The description for the collection.
-    bytes public description = "!!! ADD IN DESCRIPTION HERE !!!";
+    bytes public description = "Bit98 is a fully on-chain pixel art collection by filter8.eth. Inspired by the color aesthetics of Windows 98, the collection features a novel minting and gamification mechanism, with a new Bit98 generated every 4 hours. At the end of the minting period, a single-edition NFT will be raffled off to one of the minters. Only 512 Bit98s will ever exist! Mint at https://www.basedbits.fun";
 
     /// @notice This function allows the owner to add art components to the metadata storage.
     /// @param  _array The mapping key to access the relevant array of components to be added.
@@ -92,7 +92,7 @@ abstract contract Filter8Art is Ownable, IBBMintRaffleNFT {
             "</svg>"
         );
         svgHTML = abi.encodePacked(
-            '{"name": "Bit 98 #',
+            '{"name": "Bit98 #',
             bytes(Strings.toString(_tokenId)),
             '", "description": "',
             description,

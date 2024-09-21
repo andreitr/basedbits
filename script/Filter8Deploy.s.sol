@@ -8,7 +8,7 @@ import {IBBMintRaffleNFT} from "@src/interfaces/IBBMintRaffleNFT.sol";
 import {Filter8ArtInstall} from "@script/filter8/Filter8ArtInstall.sol";
 
 contract Filter8Deploy is Script, Filter8ArtInstall {
-    address public artist;
+    address public artist = 0x019B0EE245fb09aaf92aC93Ca3309832B7974681;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -18,7 +18,7 @@ contract Filter8Deploy is Script, Filter8ArtInstall {
             msg.sender,
             artist,
             0x1595409cbAEf3dD2485107fb1e328fA0fA505c10,
-            100,
+            512,
             IBBitsCheckIn(0xE842537260634175891925F058498F9099C102eB)
         );
 
