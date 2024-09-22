@@ -8,6 +8,7 @@ import {IBBMintRaffleNFT} from "@src/interfaces/IBBMintRaffleNFT.sol";
 import {Filter8ArtInstall} from "@script/filter8/Filter8ArtInstall.sol";
 
 contract Filter8Deploy is Script, Filter8ArtInstall {
+    //    filter8.eth
     address public artist = 0x019B0EE245fb09aaf92aC93Ca3309832B7974681;
 
     function run() external {
