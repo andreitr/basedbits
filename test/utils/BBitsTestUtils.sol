@@ -20,6 +20,7 @@ import {IBBitsEmoji} from "@src/interfaces/IBBitsEmoji.sol";
 import {BBMintRaffleNFT} from "@src/BBMintRaffleNFT.sol";
 import {IBBMintRaffleNFT} from "@src/interfaces/IBBMintRaffleNFT.sol";
 import {BBitsSocialRewards} from "@src/BBitsSocialRewards.sol";
+import {BBitsBurnerNFT} from "@src/BBitsBurnerNFT.sol";
 
 // Minters
 import {BBitsBadge7Day} from "@src/minters/BBitsBadge7Day.sol";
@@ -41,6 +42,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
     Emobits public emoji;
     BBMintRaffleNFT public mintRaffle;
     BBitsSocialRewards public socialRewards;
+    BBitsBurnerNFT public burnerNFT;
 
     BBitsBadge7Day public badge7DayMinter;
     BBitsBadgeFirstClick public badgeFirstClickMinter;

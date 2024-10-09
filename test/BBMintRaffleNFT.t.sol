@@ -459,7 +459,10 @@ contract BBMintRaffleNFTTest is BBitsTestUtils, IBBMintRaffleNFT {
     }
 
     function testSetDescription() public prank(owner) {
-        assertEq(mintRaffle.description(), "Bit98 is a fully on-chain pixel art collection by filter8.eth. Inspired by the color aesthetics of Windows 98, the collection features a novel minting and gamification mechanism, with a new Bit98 generated every 4 hours. At the end of the minting period, a single-edition NFT will be raffled off to one of the minters. Only 512 Bit98s will ever exist! Mint at https://www.basedbits.fun");
+        assertEq(
+            mintRaffle.description(),
+            "Bit98 is a fully on-chain pixel art collection by filter8.eth. Inspired by the color aesthetics of Windows 98, the collection features a novel minting and gamification mechanism, with a new Bit98 generated every 4 hours. At the end of the minting period, a single-edition NFT will be raffled off to one of the minters. Only 512 Bit98s will ever exist! Mint at https://www.basedbits.fun"
+        );
         bytes memory newDescription = "ARTY ART";
         mintRaffle.setDescription(newDescription);
         assertEq(mintRaffle.description(), newDescription);
