@@ -4,13 +4,17 @@ pragma solidity 0.8.25;
 import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {IBBitsSocialRewards} from "@src/interfaces/IBBitsSocialRewards.sol";
 
 /// @title  BBitsSocialRewards
-/// @notice This contract allows users to post links for approval by the owner. If approved, users recieve a pro rata
+/// @notice This contract allows users to post links for approval by the admin. If approved, users recieve a pro rata
 ///         share of BBITs tokens.
-contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialRewards {
+contract BBitsSocialRewards is ReentrancyGuard, Pausable, AccessControl, IBBitsSocialRewards {
+    /// @notice Admin role key that allows a user to approve posts.
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN");
+
     /// @notice Based Bits fungible token.
     IERC20 public immutable BBITS;
 
@@ -36,7 +40,8 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialR
     /// @notice Round information, including all entries.
     mapping(uint256 => Round) public round;
 
-    constructor(address _owner, IERC20 _BBITS) Ownable(_owner) {
+    constructor(address _owner, IERC20 _BBITS) {
+        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
         BBITS = _BBITS;
         status = RewardsStatus.PendingRound;
         count = 0;
@@ -68,13 +73,13 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialR
         BBITS.transferFrom(msg.sender, address(this), _amount);
     }
 
-    /// OWNER ///
+    /// ADMIN ///
 
     /// @notice This function allows the owner to approve a set of posts.
     /// @param  _entryIds An array of entry Ids that correspond to posts.
     /// @dev    Once posts are approved they can not be revoked.
     ///         Must be in InRound status.
-    function approvePosts(uint256[] calldata _entryIds) external nonReentrant onlyOwner {
+    function approvePosts(uint256[] calldata _entryIds) external nonReentrant onlyRole(ADMIN_ROLE) {
         if (status != RewardsStatus.InRound) revert WrongStatus();
         uint256 length = _entryIds.length;
         for (uint256 i; i < length; i++) {
@@ -84,11 +89,13 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialR
         round[count].rewardedCount += length;
     }
 
+    /// OWNER ///
+
     /// @notice This function allows the owner to settle the current round. This distributes BBITS to users whose posts
     ///         have been approved. The owner also receives some BBITs tokens.
     /// @dev    Must be in InRound status.
     ///         Round must no longer be active.
-    function settleCurrentRound() external nonReentrant onlyOwner {
+    function settleCurrentRound() external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
         if (status != RewardsStatus.InRound) revert WrongStatus();
         if (block.timestamp - round[count].startedAt <= duration) revert RoundActive();
         _settle();
@@ -97,25 +104,25 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialR
     /// @notice This function allows the owner to begin the next round.
     /// @dev    Must be in PendingRound status.
     ///         A sufficient number of BBITs tokens must be held by the contract for the next round to begin.
-    function startNextRound() external nonReentrant onlyOwner {
+    function startNextRound() external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
         if (status != RewardsStatus.PendingRound) revert WrongStatus();
         if (BBITS.balanceOf(address(this)) <= totalRewardsPerRound) revert InsufficientRewards();
         _startNextRound();
     }
 
-    function setPaused(bool _setPaused) external onlyOwner {
+    function setPaused(bool _setPaused) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setPaused ? _pause() : _unpause();
     }
 
-    function setDuration(uint256 _newDuration) external onlyOwner {
+    function setDuration(uint256 _newDuration) external onlyRole(DEFAULT_ADMIN_ROLE) {
         duration = _newDuration;
     }
 
-    function setTotalRewardsPerRound(uint256 _newTotalRewardsPerRound) external onlyOwner {
+    function setTotalRewardsPerRound(uint256 _newTotalRewardsPerRound) external onlyRole(DEFAULT_ADMIN_ROLE) {
         totalRewardsPerRound = _newTotalRewardsPerRound;
     }
 
-    function setRewardPercentage(uint256 _newRewardPercentage) external onlyOwner {
+    function setRewardPercentage(uint256 _newRewardPercentage) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_newRewardPercentage > 10_000) revert InvalidPercentage();
         rewardPercentage = _newRewardPercentage;
     }
@@ -145,7 +152,7 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, Ownable, IBBitsSocialR
             for (uint256 i; i < length; i++) {
                 if (round[count].entries[i].approved) BBITS.transfer(round[count].entries[i].user, userRewards);
             }
-            BBITS.transfer(owner(), totalRewardsPerRound - (userRewards * rewardedCount));
+            BBITS.transfer(msg.sender, totalRewardsPerRound - (userRewards * rewardedCount));
         }
         round[count].settledAt = block.timestamp;
         round[count].userReward = userRewards;
