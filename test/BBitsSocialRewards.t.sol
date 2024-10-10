@@ -8,15 +8,20 @@ import {ERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
 /// @dev forge test --match-contract BBitsSocialRewardsTest -vvv --gas-report
 contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
     string public link = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN");
 
     function setUp() public override {
         forkBase();
 
         user0 = address(100);
         user1 = address(200);
+        user2 = address(300);
 
         vm.deal(owner, 1e18);
         vm.deal(user0, 1e18);
+        vm.deal(user1, 1e18);
+        vm.deal(user2, 1e18);
 
         basedBits = ERC721(0x617978b8af11570c2dAb7c39163A8bdE1D282407);
         bbits = BBITS(0x553C1f87C2EF99CcA23b8A7fFaA629C8c2D27666);
@@ -32,11 +37,14 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
         bbits.exchangeNFTsForTokens(tokenIds);
 
         bbits.approve(address(socialRewards), ~uint256(0));
+
+        /// Grant User2 the admin role to approve posts
+        socialRewards.grantRole(ADMIN_ROLE, user2);
         vm.stopPrank();
     }
 
     function testInit() public view {
-        assertEq(socialRewards.owner(), owner);
+        assertEq(socialRewards.hasRole(DEFAULT_ADMIN_ROLE, owner), true);
         assertEq(address(socialRewards.BBITS()), address(bbits));
         assertEq(socialRewards.count(), 0);
         assertEq(socialRewards.duration(), 7 days);
@@ -111,16 +119,22 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
 
     /// APPROVE POSTS ///
 
-    function testApprovePostsRevertConditions() public prank(owner) {
+    function testApprovePostsRevertConditions() public prank(user2) {
         uint256[] memory entryIds = new uint256[](1);
 
         /// Wrong status
         vm.expectRevert(WrongStatus.selector);
         socialRewards.approvePosts(entryIds);
 
+        vm.stopPrank();
+        vm.startPrank(owner);
+
         /// Index out of bounds
         socialRewards.depositBBITS(2048e18);
         socialRewards.startNextRound();
+
+        vm.stopPrank();
+        vm.startPrank(user2);
 
         vm.expectRevert(IndexOutOfBounds.selector);
         socialRewards.approvePosts(entryIds);
@@ -143,6 +157,9 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
         assertEq(entry.post, link);
         assertEq(entry.user, owner);
         assertEq(entry.timestamp, block.timestamp);
+
+        vm.stopPrank();
+        vm.startPrank(user2);
 
         uint256[] memory entryIds = new uint256[](1);
         socialRewards.approvePosts(entryIds);
@@ -246,8 +263,14 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
 
         vm.warp(block.timestamp + 100 days);
 
+        vm.stopPrank();
+        vm.startPrank(user2);
+
         uint256[] memory entryIds = new uint256[](1);
         socialRewards.approvePosts(entryIds);
+
+        vm.stopPrank();
+        vm.startPrank(owner);
 
         uint256 predictedUserRewards = ((1024e18 * 9000) / 10_000) / 1;
         uint256 predictedAdminRewards = 1024e18 - ((1024e18 * 9000) / 10_000);
