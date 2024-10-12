@@ -40,6 +40,9 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, AccessControl, IBBitsS
     /// @notice Round information, including all entries.
     mapping(uint256 => Round) public round;
 
+    /// @notice Event emitted when a post is approved.
+    event Approved(uint256 roundId, uint256 entryId, address user, string post);
+
     constructor(address _owner, IERC20 _BBITS) {
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
         BBITS = _BBITS;
@@ -84,7 +87,8 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, AccessControl, IBBitsS
         uint256 length = _entryIds.length;
         for (uint256 i; i < length; i++) {
             if (_entryIds[i] >= round[count].entries.length) revert IndexOutOfBounds();
-            round[count].entries[_entryIds[i]].approved = true;
+            emit Approved(count, _entryIds[i], round[count].entries[_entryIds[i]].user, round[count].entries[_entryIds[i]].post);
+        round[count].entries[_entryIds[i]].approved = true;
         }
         round[count].rewardedCount += length;
     }
