@@ -14,7 +14,7 @@ import {IBBitsSocialRewards} from "@src/interfaces/IBBitsSocialRewards.sol";
 contract BBitsSocialRewards is ReentrancyGuard, Pausable, AccessControl, IBBitsSocialRewards {
     /// @notice Admin role key that allows a user to approve posts.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN");
-
+    
     /// @notice Based Bits fungible token.
     IERC20 public immutable BBITS;
 
@@ -106,7 +106,7 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, AccessControl, IBBitsS
     ///         A sufficient number of BBITs tokens must be held by the contract for the next round to begin.
     function startNextRound() external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
         if (status != RewardsStatus.PendingRound) revert WrongStatus();
-        if (BBITS.balanceOf(address(this)) <= totalRewardsPerRound) revert InsufficientRewards();
+        if (BBITS.balanceOf(address(this)) < totalRewardsPerRound) revert InsufficientRewards();
         _startNextRound();
     }
 
