@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {IBBMintRaffleNFT} from "@src/interfaces/IBBMintRaffleNFT.sol";
+import {IBBitsBurnerNFT} from "@src/interfaces/IBBitsBurnerNFT.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {Strings} from "@openzeppelin/utils/Strings.sol";
 import {Base64} from "@openzeppelin/utils/Base64.sol";
 
-/// @notice Module for the Filter8 collection that handles the art.
-abstract contract Filter8Art is Ownable, IBBMintRaffleNFT {
+/// @notice Module for the BBitsBurner ERC721 collection that handles the art.
+/// @dev NEEDS UPDATING FOR NEW COLLECTION
+abstract contract BBitsBurnerArt is Ownable, IBBitsBurnerNFT {
     /// @notice The storage for all art components
     /// @dev    Layout:
     ///         0: background
@@ -21,8 +22,7 @@ abstract contract Filter8Art is Ownable, IBBMintRaffleNFT {
     mapping(uint256 => Set) public metadataForTokenId;
 
     /// @notice The description for the collection.
-    bytes public description =
-        "Bit98 is a fully on-chain pixel art collection by filter8.eth. Inspired by the color aesthetics of Windows 98, the collection features a novel minting and gamification mechanism, with a new Bit98 generated every 4 hours. At the end of the minting period, a single-edition NFT will be raffled off to one of the minters. Only 512 Bit98s will ever exist! Mint at https://www.basedbits.fun";
+    bytes public description = "!!! ADD DESCRIPTION HERE !!!";
 
     /// @notice This function allows the owner to add art components to the metadata storage.
     /// @param  _array The mapping key to access the relevant array of components to be added.

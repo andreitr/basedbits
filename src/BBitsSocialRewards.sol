@@ -87,8 +87,10 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, AccessControl, IBBitsS
         uint256 length = _entryIds.length;
         for (uint256 i; i < length; i++) {
             if (_entryIds[i] >= round[count].entries.length) revert IndexOutOfBounds();
-            emit Approved(count, _entryIds[i], round[count].entries[_entryIds[i]].user, round[count].entries[_entryIds[i]].post);
-        round[count].entries[_entryIds[i]].approved = true;
+            emit Approved(
+                count, _entryIds[i], round[count].entries[_entryIds[i]].user, round[count].entries[_entryIds[i]].post
+            );
+            round[count].entries[_entryIds[i]].approved = true;
         }
         round[count].rewardedCount += length;
     }
