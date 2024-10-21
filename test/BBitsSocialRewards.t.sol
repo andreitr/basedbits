@@ -276,7 +276,7 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
         uint256 predictedAdminRewards = 1024e18 - ((1024e18 * 9000) / 10_000);
 
         uint256 user0BalanceBefore = bbits.balanceOf(user0);
-        uint256 ownerBalanceBefore = bbits.balanceOf(owner);
+        uint256 user2BalanceBefore = bbits.balanceOf(user2);
 
         vm.expectEmit(true, true, true, true);
         emit End(1, 1, predictedUserRewards);
@@ -291,7 +291,7 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
         assert(socialRewards.status() == RewardsStatus.PendingRound);
         assertEq(bbits.balanceOf(address(socialRewards)), 1024e18);
         assertEq(bbits.balanceOf(user0), user0BalanceBefore + predictedUserRewards);
-        assertEq(bbits.balanceOf(owner), ownerBalanceBefore + predictedAdminRewards);
+        assertEq(bbits.balanceOf(user2), user2BalanceBefore + predictedAdminRewards);
     }
 
     /// START NEW ROUND ///

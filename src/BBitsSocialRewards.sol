@@ -4,14 +4,14 @@ pragma solidity 0.8.25;
 import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
-import {AccessControl} from "@openzeppelin/access/AccessControl.sol";
+import {AccessControlEnumerable} from "@openzeppelin/access/extensions/AccessControlEnumerable.sol";
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {IBBitsSocialRewards} from "@src/interfaces/IBBitsSocialRewards.sol";
 
 /// @title  BBitsSocialRewards
 /// @notice This contract allows users to post links for approval by the admin. If approved, users recieve a pro rata
 ///         share of BBITs tokens.
-contract BBitsSocialRewards is ReentrancyGuard, Pausable, AccessControl, IBBitsSocialRewards {
+contract BBitsSocialRewards is ReentrancyGuard, Pausable, AccessControlEnumerable, IBBitsSocialRewards {
     /// @notice Admin role key that allows a user to approve posts.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN");
     
@@ -158,7 +158,7 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, AccessControl, IBBitsS
             for (uint256 i; i < length; i++) {
                 if (round[count].entries[i].approved) BBITS.transfer(round[count].entries[i].user, userRewards);
             }
-            BBITS.transfer(msg.sender, totalRewardsPerRound - (userRewards * rewardedCount));
+            BBITS.transfer(getRoleMember(ADMIN_ROLE, 0), totalRewardsPerRound - (userRewards * rewardedCount));
         }
         round[count].settledAt = block.timestamp;
         round[count].userReward = userRewards;
