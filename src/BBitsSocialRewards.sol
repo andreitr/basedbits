@@ -101,7 +101,7 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, AccessControlEnumerabl
     ///         have been approved. The owner also receives some BBITs tokens.
     /// @dev    Must be in InRound status.
     ///         Round must no longer be active.
-    function settleCurrentRound() external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
+    function settleCurrentRound() external nonReentrant {
         if (status != RewardsStatus.InRound) revert WrongStatus();
         if (block.timestamp - round[count].startedAt <= duration) revert RoundActive();
         _settle();
@@ -110,7 +110,7 @@ contract BBitsSocialRewards is ReentrancyGuard, Pausable, AccessControlEnumerabl
     /// @notice This function allows the owner to begin the next round.
     /// @dev    Must be in PendingRound status.
     ///         A sufficient number of BBITs tokens must be held by the contract for the next round to begin.
-    function startNextRound() external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
+    function startNextRound() external nonReentrant {
         if (status != RewardsStatus.PendingRound) revert WrongStatus();
         if (BBITS.balanceOf(address(this)) < totalRewardsPerRound) revert InsufficientRewards();
         _startNextRound();
