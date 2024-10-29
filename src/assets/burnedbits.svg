@@ -1,14 +1,16 @@
 <svg width="420" height="420" viewBox="0 0 27 27" fill="none" xmlns="http://www.w3.org/2000/svg">
 
     <!-- Background -->
-    <rect width="27" height="27" fill="#000077"/>
-<!--    <rect width="27" height="27" fill="#000066"/>-->
-    <rect width="27" height="27" fill="#000055"/>
-    <rect width="27" height="27" fill="#000044"/>
-    <rect width="27" height="27" fill="#000033"/>
-    <rect width="27" height="27" fill="#000022"/>
-    <rect width="27" height="27" fill="#000011"/>
-    <rect width="27" height="27" fill="#000000"/>
+    <!--    Royal Blue -->
+    <rect width="27" height="27" fill="#0000AA"/>
+    <!--    Deep Blue -->
+    <!--    <rect width="27" height="27" fill="#000066"/>-->
+    <!--    Dark Indigo -->
+    <!--    <rect width="27" height="27" fill="#000044"/>-->
+    <!--    Shadow Navy-->
+    <!--    <rect width="27" height="27" fill="#000022"/>-->
+    <!--    Midnight-->
+    <!--    <rect width="27" height="27" fill="#000000"/>-->
 
     <!-- Red Fire -->
     <!-- Crimson
@@ -31,7 +33,8 @@
     -->
 
     <!-- Vermilion -->
-    <path d="M11 3H10V4H11V5H12V7H11V10H10V8H9V9H8V11H7V15H6V22H7V23H8V24H16V23H18V22H19V20H20V16H19V14H18V13H17V11H16V9H15V6H14V5H13V4H11V3Z" fill="#FF0000"/>
+    <path d="M11 3H10V4H11V5H12V7H11V10H10V8H9V9H8V11H7V15H6V22H7V23H8V24H16V23H18V22H19V20H20V16H19V14H18V13H17V11H16V9H15V6H14V5H13V4H11V3Z"
+          fill="#FF0000"/>
     <path d="M18 10H17V11H18V10Z" fill="#FF0000"/>
     <path d="M17 7H16V8H17V7Z" fill="#FF0000"/>
     <path d="M9 5H8V6H9V5Z" fill="#FF0000"/>
@@ -189,22 +192,88 @@
     -->
 
     <!-- Noggles -->
-    <!-- Gray -->
+
+    <!-- Cute Gray    -->
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/>
     <rect x="10" y="13" width="2" height="4" fill="black"/>
     <rect x="17" y="13" width="2" height="4" fill="black"/>
     <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/>
     <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
 
-    <!-- Base
-    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#0052FF"/>
-    <rect x="10" y="13" width="2" height="4" fill="black" />
-    <rect x="17" y="13" width="2" height="4" fill="black"/>
-    <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white" />
-    <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white" />
+    <!-- Nerdy Gray
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <path d="M9 16V14H10V15H11V16H9Z" fill="black"/>
+    <path d="M16 16V14H17V15H18V16H16Z" fill="black"/>
+    <rect x="10" y="14" width="1" height="1" fill="#B0B0B0" opacity="0.3"/>
+    <rect x="17" y="14" width="1" height="1" fill="#B0B0B0" opacity="0.3"/>
     -->
 
-    <!-- Purple
+    <!-- Coder Gray
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="15" width="2" height="2" fill="#B0B0B0" opacity="0.3"/>
+    <rect x="8" y="15" width="2" height="2" fill="#B0B0B0" opacity="0.3"/>
+    <rect x="17" y="15" width="2" height="2" fill="#000000"/>
+    <rect x="10" y="15" width="2" height="2" fill="#000000"/>
+    -->
+
+    <!-- Tired Gray
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="15" width="4" height="2" fill="#B0B0B0" opacity="0.4"/>
+    <rect x="8" y="15" width="4" height="2" fill="#B0B0B0" opacity="0.4"/>
+    <rect x="17" y="15" width="2" height="1" fill="black"/>
+    <rect x="10" y="15" width="2" height="1" fill="black"/>
+    -->
+
+    <!-- BASE BLUE -->
+
+    <!-- Cute Base Blue
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#0052FF"/>
+    <rect x="10" y="13" width="2" height="4" fill="black"/>
+    <rect x="17" y="13" width="2" height="4" fill="black"/>
+    <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/>
+    <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
+    -->
+
+    <!-- Nerdy Base Blue
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#0052FF"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <path d="M9 16V14H10V15H11V16H9Z" fill="black"/>
+    <path d="M16 16V14H17V15H18V16H16Z" fill="black"/>
+    <rect x="10" y="14" width="1" height="1" fill="#0052FF" opacity="0.3"/>
+    <rect x="17" y="14" width="1" height="1" fill="#0052FF" opacity="0.3"/>
+    -->
+
+    <!-- Coder Base Blue
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#0052FF"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="15" width="2" height="2" fill="#0052FF" opacity="0.3"/>
+    <rect x="8" y="15" width="2" height="2" fill="#0052FF" opacity="0.3"/>
+    <rect x="17" y="15" width="2" height="2" fill="#000000"/>
+    <rect x="10" y="15" width="2" height="2" fill="#000000"/>
+    -->
+
+    <!-- Tired Base Blue
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#0052FF"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="15" width="4" height="2" fill="#0052FF" opacity="0.4"/>
+    <rect x="8" y="15" width="4" height="2" fill="#0052FF" opacity="0.4"/>
+    <rect x="17" y="15" width="2" height="1" fill="black"/>
+    <rect x="10" y="15" width="2" height="1" fill="black"/>
+    -->
+
+
+    <!--  PURPLE -->
+
+    <!-- Cute Purple
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#A16FB3"/>
     <rect x="10" y="13" width="2" height="4" fill="black" />
     <rect x="17" y="13" width="2" height="4" fill="black"/>
@@ -212,12 +281,115 @@
     <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white" />
     -->
 
-    <!-- Green
+    <!-- Nerdy Purple
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#A16FB3"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <path d="M9 16V14H10V15H11V16H9Z" fill="black"/>
+    <path d="M16 16V14H17V15H18V16H16Z" fill="black"/>
+    <rect x="10" y="14" width="1" height="1" fill="#A16FB3" opacity="0.3"/>
+    <rect x="17" y="14" width="1" height="1" fill="#A16FB3" opacity="0.3"/>
+    -->
+
+    <!-- Coder Purple
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#A16FB3"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="15" width="2" height="2" fill="#A16FB3" opacity="0.3"/>
+    <rect x="8" y="15" width="2" height="2" fill="#A16FB3" opacity="0.3"/>
+    <rect x="17" y="15" width="2" height="2" fill="#000000"/>
+    <rect x="10" y="15" width="2" height="2" fill="#000000"/>
+    -->
+
+    <!-- Tired Purple
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#A16FB3"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="15" width="4" height="2" fill="#A16FB3" opacity="0.4"/>
+    <rect x="8" y="15" width="4" height="2" fill="#A16FB3" opacity="0.4"/>
+    <rect x="17" y="15" width="2" height="1" fill="black"/>
+    <rect x="10" y="15" width="2" height="1" fill="black"/>
+    -->
+
+    <!--  GREEN -->
+
+    <!-- Cute Green
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#84AB41"/>
     <rect x="10" y="13" width="2" height="4" fill="black" />
     <rect x="17" y="13" width="2" height="4" fill="black"/>
     <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white" />
     <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white" />
+    -->
+
+    <!-- Nerdy Green
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#84AB41"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <path d="M9 16V14H10V15H11V16H9Z" fill="black"/>
+    <path d="M16 16V14H17V15H18V16H16Z" fill="black"/>
+    <rect x="10" y="14" width="1" height="1" fill="#84AB41" opacity="0.3"/>
+    <rect x="17" y="14" width="1" height="1" fill="#84AB41" opacity="0.3"/>
+    -->
+
+    <!-- Coder Green
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#84AB41"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="15" width="2" height="2" fill="#84AB41" opacity="0.3"/>
+    <rect x="8" y="15" width="2" height="2" fill="#84AB41" opacity="0.3"/>
+    <rect x="17" y="15" width="2" height="2" fill="#000000"/>
+    <rect x="10" y="15" width="2" height="2" fill="#000000"/>
+    -->
+
+    <!-- Tired Green
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#84AB41"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="15" width="4" height="2" fill="#84AB41" opacity="0.4"/>
+    <rect x="8" y="15" width="4" height="2" fill="#84AB41" opacity="0.4"/>
+    <rect x="17" y="15" width="2" height="1" fill="black"/>
+    <rect x="10" y="15" width="2" height="1" fill="black"/>
+    -->
+
+
+    <!-- PINK -->
+
+    <!-- Cute Pink
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/>
+    <rect x="10" y="13" width="2" height="4" fill="black" />
+    <rect x="17" y="13" width="2" height="4" fill="black"/>
+    <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white" />
+    <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white" />
+    -->
+
+    <!-- Nerdy Pink
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <path d="M9 16V14H10V15H11V16H9Z" fill="black"/>
+    <path d="M16 16V14H17V15H18V16H16Z" fill="black"/>
+    <rect x="10" y="14" width="1" height="1" fill="#FF88AA" opacity="0.3"/>
+    <rect x="17" y="14" width="1" height="1" fill="#FF88AA" opacity="0.3"/>
+    -->
+
+    <!-- Coder Pink
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="15" width="2" height="2" fill="#FF88AA" opacity="0.3"/>
+    <rect x="8" y="15" width="2" height="2" fill="#FF88AA" opacity="0.3"/>
+    <rect x="17" y="15" width="2" height="2" fill="#000000"/>
+    <rect x="10" y="15" width="2" height="2" fill="#000000"/>
+    -->
+
+    <!-- Tired Pink
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/>
+    <rect x="8" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="13" width="4" height="4" fill="white"/>
+    <rect x="15" y="15" width="4" height="2" fill="#FF88AA" opacity="0.4"/>
+    <rect x="8" y="15" width="4" height="2" fill="#FF88AA" opacity="0.4"/>
+    <rect x="17" y="15" width="2" height="1" fill="black"/>
+    <rect x="10" y="15" width="2" height="1" fill="black"/>
     -->
 
 
