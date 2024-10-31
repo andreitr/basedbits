@@ -1,16 +1,16 @@
 <svg width="420" height="420" viewBox="0 0 27 27" fill="none" xmlns="http://www.w3.org/2000/svg">
 
     <!-- Background -->
-    <!--    Royal Blue -->
-    <rect width="27" height="27" fill="#0000AA"/>
-    <!--    Deep Blue -->
+    <!-- Royal Blue -->
+    <!--    <rect width="27" height="27" fill="#0000AA"/>-->
+    <!-- Deep Blue-->
     <!--    <rect width="27" height="27" fill="#000066"/>-->
-    <!--    Dark Indigo -->
-    <!--    <rect width="27" height="27" fill="#000044"/>-->
-    <!--    Shadow Navy-->
-    <!--    <rect width="27" height="27" fill="#000022"/>-->
+    <!-- Dark Indigo -->
+    <!-- <rect width="27" height="27" fill="#000044"/>-->
+    <!-- Shadow Navy-->
+    <!-- <rect width="27" height="27" fill="#000022"/>-->
     <!--    Midnight-->
-    <!--    <rect width="27" height="27" fill="#000000"/>-->
+    <rect width="27" height="27" fill="#000000"/>
 
     <!-- Red Fire -->
     <!-- Crimson
@@ -32,19 +32,21 @@
     <path d="M16 8V7H17V8H16Z" fill="#FF0000"/>
     -->
 
-    <!-- Vermilion -->
+    <!-- Vermilion
     <path d="M11 3H10V4H11V5H12V7H11V10H10V8H9V9H8V11H7V15H6V22H7V23H8V24H16V23H18V22H19V20H20V16H19V14H18V13H17V11H16V9H15V6H14V5H13V4H11V3Z"
           fill="#FF0000"/>
     <path d="M18 10H17V11H18V10Z" fill="#FF0000"/>
     <path d="M17 7H16V8H17V7Z" fill="#FF0000"/>
     <path d="M9 5H8V6H9V5Z" fill="#FF0000"/>
+    -->
 
     <!--Ruby
-    <path d="M8 23V24H17V23H19V22H20V20H21V16H20V14H19V12H18V9H17V11H16V7H15V10H14V7H12V8H11V6H10V9H9V7H8V12H7V11H6V14H5V20H6V22H7V23H8Z" fill="#FF0000"/>
+    -->
+    <path d="M8 23V24H17V23H19V22H20V20H21V16H20V14H19V12H18V9H17V11H16V7H15V10H14V7H12V8H11V6H10V9H9V7H8V12H7V11H6V14H5V20H6V22H7V23H8Z"
+          fill="#FF0000"/>
     <path d="M13 6H14V3H13V6Z" fill="#FF0000"/>
     <path d="M17 6V5H18V6H17Z" fill="#FF0000"/>
     <path d="M6 9.5V8.5H7V9.5H6Z" fill="#FF0000"/>
-    -->
 
     <!-- Garnet
     <path d="M9 24V23H7V22H6V17H7V13H6V11H7V12H8V10H9V6H10V8H12V6H11V4H12V3H13V6H14V9H15V7H16V6H17V4H18V7H17V12H18V10H19V9H20V11H19V13H20V14H21V19H20V21H19V23H17V24H9Z" fill="#FF0000"/>
@@ -123,15 +125,16 @@
     -->
 
     <!-- Sienna
+    -->
     <path d="M13 6V7H14V6H13Z" fill="#FFAA00"/>
     <path d="M13 8H14V9H13V8Z" fill="#FFAA00"/>
-    <path d="M10 14H9V15H8V22H9V23H10V24H16V23H17V22H18V17H17V13H16V12H15V10H14V13H13V9H12V10H11V12H10V14Z" fill="#FFAA00"/>
+    <path d="M10 14H9V15H8V22H9V23H10V24H16V23H17V22H18V17H17V13H16V12H15V10H14V13H13V9H12V10H11V12H10V14Z"
+          fill="#FFAA00"/>
     <path d="M10 14V15H11V14H10Z" fill="#FFAA00"/>
     <path d="M11 7V8H12V7H11Z" fill="#FFAA00"/>
     <path d="M9 10V11H10V10H9Z" fill="#FFAA00"/>
-    -->
 
-    <!-- Marmalade -->
+    <!-- Marmalade
     <path d="M9 10H10V11H9V10Z" fill="#FFAA00"/>
     <path d="M10 8H11V10H10V8Z" fill="#FFAA00"/>
     <path d="M13 8H14V9H13V8Z" fill="#FFAA00"/>
@@ -141,19 +144,22 @@
     <path d="M13 7V6H14V7H13Z" fill="#FFAA00"/>
     <path d="M15 9V8H16V9H15Z" fill="#FFAA00"/>
     <path d="M10 14H11V15H10V14Z" fill="#FFAA00"/>
+    -->
 
     <!-- Yellow Fire -->
-    <!-- Saffron    -->
+    <!-- Saffron
     <path d="M15 10H16V11H15V10Z" fill="#FFD84C"/>
     <path d="M15 12H16V13H15V12Z" fill="#FFD84C"/>
     <path d="M15 5H16V6H15V5Z" fill="#FFD84C"/>
     <path d="M11 8H12V9H11V8Z" fill="#FFD84C"/>
     <path d="M10 23V22H9V20H8V18H9V17H10V14H11V12H12V11H13V9H14V13H15V14H16V17H17V21H16V22H15V23H10ZM12 19H11V20H12V21H15V20H12V19Z"
           fill="#FFD84C"/>
+        -->
 
     <!-- Solana
-    <path d="M11 24V23H10V22H9V18H10V16H12V11H13V13H14V15H15V18H16V22H15V23H14V24H11ZM15 21V20H11V21H15Z" fill="#FFD84C"/>
      -->
+    <path d="M11 24V23H10V22H9V18H10V16H12V11H13V13H14V15H15V18H16V22H15V23H14V24H11ZM15 21V20H11V21H15Z"
+          fill="#FFD84C"/>
 
     <!-- Radiance
     <path d="M11 24V23H10V22H9V19H10V16H11V15H12V12H14V16H15V18H16V19H17V21H16V23H15V24H11ZM15 19H12V20H15V19Z" fill="#FFD84C"/>
@@ -183,22 +189,48 @@
     <path d="M11 6H12V7H11V6Z" fill="#FFD84C"/>
     -->
 
-    <!-- Cute Pink
-    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/>
+    <!-- Noggles -->
+
+
+    <!-- Cute Cyan
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#00FFFF"/>
     <rect x="10" y="13" width="2" height="4" fill="black"/>
     <rect x="17" y="13" width="2" height="4" fill="black"/>
     <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/>
     <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
     -->
 
-    <!-- Noggles -->
+    <!-- Cute Magenta
+    -->
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF00FF"/>
+    <rect x="10" y="13" width="2" height="4" fill="black"/>
+    <rect x="17" y="13" width="2" height="4" fill="black"/>
+    <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/>
+    <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
 
-    <!-- Cute Gray    -->
+    <!-- Cute Yellow
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FFFF00"/>
+    <rect x="10" y="13" width="2" height="4" fill="black"/>
+    <rect x="17" y="13" width="2" height="4" fill="black"/>
+    <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/>
+    <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
+    -->
+
+    <!-- Cute Black
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#000000"/>
+    <rect x="10" y="13" width="2" height="4" fill="black"/>
+    <rect x="17" y="13" width="2" height="4" fill="black"/>
+    <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/>
+    <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
+-->
+
+    <!-- Cute Gray
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/>
     <rect x="10" y="13" width="2" height="4" fill="black"/>
     <rect x="17" y="13" width="2" height="4" fill="black"/>
     <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/>
     <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
+    -->
 
     <!-- Nerdy Gray
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/>
@@ -214,8 +246,8 @@
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/>
     <rect x="8" y="13" width="4" height="4" fill="white"/>
     <rect x="15" y="13" width="4" height="4" fill="white"/>
-    <rect x="15" y="15" width="2" height="2" fill="#B0B0B0" opacity="0.3"/>
-    <rect x="8" y="15" width="2" height="2" fill="#B0B0B0" opacity="0.3"/>
+    <rect x="15" y="13" width="4" height="2" fill="#B0B0B0" opacity="0.3"/>
+    <rect x="8" y="13" width="4" height="2" fill="#B0B0B0" opacity="0.3"/>
     <rect x="17" y="15" width="2" height="2" fill="#000000"/>
     <rect x="10" y="15" width="2" height="2" fill="#000000"/>
     -->
@@ -224,15 +256,15 @@
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/>
     <rect x="8" y="13" width="4" height="4" fill="white"/>
     <rect x="15" y="13" width="4" height="4" fill="white"/>
-    <rect x="15" y="15" width="4" height="2" fill="#B0B0B0" opacity="0.4"/>
-    <rect x="8" y="15" width="4" height="2" fill="#B0B0B0" opacity="0.4"/>
+    <rect x="15" y="13" width="4" height="2" fill="#B0B0B0" opacity="0.4"/>
+    <rect x="8" y="13" width="4" height="2" fill="#B0B0B0" opacity="0.4"/>
     <rect x="17" y="15" width="2" height="1" fill="black"/>
     <rect x="10" y="15" width="2" height="1" fill="black"/>
     -->
 
     <!-- BASE BLUE -->
 
-    <!-- Cute Base Blue
+    <!-- Cute Blue Base
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#0052FF"/>
     <rect x="10" y="13" width="2" height="4" fill="black"/>
     <rect x="17" y="13" width="2" height="4" fill="black"/>
@@ -254,8 +286,8 @@
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#0052FF"/>
     <rect x="8" y="13" width="4" height="4" fill="white"/>
     <rect x="15" y="13" width="4" height="4" fill="white"/>
-    <rect x="15" y="15" width="2" height="2" fill="#0052FF" opacity="0.3"/>
-    <rect x="8" y="15" width="2" height="2" fill="#0052FF" opacity="0.3"/>
+    <rect x="15" y="13" width="4" height="2" fill="#0052FF" opacity="0.3"/>
+    <rect x="8" y="13" width="4" height="2" fill="#0052FF" opacity="0.3"/>
     <rect x="17" y="15" width="2" height="2" fill="#000000"/>
     <rect x="10" y="15" width="2" height="2" fill="#000000"/>
     -->
@@ -264,8 +296,8 @@
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#0052FF"/>
     <rect x="8" y="13" width="4" height="4" fill="white"/>
     <rect x="15" y="13" width="4" height="4" fill="white"/>
-    <rect x="15" y="15" width="4" height="2" fill="#0052FF" opacity="0.4"/>
-    <rect x="8" y="15" width="4" height="2" fill="#0052FF" opacity="0.4"/>
+    <rect x="15" y="13" width="4" height="2" fill="#0052FF" opacity="0.4"/>
+    <rect x="8" y="13" width="4" height="2" fill="#0052FF" opacity="0.4"/>
     <rect x="17" y="15" width="2" height="1" fill="black"/>
     <rect x="10" y="15" width="2" height="1" fill="black"/>
     -->
@@ -295,8 +327,8 @@
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#A16FB3"/>
     <rect x="8" y="13" width="4" height="4" fill="white"/>
     <rect x="15" y="13" width="4" height="4" fill="white"/>
-    <rect x="15" y="15" width="2" height="2" fill="#A16FB3" opacity="0.3"/>
-    <rect x="8" y="15" width="2" height="2" fill="#A16FB3" opacity="0.3"/>
+    <rect x="15" y="13" width="4" height="2" fill="#A16FB3" opacity="0.3"/>
+    <rect x="8" y="13" width="4" height="2" fill="#A16FB3" opacity="0.3"/>
     <rect x="17" y="15" width="2" height="2" fill="#000000"/>
     <rect x="10" y="15" width="2" height="2" fill="#000000"/>
     -->
@@ -305,8 +337,8 @@
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#A16FB3"/>
     <rect x="8" y="13" width="4" height="4" fill="white"/>
     <rect x="15" y="13" width="4" height="4" fill="white"/>
-    <rect x="15" y="15" width="4" height="2" fill="#A16FB3" opacity="0.4"/>
-    <rect x="8" y="15" width="4" height="2" fill="#A16FB3" opacity="0.4"/>
+    <rect x="15" y="13" width="4" height="2" fill="#A16FB3" opacity="0.4"/>
+    <rect x="8" y="13" width="4" height="2" fill="#A16FB3" opacity="0.4"/>
     <rect x="17" y="15" width="2" height="1" fill="black"/>
     <rect x="10" y="15" width="2" height="1" fill="black"/>
     -->
@@ -335,8 +367,8 @@
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#84AB41"/>
     <rect x="8" y="13" width="4" height="4" fill="white"/>
     <rect x="15" y="13" width="4" height="4" fill="white"/>
-    <rect x="15" y="15" width="2" height="2" fill="#84AB41" opacity="0.3"/>
-    <rect x="8" y="15" width="2" height="2" fill="#84AB41" opacity="0.3"/>
+    <rect x="15" y="13" width="4" height="2" fill="#84AB41" opacity="0.3"/>
+    <rect x="8" y="13" width="4" height="2" fill="#84AB41" opacity="0.3"/>
     <rect x="17" y="15" width="2" height="2" fill="#000000"/>
     <rect x="10" y="15" width="2" height="2" fill="#000000"/>
     -->
@@ -345,8 +377,8 @@
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#84AB41"/>
     <rect x="8" y="13" width="4" height="4" fill="white"/>
     <rect x="15" y="13" width="4" height="4" fill="white"/>
-    <rect x="15" y="15" width="4" height="2" fill="#84AB41" opacity="0.4"/>
-    <rect x="8" y="15" width="4" height="2" fill="#84AB41" opacity="0.4"/>
+    <rect x="15" y="13" width="4" height="2" fill="#84AB41" opacity="0.4"/>
+    <rect x="8" y="13" width="4" height="2" fill="#84AB41" opacity="0.4"/>
     <rect x="17" y="15" width="2" height="1" fill="black"/>
     <rect x="10" y="15" width="2" height="1" fill="black"/>
     -->
@@ -355,7 +387,7 @@
     <!-- PINK -->
 
     <!-- Cute Pink
-    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/>
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF99FF"/>
     <rect x="10" y="13" width="2" height="4" fill="black" />
     <rect x="17" y="13" width="2" height="4" fill="black"/>
     <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white" />
@@ -363,31 +395,31 @@
     -->
 
     <!-- Nerdy Pink
-    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/>
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF99FF"/>
     <rect x="8" y="13" width="4" height="4" fill="white"/>
     <rect x="15" y="13" width="4" height="4" fill="white"/>
     <path d="M9 16V14H10V15H11V16H9Z" fill="black"/>
     <path d="M16 16V14H17V15H18V16H16Z" fill="black"/>
-    <rect x="10" y="14" width="1" height="1" fill="#FF88AA" opacity="0.3"/>
-    <rect x="17" y="14" width="1" height="1" fill="#FF88AA" opacity="0.3"/>
+    <rect x="10" y="14" width="1" height="1" fill="#FF99FF" opacity="0.3"/>
+    <rect x="17" y="14" width="1" height="1" fill="#FF99FF" opacity="0.3"/>
     -->
 
     <!-- Coder Pink
-    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/>
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF99FF"/>
     <rect x="8" y="13" width="4" height="4" fill="white"/>
     <rect x="15" y="13" width="4" height="4" fill="white"/>
-    <rect x="15" y="15" width="2" height="2" fill="#FF88AA" opacity="0.3"/>
-    <rect x="8" y="15" width="2" height="2" fill="#FF88AA" opacity="0.3"/>
+    <rect x="15" y="13" width="4" height="2" fill="#FF99FF" opacity="0.3"/>
+    <rect x="8" y="13" width="4" height="2" fill="#FF99FF" opacity="0.3"/>
     <rect x="17" y="15" width="2" height="2" fill="#000000"/>
     <rect x="10" y="15" width="2" height="2" fill="#000000"/>
     -->
 
     <!-- Tired Pink
-    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/>
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF99FF"/>
     <rect x="8" y="13" width="4" height="4" fill="white"/>
     <rect x="15" y="13" width="4" height="4" fill="white"/>
-    <rect x="15" y="15" width="4" height="2" fill="#FF88AA" opacity="0.4"/>
-    <rect x="8" y="15" width="4" height="2" fill="#FF88AA" opacity="0.4"/>
+    <rect x="15" y="13" width="4" height="2" fill="#FF99FF" opacity="0.4"/>
+    <rect x="8" y="13" width="4" height="2" fill="#FF99FF" opacity="0.4"/>
     <rect x="17" y="15" width="2" height="1" fill="black"/>
     <rect x="10" y="15" width="2" height="1" fill="black"/>
     -->
