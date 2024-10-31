@@ -7,15 +7,14 @@ import {Strings} from "@openzeppelin/utils/Strings.sol";
 import {Base64} from "@openzeppelin/utils/Base64.sol";
 
 /// @notice Module for the BBitsBurner ERC721 collection that handles the art.
-/// @dev NEEDS UPDATING FOR NEW COLLECTION
 abstract contract BBitsBurnerArt is Ownable, IBBitsBurnerNFT {
     /// @notice The storage for all art components
     /// @dev    Layout:
-    ///         0: background
-    ///         1: body
-    ///         2: eyes
-    ///         3: hair
-    ///         4: mouth
+    ///         0: Background
+    ///         1: Red Fire
+    ///         2: Orange Fire
+    ///         3: Yellow Fire
+    ///         4: Noggles
     mapping(uint256 => NamedBytes[]) public metadata;
 
     /// @notice The metadata components for any given NFT.
@@ -78,18 +77,18 @@ abstract contract BBitsBurnerArt is Ownable, IBBitsBurnerNFT {
     function _draw(uint256 _tokenId) internal view returns (string memory) {
         Set memory art = metadataForTokenId[_tokenId];
         NamedBytes memory background = metadata[0][art.background];
-        NamedBytes memory body = metadata[1][art.body];
-        NamedBytes memory eyes = metadata[2][art.eyes];
-        NamedBytes memory hair = metadata[3][art.hair];
-        NamedBytes memory mouth = metadata[4][art.mouth];
+        NamedBytes memory redFire = metadata[1][art.redFire];
+        NamedBytes memory orangeFire = metadata[2][art.orangeFire];
+        NamedBytes memory yellowFire = metadata[3][art.yellowFire];
+        NamedBytes memory noggles = metadata[4][art.noggles];
 
         bytes memory svgHTML = abi.encodePacked(
-            '<svg width="800" height="800" viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">',
+            '<svg width="420" height="420" viewBox="0 0 27 27" fill="none" xmlns="http://www.w3.org/2000/svg">',
             background.core,
-            body.core,
-            eyes.core,
-            hair.core,
-            mouth.core,
+            redFire.core,
+            orangeFire.core,
+            yellowFire.core,
+            noggles.core,
             "</svg>"
         );
         svgHTML = abi.encodePacked(
@@ -105,14 +104,14 @@ abstract contract BBitsBurnerArt is Ownable, IBBitsBurnerNFT {
             svgHTML,
             ', "attributes": [{"trait_type": "Background", "value": "',
             background.name,
-            '"}, {"trait_type": "Body", "value": "',
-            body.name,
-            '"}, {"trait_type": "Eyes", "value": "',
-            eyes.name,
-            '"}, {"trait_type": "Hair", "value": "',
-            hair.name,
-            '"}, {"trait_type": "Mouth", "value": "',
-            mouth.name,
+            '"}, {"trait_type": "Red Fire", "value": "',
+            redFire.name,
+            '"}, {"trait_type": "Orange Fire", "value": "',
+            orangeFire.name,
+            '"}, {"trait_type": "Yellow Fire", "value": "',
+            yellowFire.name,
+            '"}, {"trait_type": "Noggles", "value": "',
+            noggles.name,
             '"}]}'
         );
 
@@ -123,10 +122,10 @@ abstract contract BBitsBurnerArt is Ownable, IBBitsBurnerNFT {
         uint256 seed = _getPseudoRandom(_tokenId, block.timestamp);
         Set memory newMetadataForTokenId = Set({
             background: _getPseudoRandom(seed, 0) % metadata[0].length,
-            body: _getPseudoRandom(seed, 1) % metadata[1].length,
-            eyes: _getPseudoRandom(seed, 2) % metadata[2].length,
-            hair: _getPseudoRandom(seed, 3) % metadata[3].length,
-            mouth: _getPseudoRandom(seed, 4) % metadata[4].length
+            redFire: _getPseudoRandom(seed, 1) % metadata[1].length,
+            orangeFire: _getPseudoRandom(seed, 2) % metadata[2].length,
+            yellowFire: _getPseudoRandom(seed, 3) % metadata[3].length,
+            noggles: _getPseudoRandom(seed, 4) % metadata[4].length
         });
         metadataForTokenId[_tokenId] = newMetadataForTokenId;
     }

@@ -9,6 +9,11 @@ import {IV3Quoter} from "@src/interfaces/uniswap/IV3Quoter.sol";
 import {IV3Router} from "@src/interfaces/uniswap/IV3Router.sol";
 import {BBitsBurnerArt} from "@src/modules/BBitsBurnerArt.sol";
 
+/// TODO Art, Nat spec, tests, deploy
+
+/// @title  BBitsBurnerNFT
+/// @notice This contract ...
+/// @dev    The contract operates ...
 contract BBitsBurnerNFT is BBitsBurnerArt, ERC721, ReentrancyGuard {
     /// @notice dEaD address.
     address public constant dead = 0x000000000000000000000000000000000000dEaD;
