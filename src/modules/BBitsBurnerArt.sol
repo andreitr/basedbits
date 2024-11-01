@@ -21,7 +21,7 @@ abstract contract BBitsBurnerArt is Ownable, IBBitsBurnerNFT {
     mapping(uint256 => Set) public metadataForTokenId;
 
     /// @notice The description for the collection.
-    bytes public description = "!!! ADD DESCRIPTION HERE !!!";
+    bytes public description = "Burned Bits is a fully onchain NFT collection with art by Filter8. Every mint burns a Based Bit, and the mint price is calculated based on the BBITS-ETH swap. The total supply of 8,000 will never be reached. Let's burn some bits!";
 
     /// @notice This function allows the owner to add art components to the metadata storage.
     /// @param  _array The mapping key to access the relevant array of components to be added.
@@ -83,7 +83,7 @@ abstract contract BBitsBurnerArt is Ownable, IBBitsBurnerNFT {
         NamedBytes memory noggles = metadata[4][art.noggles];
 
         bytes memory svgHTML = abi.encodePacked(
-            '<svg width="420" height="420" viewBox="0 0 27 27" fill="none" xmlns="http://www.w3.org/2000/svg">',
+            '<svg width="540" height="540" viewBox="0 0 27 27" fill="none" xmlns="http://www.w3.org/2000/svg">',
             background.core,
             redFire.core,
             orangeFire.core,
@@ -92,7 +92,7 @@ abstract contract BBitsBurnerArt is Ownable, IBBitsBurnerNFT {
             "</svg>"
         );
         svgHTML = abi.encodePacked(
-            '{"name": "BBits Burner NFT #',
+            '{"name": "Burned Bit #',
             bytes(Strings.toString(_tokenId)),
             '", "description": "',
             description,
