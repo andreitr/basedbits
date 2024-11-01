@@ -14,7 +14,7 @@ import {IBBitsSocialRewards} from "@src/interfaces/IBBitsSocialRewards.sol";
 contract BBitsSocialRewards is ReentrancyGuard, Pausable, AccessControlEnumerable, IBBitsSocialRewards {
     /// @notice Admin role key that allows a user to approve posts.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN");
-    
+
     /// @notice Based Bits fungible token.
     IERC20 public immutable BBITS;
 

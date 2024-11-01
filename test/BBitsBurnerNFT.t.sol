@@ -101,32 +101,30 @@ contract BBitsBurnerNFTTest is BBitsTestUtils, IBBitsBurnerNFT {
         /// Load some art
         IBBitsBurnerNFT.NamedBytes[] memory placeholder = new IBBitsBurnerNFT.NamedBytes[](1);
         /// Background
-        placeholder[0] = IBBitsBurnerNFT.NamedBytes({
-            core: '<rect x="112" y="112" width="800" height="800" fill="#E25858"/>',
-            name: "AAAe"
-        });
+        placeholder[0] =
+            IBBitsBurnerNFT.NamedBytes({core: '<rect width="27" height="27" fill="#0000AA"/>', name: "AAAe"});
         burnerNFT.addArt(0, placeholder);
         /// Face
         placeholder[0] = IBBitsBurnerNFT.NamedBytes({
-            core: '<rect x="165" y="165" width="700" height="700" fill="#FFFF00"/>',
+            core: '<path d="M9 23V24H16V23H17V18H16V15H15V13H14V11H13V8H12V10H11V12H10V14H9V16H8V19.5V23H9Z" fill="#FF0000"/><path d="M12 6V5H13V6H12Z" fill="#FF0000"/><path d="M14 10V9H15V10H14Z" fill="#FF0000"/><path d="M15 12V11H16V12H15Z" fill="#FF0000"/><path d="M8 12V10H9V12H8Z" fill="#FF0000"/><path d="M10 8V6H11V8H10Z" fill="#FF0000"/>',
             name: "CCCe"
         });
         burnerNFT.addArt(1, placeholder);
         /// Hair
         placeholder[0] = IBBitsBurnerNFT.NamedBytes({
-            core: '<rect x="237" y="237" width="550" height="550" fill="#EF1F6A"/>',
+            core: '<path d="M10 23V24H15V23H16V21H17V19H16V18H15V16H14V12H12V13H11V17H10V18H9V23H10Z" fill="#FFAA00"/><path d="M13 11V10H14V11H13Z" fill="#FFAA00"/><path d="M15 15V13H16V15H15Z" fill="#FFAA00"/><path d="M9 15V14H10V15H9Z" fill="#FFAA00"/><path d="M12 9V8H13V9H12Z" fill="#FFAA00"/><path d="M13 7V6H14V7H13Z" fill="#FFAA00"/><path d="M10 12V11H11V12H10Z" fill="#FFAA00"/>',
             name: "DDDe"
         });
         burnerNFT.addArt(2, placeholder);
         /// Eyes
         placeholder[0] = IBBitsBurnerNFT.NamedBytes({
-            core: '<rect x="362" y="362" width="300" height="300" fill="#206300"/>',
+            core: '<path d="M15 10H16V11H15V10Z" fill="#FFD84C"/><path d="M15 12H16V13H15V12Z" fill="#FFD84C"/><path d="M15 5H16V6H15V5Z" fill="#FFD84C"/><path d="M11 8H12V9H11V8Z" fill="#FFD84C"/><path d="M10 23V22H9V20H8V18H9V17H10V14H11V12H12V11H13V9H14V13H15V14H16V17H17V21H16V22H15V23H10ZM12 19H11V20H12V21H15V20H12V19Z" fill="#FFD84C"/>',
             name: "FFFe"
         });
         burnerNFT.addArt(3, placeholder);
         /// Mouth
         placeholder[0] = IBBitsBurnerNFT.NamedBytes({
-            core: '<rect x="462" y="462" width="100" height="100" fill="#ADFF00"/>',
+            core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/><rect x="10" y="13" width="2" height="4" fill="black"/><rect x="17" y="13" width="2" height="4" fill="black"/><path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>',
             name: "HHHe"
         });
         burnerNFT.addArt(4, placeholder);

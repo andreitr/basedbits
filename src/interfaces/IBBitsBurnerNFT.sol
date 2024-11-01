@@ -9,10 +9,10 @@ interface IBBitsBurnerNFT {
 
     struct Set {
         uint256 background;
-        uint256 body;
-        uint256 eyes;
-        uint256 hair;
-        uint256 mouth;
+        uint256 redFire;
+        uint256 orangeFire;
+        uint256 yellowFire;
+        uint256 noggles;
     }
 
     error InsufficientETHPaid();
