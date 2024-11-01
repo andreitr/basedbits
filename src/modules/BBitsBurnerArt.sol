@@ -92,7 +92,7 @@ abstract contract BBitsBurnerArt is Ownable, IBBitsBurnerNFT {
             "</svg>"
         );
         svgHTML = abi.encodePacked(
-            '{"name": "Bit98 #',
+            '{"name": "BBits Burner NFT #',
             bytes(Strings.toString(_tokenId)),
             '", "description": "',
             description,

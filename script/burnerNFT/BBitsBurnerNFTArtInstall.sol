@@ -4,7 +4,7 @@ pragma solidity 0.8.25;
 import {BBitsBurnerNFT} from "@src/BBitsBurnerNFT.sol";
 import {IBBitsBurnerNFT} from "@src/interfaces/IBBitsBurnerNFT.sol";
 
-contract BBitsBurnerArtInstall {
+contract BBitsBurnerNFTArtInstall {
     BBitsBurnerNFT public burnerNFT;
 
     function _addArt() internal {
@@ -17,26 +17,16 @@ contract BBitsBurnerArtInstall {
 
     function _addBackgrounds() internal {
         IBBitsBurnerNFT.NamedBytes[] memory placeholder = new IBBitsBurnerNFT.NamedBytes[](5);
-        placeholder[0] = IBBitsBurnerNFT.NamedBytes({
-            core: '<rect width="27" height="27" fill="#0000AA"/>',
-            name: 'Royal Blue'
-        });
-        placeholder[1] = IBBitsBurnerNFT.NamedBytes({
-            core: '<rect width="27" height="27" fill="#000066"/>',
-            name: 'Deep Blue'
-        });
-        placeholder[2] = IBBitsBurnerNFT.NamedBytes({
-            core: '<rect width="27" height="27" fill="#000044"/>',
-            name: 'Dark Indigo'
-        });
-        placeholder[3] = IBBitsBurnerNFT.NamedBytes({
-            core: '<rect width="27" height="27" fill="#000022"/>',
-            name: 'Shadow Navy'
-        });
-        placeholder[4] = IBBitsBurnerNFT.NamedBytes({
-            core: '<rect width="27" height="27" fill="#000000"/>',
-            name: 'Midnight'
-        });
+        placeholder[0] =
+            IBBitsBurnerNFT.NamedBytes({core: '<rect width="27" height="27" fill="#0000AA"/>', name: "Royal Blue"});
+        placeholder[1] =
+            IBBitsBurnerNFT.NamedBytes({core: '<rect width="27" height="27" fill="#000066"/>', name: "Deep Blue"});
+        placeholder[2] =
+            IBBitsBurnerNFT.NamedBytes({core: '<rect width="27" height="27" fill="#000044"/>', name: "Dark Indigo"});
+        placeholder[3] =
+            IBBitsBurnerNFT.NamedBytes({core: '<rect width="27" height="27" fill="#000022"/>', name: "Shadow Navy"});
+        placeholder[4] =
+            IBBitsBurnerNFT.NamedBytes({core: '<rect width="27" height="27" fill="#000000"/>', name: "Midnight"});
         burnerNFT.addArt(0, placeholder);
     }
 
@@ -44,39 +34,39 @@ contract BBitsBurnerArtInstall {
         IBBitsBurnerNFT.NamedBytes[] memory placeholder = new IBBitsBurnerNFT.NamedBytes[](9);
         placeholder[0] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M9 23V24H16V23H17V18H16V15H15V13H14V11H13V8H12V10H11V12H10V14H9V16H8V19.5V23H9Z" fill="#FF0000"/><path d="M12 6V5H13V6H12Z" fill="#FF0000"/><path d="M14 10V9H15V10H14Z" fill="#FF0000"/><path d="M15 12V11H16V12H15Z" fill="#FF0000"/><path d="M8 12V10H9V12H8Z" fill="#FF0000"/><path d="M10 8V6H11V8H10Z" fill="#FF0000"/>',
-            name: 'Crimson'
+            name: "Crimson"
         });
         placeholder[1] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M13 5H14V6H13V5Z" fill="#FF0000"/><path d="M8 23V24H17V23H18V22H19V21H20V17H19V15H18V13H17V11H16V10H15V9H14V8H13V6H12V9H11V10H10V11H9V12H8V13H7V15H6V17H5V20H6V22H7V23H8Z" fill="#FF0000"/><path d="M8 10V9H9V10H8Z" fill="#FF0000"/><path d="M10 8V7H11V8H10Z" fill="#FF0000"/><path d="M11 4V3H12V4H11Z" fill="#FF0000"/><path d="M18 11V10H19V11H18Z" fill="#FF0000"/><path d="M16 8V7H17V8H16Z" fill="#FF0000"/>',
-            name: 'Scarlet'
+            name: "Scarlet"
         });
         placeholder[2] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M11 3H10V4H11V5H12V7H11V10H10V8H9V9H8V11H7V15H6V22H7V23H8V24H16V23H18V22H19V20H20V16H19V14H18V13H17V11H16V9H15V6H14V5H13V4H11V3Z" fill="#FF0000"/><path d="M18 10H17V11H18V10Z" fill="#FF0000"/><path d="M17 7H16V8H17V7Z" fill="#FF0000"/><path d="M9 5H8V6H9V5Z" fill="#FF0000"/>',
-            name: 'Vermilion'
+            name: "Vermilion"
         });
         placeholder[3] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M8 23V24H17V23H19V22H20V20H21V16H20V14H19V12H18V9H17V11H16V7H15V10H14V7H12V8H11V6H10V9H9V7H8V12H7V11H6V14H5V20H6V22H7V23H8Z" fill="#FF0000"/><path d="M13 6H14V3H13V6Z" fill="#FF0000"/><path d="M17 6V5H18V6H17Z" fill="#FF0000"/><path d="M6 9.5V8.5H7V9.5H6Z" fill="#FF0000"/>',
-            name: 'Ruby'
+            name: "Ruby"
         });
         placeholder[4] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M9 24V23H7V22H6V17H7V13H6V11H7V12H8V10H9V6H10V8H12V6H11V4H12V3H13V6H14V9H15V7H16V6H17V4H18V7H17V12H18V10H19V9H20V11H19V13H20V14H21V19H20V21H19V23H17V24H9Z" fill="#FF0000"/><path d="M18 4V3H19V4H18Z" fill="#FF0000"/><path d="M12 3H11V2H12V3Z" fill="#FF0000"/><path d="M6 11H5V10H6V11Z" fill="#FF0000"/><path d="M6 8V6H7V8H6Z" fill="#FF0000"/><path d="M7 8H8V9H7V8Z" fill="#FF0000"/><path d="M20 7H19V8H20V7Z" fill="#FF0000"/>',
-            name: 'Garnet'
+            name: "Garnet"
         });
         placeholder[5] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M9 23V24H17V23H18V22H19V15H18V12H17V10H16V8H15V6H14V3H13V5H12V7H11V9H10V10H9V12H8V14H7V22H8V23H9Z" fill="#FF0000"/><path d="M9 8V7H10V8H9Z" fill="#FF0000"/><path d="M16 5V4H17V5H16Z" fill="#FF0000"/><path d="M18 10V9H19V10H18Z" fill="#FF0000"/><path d="M7 11V9H8V11H7Z" fill="#FF0000"/><path d="M11 4V2H12V4H11Z" fill="#FF0000"/>',
-            name: 'Inferno'
+            name: "Inferno"
         });
         placeholder[6] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M9 23V24H16V23H18V22H19V20H20V18H21V11H20V10H18V11H19V12H17V11H16V9H17V3H18V2H16V3H15V5H12V6H11V10H10V9H9V12H8V11H7V15H6V20H7V22H8V23H9Z" fill="#FF0000"/><path d="M18 8V7H19V8H18Z" fill="#FF0000"/><path d="M10 7V6H9V7H10Z" fill="#FF0000"/>',
-            name: 'Carmine'
+            name: "Carmine"
         });
         placeholder[7] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M9 24V23H8V22H7V21H6V16H7V13H6V10H7V11H9V8H10V9H11V8H10V7H9V4H10V5H11V6H13V7H14V8H15V9H16V11H17V13H18V15H19V17H20V20H19V22H18V23H16V24H9Z" fill="#FF0000"/><path d="M7 2V3H8V2H7Z" fill="#FF0000"/><path d="M7 8V9H8V8H7Z" fill="#FF0000"/><path d="M12 4V5H13V4H12Z" fill="#FF0000"/>',
-            name: 'Ember'
+            name: "Ember"
         });
         placeholder[8] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M9 24V23H8V22H7V21H6V20H5V17H4V14H5V12H6V10H7V9H6V8H7V9H8V11H9V10H10V8H9V5H10V4H11V3H13V2H18V3H15V4H14V7H16V8H18V9H19V12H18V14H19V13H20V12H22V13H21V14H20V15H21V19H20V20H19V22H18V23H16V24H9Z" fill="#FF0000"/><path d="M8 6H7V7H8V6Z" fill="#FF0000"/><path d="M19 5V4H20V5H19Z" fill="#FF0000"/><path d="M20 9V8H21V9H20Z" fill="#FF0000"/>',
-            name: 'Burgundy'
+            name: "Burgundy"
         });
         burnerNFT.addArt(1, placeholder);
     }
@@ -85,27 +75,27 @@ contract BBitsBurnerArtInstall {
         IBBitsBurnerNFT.NamedBytes[] memory placeholder = new IBBitsBurnerNFT.NamedBytes[](6);
         placeholder[0] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M10 23V24H15V23H16V21H17V19H16V18H15V16H14V12H12V13H11V17H10V18H9V23H10Z" fill="#FFAA00"/><path d="M13 11V10H14V11H13Z" fill="#FFAA00"/><path d="M15 15V13H16V15H15Z" fill="#FFAA00"/><path d="M9 15V14H10V15H9Z" fill="#FFAA00"/><path d="M12 9V8H13V9H12Z" fill="#FFAA00"/><path d="M13 7V6H14V7H13Z" fill="#FFAA00"/><path d="M10 12V11H11V12H10Z" fill="#FFAA00"/>',
-            name: 'Amber'
+            name: "Amber"
         });
         placeholder[1] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M10 23V24H15V23H16V22H17V18H16V16H15V13H13V9H12V11H11V15H10V16H9V17H8V22H9V23H10Z" fill="#FFAA00"/><path d="M14 12V11H15V12H14Z" fill="#FFAA00"/><path d="M9 14V13H10V14H9Z" fill="#FFAA00"/><path d="M13 8V7H14V8H13Z" fill="#FFAA00"/><path d="M15 9V8H16V9H15Z" fill="#FFAA00"/><path d="M16 15V14H17V15H16Z" fill="#FFAA00"/>',
-            name: 'Tangerine'
+            name: "Tangerine"
         });
         placeholder[2] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M13 8H14V9H13V8Z" fill="#FFAA00"/><path d="M13 9V13H14V11H15V12H16V15H17V18H18V21H17V22H16V23H15V24H10V23H9V22H8V17H9V16H10V15H11V11H12V9H13Z" fill="#FFAA00"/><path d="M9 13H10V14H9V13Z" fill="#FFAA00"/><path d="M11 9H10V10H11V9Z" fill="#FFAA00"/><path d="M14 6H13V7H14V6Z" fill="#FFAA00"/>',
-            name: 'Clementine'
+            name: "Clementine"
         });
         placeholder[3] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M13 9H14V10H13V9Z" fill="#FFAA00"/><path d="M10 15H9V13H8V17H7V22H8V23H9V24H16V23H17V22H18V18H17V16H16V13H15V11H14V14H13V10H12V12H11V11H10V12H11V13H10V15Z" fill="#FFAA00"/><path d="M10 15V16H11V15H10Z" fill="#FFAA00"/><path d="M12 7H13V8H12V7Z" fill="#FFAA00"/><path d="M15 8H16V9H15V8Z" fill="#FFAA00"/><path d="M14 6H15V7H14V6Z" fill="#FFAA00"/>',
-            name: 'Coral'
+            name: "Coral"
         });
         placeholder[4] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M13 6V7H14V6H13Z" fill="#FFAA00"/><path d="M13 8H14V9H13V8Z" fill="#FFAA00"/><path d="M10 14H9V15H8V22H9V23H10V24H16V23H17V22H18V17H17V13H16V12H15V10H14V13H13V9H12V10H11V12H10V14Z" fill="#FFAA00"/><path d="M10 14V15H11V14H10Z" fill="#FFAA00"/><path d="M11 7V8H12V7H11Z" fill="#FFAA00"/><path d="M9 10V11H10V10H9Z" fill="#FFAA00"/>',
-            name: 'Sienna'
+            name: "Sienna"
         });
         placeholder[5] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M9 10H10V11H9V10Z" fill="#FFAA00"/><path d="M10 8H11V10H10V8Z" fill="#FFAA00"/><path d="M13 8H14V9H13V8Z" fill="#FFAA00"/><path d="M17 12H18V13H17V12Z" fill="#FFAA00"/><path d="M10 23V24H15V23H16V22H18V20H19V17H18V15H17V13H16V12H15V10H14V13H13V9H12V10H11V12H10V14H9V12H8V16H7V21H8V22H9V23H10Z" fill="#FFAA00"/><path d="M13 7V6H14V7H13Z" fill="#FFAA00"/><path d="M15 9V8H16V9H15Z" fill="#FFAA00"/><path d="M10 14H11V15H10V14Z" fill="#FFAA00"/>',
-            name: 'Marmalade'
+            name: "Marmalade"
         });
         burnerNFT.addArt(2, placeholder);
     }
@@ -114,35 +104,35 @@ contract BBitsBurnerArtInstall {
         IBBitsBurnerNFT.NamedBytes[] memory placeholder = new IBBitsBurnerNFT.NamedBytes[](8);
         placeholder[0] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M15 10H16V11H15V10Z" fill="#FFD84C"/><path d="M15 12H16V13H15V12Z" fill="#FFD84C"/><path d="M15 5H16V6H15V5Z" fill="#FFD84C"/><path d="M11 8H12V9H11V8Z" fill="#FFD84C"/><path d="M10 23V22H9V20H8V18H9V17H10V14H11V12H12V11H13V9H14V13H15V14H16V17H17V21H16V22H15V23H10ZM12 19H11V20H12V21H15V20H12V19Z" fill="#FFD84C"/>',
-            name: 'Saffron'
+            name: "Saffron"
         });
         placeholder[1] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M11 24V23H10V22H9V18H10V16H12V11H13V13H14V15H15V18H16V22H15V23H14V24H11ZM15 21V20H11V21H15Z" fill="#FFD84C"/>',
-            name: 'Solana'
+            name: "Solana"
         });
         placeholder[2] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M11 24V23H10V22H9V19H10V16H11V15H12V12H14V16H15V18H16V19H17V21H16V23H15V24H11ZM15 19H12V20H15V19Z" fill="#FFD84C"/>',
-            name: 'Radiance'
+            name: "Radiance"
         });
         placeholder[3] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M12 24V23H11V22H10V20H9V19H10V18H11V15H12V12H13V13H14V16H15V18H16V22H15V23H14V24H12ZM15 20V19H11V20H15Z" fill="#FFD84C"/>',
-            name: 'Aurelia'
+            name: "Aurelia"
         });
         placeholder[4] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M11 24V22H10V19H11V16H12V12H13V14H14V18H15V19H16V22H15V23H14V24H11ZM14 20V19H12V20H14Z" fill="#FFD84C"/>',
-            name: 'Lumen'
+            name: "Lumen"
         });
         placeholder[5] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M16 10H15V11H16V10Z" fill="#FFD84C"/><path d="M13 11H14V12H13V11Z" fill="#FFD84C"/><path d="M11 13H12V14H11V13Z" fill="#FFD84C"/><path d="M11 22V23H14V22H15V18H14V17H13V15H12V17H11V19H10V22H11ZM11 19H14V20H11V19Z" fill="#FFD84C"/><path d="M12 9H11V10H12V9Z" fill="#FFD84C"/>',
-            name: 'Goldleaf'
+            name: "Goldleaf"
         });
         placeholder[6] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M12 10H11V11H12V10Z" fill="#FFD84C"/><path d="M16 11H15V12H16V11Z" fill="#FFD84C"/><path d="M10 12H11V13H10V12Z" fill="#FFD84C"/><path d="M11 23H14V22H15V18H14V16H13V13H12V17H11V18H10V22H11V23ZM12 19H13V20H12V19Z" fill="#FFD84C"/><path d="M11 6H12V7H11V6Z" fill="#FFD84C"/>',
-            name: 'Citrine'
+            name: "Citrine"
         });
         placeholder[7] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/><rect x="10" y="13" width="2" height="4" fill="black"/><rect x="17" y="13" width="2" height="4" fill="black"/><path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>',
-            name: 'Cute Pink'
+            name: "Cute Pink"
         });
         burnerNFT.addArt(3, placeholder);
     }
@@ -151,83 +141,83 @@ contract BBitsBurnerArtInstall {
         IBBitsBurnerNFT.NamedBytes[] memory placeholder = new IBBitsBurnerNFT.NamedBytes[](20);
         placeholder[0] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/><rect x="10" y="13" width="2" height="4" fill="black"/><rect x="17" y="13" width="2" height="4" fill="black"/><path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>',
-            name: 'Cute Gray'
+            name: "Cute Gray"
         });
         placeholder[1] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><path d="M9 16V14H10V15H11V16H9Z" fill="black"/><path d="M16 16V14H17V15H18V16H16Z" fill="black"/><rect x="10" y="14" width="1" height="1" fill="#B0B0B0" opacity="0.3"/><rect x="17" y="14" width="1" height="1" fill="#B0B0B0" opacity="0.3"/>',
-            name: 'Nerdy Gray'
+            name: "Nerdy Gray"
         });
         placeholder[2] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="15" width="2" height="2" fill="#B0B0B0" opacity="0.3"/><rect x="8" y="15" width="2" height="2" fill="#B0B0B0" opacity="0.3"/><rect x="17" y="15" width="2" height="2" fill="#000000"/><rect x="10" y="15" width="2" height="2" fill="#000000"/>',
-            name: 'Coder Gray'
+            name: "Coder Gray"
         });
         placeholder[3] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="15" width="4" height="2" fill="#B0B0B0" opacity="0.4"/><rect x="8" y="15" width="4" height="2" fill="#B0B0B0" opacity="0.4"/><rect x="17" y="15" width="2" height="1" fill="black"/><rect x="10" y="15" width="2" height="1" fill="black"/>',
-            name: 'Tired Gray'
+            name: "Tired Gray"
         });
         placeholder[4] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#0052FF"/><rect x="10" y="13" width="2" height="4" fill="black"/><rect x="17" y="13" width="2" height="4" fill="black"/><path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>',
-            name: 'Cute Base Blue'
+            name: "Cute Base Blue"
         });
         placeholder[5] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#0052FF"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><path d="M9 16V14H10V15H11V16H9Z" fill="black"/><path d="M16 16V14H17V15H18V16H16Z" fill="black"/><rect x="10" y="14" width="1" height="1" fill="#0052FF" opacity="0.3"/><rect x="17" y="14" width="1" height="1" fill="#0052FF" opacity="0.3"/>',
-            name: 'Nerdy Base Blue'
+            name: "Nerdy Base Blue"
         });
         placeholder[6] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#0052FF"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="15" width="2" height="2" fill="#0052FF" opacity="0.3"/><rect x="8" y="15" width="2" height="2" fill="#0052FF" opacity="0.3"/><rect x="17" y="15" width="2" height="2" fill="#000000"/><rect x="10" y="15" width="2" height="2" fill="#000000"/>',
-            name: 'Coder Base Blue'
+            name: "Coder Base Blue"
         });
         placeholder[7] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#0052FF"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="15" width="4" height="2" fill="#0052FF" opacity="0.4"/><rect x="8" y="15" width="4" height="2" fill="#0052FF" opacity="0.4"/><rect x="17" y="15" width="2" height="1" fill="black"/><rect x="10" y="15" width="2" height="1" fill="black"/>',
-            name: 'Tired Base Blue'
+            name: "Tired Base Blue"
         });
         placeholder[8] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#A16FB3"/><rect x="10" y="13" width="2" height="4" fill="black" /><rect x="17" y="13" width="2" height="4" fill="black"/><path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white" /><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white" />',
-            name: 'Cute Purple'
+            name: "Cute Purple"
         });
         placeholder[9] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#A16FB3"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><path d="M9 16V14H10V15H11V16H9Z" fill="black"/><path d="M16 16V14H17V15H18V16H16Z" fill="black"/><rect x="10" y="14" width="1" height="1" fill="#A16FB3" opacity="0.3"/><rect x="17" y="14" width="1" height="1" fill="#A16FB3" opacity="0.3"/>',
-            name: 'Nerdy Purple'
+            name: "Nerdy Purple"
         });
         placeholder[10] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#A16FB3"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="15" width="2" height="2" fill="#A16FB3" opacity="0.3"/><rect x="8" y="15" width="2" height="2" fill="#A16FB3" opacity="0.3"/><rect x="17" y="15" width="2" height="2" fill="#000000"/><rect x="10" y="15" width="2" height="2" fill="#000000"/>',
-            name: 'Coder Purple'
+            name: "Coder Purple"
         });
         placeholder[11] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#A16FB3"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="15" width="4" height="2" fill="#A16FB3" opacity="0.4"/><rect x="8" y="15" width="4" height="2" fill="#A16FB3" opacity="0.4"/><rect x="17" y="15" width="2" height="1" fill="black"/><rect x="10" y="15" width="2" height="1" fill="black"/>',
-            name: 'Tired Purple'
+            name: "Tired Purple"
         });
         placeholder[12] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#84AB41"/><rect x="10" y="13" width="2" height="4" fill="black" /><rect x="17" y="13" width="2" height="4" fill="black"/><path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white" /><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white" />',
-            name: 'Cute Green'
+            name: "Cute Green"
         });
         placeholder[13] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#84AB41"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><path d="M9 16V14H10V15H11V16H9Z" fill="black"/><path d="M16 16V14H17V15H18V16H16Z" fill="black"/><rect x="10" y="14" width="1" height="1" fill="#84AB41" opacity="0.3"/><rect x="17" y="14" width="1" height="1" fill="#84AB41" opacity="0.3"/>',
-            name: 'Nerdy Green'
+            name: "Nerdy Green"
         });
         placeholder[14] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#84AB41"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="15" width="2" height="2" fill="#84AB41" opacity="0.3"/><rect x="8" y="15" width="2" height="2" fill="#84AB41" opacity="0.3"/><rect x="17" y="15" width="2" height="2" fill="#000000"/><rect x="10" y="15" width="2" height="2" fill="#000000"/>',
-            name: 'Coder Green'
+            name: "Coder Green"
         });
         placeholder[15] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#84AB41"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="15" width="4" height="2" fill="#84AB41" opacity="0.4"/><rect x="8" y="15" width="4" height="2" fill="#84AB41" opacity="0.4"/><rect x="17" y="15" width="2" height="1" fill="black"/><rect x="10" y="15" width="2" height="1" fill="black"/>',
-            name: 'Tired Green'
+            name: "Tired Green"
         });
         placeholder[16] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/><rect x="10" y="13" width="2" height="4" fill="black" /><rect x="17" y="13" width="2" height="4" fill="black"/><path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white" /><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white" />',
-            name: 'Cute Pink'
+            name: "Cute Pink"
         });
         placeholder[17] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><path d="M9 16V14H10V15H11V16H9Z" fill="black"/><path d="M16 16V14H17V15H18V16H16Z" fill="black"/><rect x="10" y="14" width="1" height="1" fill="#FF88AA" opacity="0.3"/><rect x="17" y="14" width="1" height="1" fill="#FF88AA" opacity="0.3"/>',
-            name: 'Nerdy Pink'
+            name: "Nerdy Pink"
         });
         placeholder[18] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="15" width="2" height="2" fill="#FF88AA" opacity="0.3"/><rect x="8" y="15" width="2" height="2" fill="#FF88AA" opacity="0.3"/><rect x="17" y="15" width="2" height="2" fill="#000000"/><rect x="10" y="15" width="2" height="2" fill="#000000"/>',
-            name: 'Coder Pink'
+            name: "Coder Pink"
         });
         placeholder[19] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF88AA"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="15" width="4" height="2" fill="#FF88AA" opacity="0.4"/><rect x="8" y="15" width="4" height="2" fill="#FF88AA" opacity="0.4"/><rect x="17" y="15" width="2" height="1" fill="black"/><rect x="10" y="15" width="2" height="1" fill="black"/>',
-            name: 'Tired Pink'
+            name: "Tired Pink"
         });
         burnerNFT.addArt(4, placeholder);
     }

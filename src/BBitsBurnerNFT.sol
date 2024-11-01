@@ -9,11 +9,8 @@ import {IV3Quoter} from "@src/interfaces/uniswap/IV3Quoter.sol";
 import {IV3Router} from "@src/interfaces/uniswap/IV3Router.sol";
 import {BBitsBurnerArt} from "@src/modules/BBitsBurnerArt.sol";
 
-/// TODO Art, Nat spec, tests, deploy
-
 /// @title  BBitsBurnerNFT
-/// @notice This contract ...
-/// @dev    The contract operates ...
+/// @notice This contract allows users to mint ERC721 NFTs by burning BBITS tokens through Uniswap V3 routing.
 contract BBitsBurnerNFT is BBitsBurnerArt, ERC721, ReentrancyGuard {
     /// @notice dEaD address.
     address public constant dead = 0x000000000000000000000000000000000000dEaD;
@@ -51,6 +48,8 @@ contract BBitsBurnerNFT is BBitsBurnerArt, ERC721, ReentrancyGuard {
 
     receive() external payable {}
 
+    /// @notice Allows users to mint an NFT by paying in WETH, which will be swapped to BBITS and burned.
+    /// @dev    Swaps WETH to BBITS via Uniswap V3 and mints an NFT to the sender.
     function mint() external payable nonReentrant {
         /// Ensure WETH is paid
         uint256 priceInWETH = mintPriceInWETH();
@@ -74,7 +73,9 @@ contract BBitsBurnerNFT is BBitsBurnerArt, ERC721, ReentrancyGuard {
         _mint(msg.sender, totalSupply++);
     }
 
-    /// @dev This would ideally be a view function but the Uniswap architecture prevents this.
+    /// @notice Fetches the price of minting an NFT in WETH by querying the Uniswap quoter.
+    /// @dev    This function interacts with the Uniswap V3 quoter contract, so it is not a view function.
+    /// @return price The cost of minting an NFT, denominated in WETH.
     function mintPriceInWETH() public returns (uint256 price) {
         IV3Quoter.QuoteExactOutputSingleParams memory params = IV3Quoter.QuoteExactOutputSingleParams({
             tokenIn: address(WETH),
@@ -88,6 +89,10 @@ contract BBitsBurnerNFT is BBitsBurnerArt, ERC721, ReentrancyGuard {
 
     /// VIEW ///
 
+    /// @notice Retrieves the URI for a given token ID.
+    /// @dev    Requires that the token ID is owned by the caller, then generates the URI.
+    /// @param  tokenId The ID of the token to retrieve the URI for.
+    /// @return The URI string for the token's metadata. 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         _requireOwned(tokenId);
         return _draw(tokenId);
@@ -95,6 +100,8 @@ contract BBitsBurnerNFT is BBitsBurnerArt, ERC721, ReentrancyGuard {
 
     /// OWNER ///
 
+    /// @notice Updates the mint price in BBITS. Can only be called by the contract owner.
+    /// @param  _newPrice The new price in BBITS required to mint an NFT.
     function setMintPriceInBBITS(uint256 _newPrice) external onlyOwner {
         mintPriceInBBITS = _newPrice;
     }
