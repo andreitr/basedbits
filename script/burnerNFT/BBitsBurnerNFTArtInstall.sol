@@ -134,7 +134,7 @@ contract BBitsBurnerNFTArtInstall {
     }
 
     function _addNoggles() internal {
-        IBBitsBurnerNFT.NamedBytes[] memory placeholder = new IBBitsBurnerNFT.NamedBytes[](24);
+        IBBitsBurnerNFT.NamedBytes[] memory placeholder = new IBBitsBurnerNFT.NamedBytes[](23);
 
         placeholder[0] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#00FFFF"/><rect x="10" y="13" width="2" height="4" fill="black"/><rect x="17" y="13" width="2" height="4" fill="black"/> <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>',
@@ -236,17 +236,17 @@ contract BBitsBurnerNFTArtInstall {
             name: "Cute Pink"
         });
 
-        placeholder[21] = IBBitsBurnerNFT.NamedBytes({
+        placeholder[20] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF99FF"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><path d="M9 16V14H10V15H11V16H9Z" fill="black"/><path d="M16 16V14H17V15H18V16H16Z" fill="black"/><rect x="10" y="14" width="1" height="1" fill="#FF99FF" opacity="0.3"/><rect x="17" y="14" width="1" height="1" fill="#FF99FF" opacity="0.3"/>',
             name: "Nerdy Pink"
         });
 
-        placeholder[22] = IBBitsBurnerNFT.NamedBytes({
+        placeholder[21] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF99FF"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="2" fill="#FF99FF" opacity="0.3"/><rect x="8" y="13" width="4" height="2" fill="#FF99FF" opacity="0.3"/><rect x="17" y="15" width="2" height="2" fill="#000000"/><rect x="10" y="15" width="2" height="2" fill="#000000"/>',
             name: "Coder Pink"
         });
 
-        placeholder[23] = IBBitsBurnerNFT.NamedBytes({
+        placeholder[22] = IBBitsBurnerNFT.NamedBytes({
             core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF99FF"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="2" fill="#FF99FF" opacity="0.4"/><rect x="8" y="13" width="4" height="2" fill="#FF99FF" opacity="0.4"/><rect x="17" y="15" width="2" height="1" fill="black"/><rect x="10" y="15" width="2" height="1" fill="black"/>',
             name: "Tired Pink"
         });
