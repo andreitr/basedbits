@@ -31,7 +31,7 @@ contract Mint is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
-        BBitsBurnerNFT burnerNFT = BBitsBurnerNFT(payable(0xf863524E00Cc7dE7d01cD9A85f17b3deD58f0272));
+        BBitsBurnerNFT burnerNFT = BBitsBurnerNFT(payable(0x2b0131878e20B269d67eE194759b4eC8730CaDaD));
         for (uint256 i; i < 20; i++) {
             burnerNFT.mint{value: 1e15}();
         }
