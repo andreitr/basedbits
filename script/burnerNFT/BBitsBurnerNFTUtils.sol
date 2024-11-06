@@ -19,8 +19,8 @@ contract FixArt is Script {
 
         IBBitsBurnerNFT.NamedBytes[] memory placeholder = new IBBitsBurnerNFT.NamedBytes[](1);
         placeholder[0] = IBBitsBurnerNFT.NamedBytes({
-            core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF99FF"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="2" fill="#FF99FF" opacity="0.4"/><rect x="8" y="13" width="4" height="2" fill="#FF99FF" opacity="0.4"/><rect x="17" y="15" width="2" height="1" fill="black"/><rect x="10" y="15" width="2" height="1" fill="black"/>',
-            name: "Tired Pink"
+            core: '<path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FFFFFF" opacity="0.6" /><rect x="10" y="13" width="2" height="4" fill="black"/><rect x="17" y="13" width="2" height="4" fill="black"/><path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>',
+            name: "Cute Clear"
         });
         burnerNFT.addArt(4, placeholder);
 

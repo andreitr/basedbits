@@ -2,15 +2,15 @@
 
     <!-- Background -->
     <!-- Royal Blue -->
-    <!--        <rect width="27" height="27" fill="#0000AA"/>-->
+<!--            <rect width="27" height="27" fill="#0000AA"/>-->
     <!-- Deep Blue-->
     <!--    <rect width="27" height="27" fill="#000066"/>-->
     <!-- Dark Indigo -->
-    <!--     <rect width="27" height="27" fill="#000044"/>-->
+         <rect width="27" height="27" fill="#000044"/>
     <!-- Shadow Navy-->
     <!--     <rect width="27" height="27" fill="#000022"/>-->
     <!--    Midnight-->
-    <rect width="27" height="27" fill="#000000"/>
+<!--    <rect width="27" height="27" fill="#000000"/>-->
 
     <!-- Red Fire -->
     <!-- Crimson
@@ -193,11 +193,7 @@
     <!-- Noggles -->
 
     <!-- Cute Cyan
-    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#00FFFF"/>
-    <rect x="10" y="13" width="2" height="4" fill="black"/>
-    <rect x="17" y="13" width="2" height="4" fill="black"/>
-    <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/>
-    <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#00FFFF"/><rect x="10" y="13" width="2" height="4" fill="black"/><rect x="17" y="13" width="2" height="4" fill="black"/><path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
     -->
 
     <!-- Cute Magenta
@@ -207,6 +203,9 @@
     <!-- Cute Yellow
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FFFF00"/><rect x="10" y="13" width="2" height="4" fill="black"/><rect x="17" y="13" width="2" height="4" fill="black"/><path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
     -->
+
+    <!-- Cute Clear -->
+    <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FFFFFF" opacity="0.6" /><rect x="10" y="13" width="2" height="4" fill="black"/><rect x="17" y="13" width="2" height="4" fill="black"/><path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
 
     <!-- Cute Gray
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#B0B0B0"/><rect x="10" y="13" width="2" height="4" fill="black"/><rect x="17" y="13" width="2" height="4" fill="black"/><path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/><path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
@@ -246,12 +245,12 @@
     <!--  PURPLE -->
 
     <!-- Cute Purple
-    -->
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#A020F0"/>
     <rect x="10" y="13" width="2" height="4" fill="black"/>
     <rect x="17" y="13" width="2" height="4" fill="black"/>
     <path d="M10 13H8V17H10V15H11V14H10V13Z" fill="white"/>
     <path d="M17 13H15V17H17V15H18V14H17V13Z" fill="white"/>
+    -->
 
     <!-- Nerdy Purple
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#A020F0"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><path d="M9 16V14H10V15H11V16H9Z" fill="black"/><path d="M16 16V14H17V15H18V16H16Z" fill="black"/><rect x="10" y="14" width="1" height="1" fill="#A020F0" opacity="0.3"/><rect x="17" y="14" width="1" height="1" fill="#A020F0" opacity="0.3"/>
@@ -294,8 +293,8 @@
     -->
 
     <!-- Tired Pink
-    -->
     <path d="M7 15V18H13V15H14V18H20V12H14V14H13V12H7V14H4V17H5V15H7Z" fill="#FF99FF"/><rect x="8" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="4" fill="white"/><rect x="15" y="13" width="4" height="2" fill="#FF99FF" opacity="0.4"/><rect x="8" y="13" width="4" height="2" fill="#FF99FF" opacity="0.4"/><rect x="17" y="15" width="2" height="1" fill="black"/><rect x="10" y="15" width="2" height="1" fill="black"/>
+    -->
 
 
 </svg>
