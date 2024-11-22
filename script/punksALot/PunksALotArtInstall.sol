@@ -158,7 +158,7 @@ contract PunksALotArtInstall {
     }
 
     function _addEyes() internal {
-        IPunksALot.NamedBytes[] memory placeholder = new IPunksALot.NamedBytes[](1);
+        IPunksALot.NamedBytes[] memory placeholder = new IPunksALot.NamedBytes[](11);
         placeholder[0] = IPunksALot.NamedBytes({
             core: '<path d="M11 13H8V14H12V12H11V13Z" fill="#3B7AFF"/><path d="M17 13H14V14H18V12H17V13Z" fill="#3B7AFF"/><path d="M9 12H11V13H9V12Z" fill="#303135"/><path d="M8 12H9V13H8V12Z" fill="#CEDFFB"/><path d="M14 12H15V13H14V12Z" fill="#CEDFFB"/><path d="M15 12H17V13H15V12Z" fill="#303135"/>',
             name: "Angry Squint"

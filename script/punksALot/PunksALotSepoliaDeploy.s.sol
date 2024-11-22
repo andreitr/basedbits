@@ -23,6 +23,9 @@ contract PunksALotSepoliaDeploy is Script, PunksALotArtInstall {
 
         _addArt();
         punksALot.mint{value: 0.001 ether}();
+        punksALot.mint{value: 0.001 ether}();
+        punksALot.mint{value: 0.001 ether}();
+        punksALot.mint{value: 0.001 ether}();
 
         vm.stopBroadcast();
     }
