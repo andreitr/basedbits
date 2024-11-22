@@ -12,7 +12,7 @@ import {BBitsBurnerNFTArtInstall} from "@script/burnerNFT/BBitsBurnerNFTArtInsta
 
 contract BBitsBurnerNFTDeploy is Script, BBitsBurnerNFTArtInstall {
     function run() external {
-//        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        //        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast();
 
         IERC20 bbits = IERC20(0x553C1f87C2EF99CcA23b8A7fFaA629C8c2D27666);

@@ -92,7 +92,7 @@ contract BBitsBurnerNFT is BBitsBurnerArt, ERC721, ReentrancyGuard {
     /// @notice Retrieves the URI for a given token ID.
     /// @dev    Requires that the token ID is owned by the caller, then generates the URI.
     /// @param  tokenId The ID of the token to retrieve the URI for.
-    /// @return The URI string for the token's metadata. 
+    /// @return The URI string for the token's metadata.
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         _requireOwned(tokenId);
         return _draw(tokenId);
