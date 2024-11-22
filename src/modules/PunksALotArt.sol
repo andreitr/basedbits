@@ -7,7 +7,7 @@ import {Strings} from "@openzeppelin/utils/Strings.sol";
 import {Base64} from "@openzeppelin/utils/Base64.sol";
 import {ERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
 
-/// @notice Module for the Punks A Lot collection that handles the art.
+/// @notice Module for the PunksALot collection that handles the art.
 abstract contract PunksALotArt is ERC721, Ownable, IPunksALot {
     /// @notice The storage for all art components
     /// @dev    Layout:

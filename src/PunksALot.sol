@@ -22,15 +22,14 @@ contract PunksALot is ERC721, ReentrancyGuard, Ownable, PunksALotArt {
     /// @notice Greta Gremplin
     address public immutable artist;
 
-    /// @notice Percentage of funds used to buy and burn the BBITS token.
-    /// @dev    10_000 = 100%
-    uint256 public burnPercentage;
+    uint256 public immutable supplyCap;
 
     uint256 public totalSupply;
 
-    uint256 public supplyCap;
-
     uint256 public mintFee;
+
+    /// @dev    10_000 = 100%
+    uint256 public burnPercentage;
 
     /// @dev A mapping to track how many discounted NFTS have been minted
     ///      User => Number
