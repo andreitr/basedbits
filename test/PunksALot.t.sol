@@ -90,7 +90,7 @@ contract PunksALotTest is BBitsTestUtils, IPunksALot {
         /// Discount Number Exceeded
         vm.stopPrank();
         vm.startPrank(user1);
-        
+
         punksALot.mint{value: 0.0001 ether}();
         punksALot.mint{value: 0.0001 ether}();
         punksALot.mint{value: 0.0001 ether}();

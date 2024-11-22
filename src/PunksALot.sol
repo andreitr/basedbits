@@ -7,7 +7,11 @@ import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {PunksALotArt} from "@src/modules/PunksALotArt.sol";
 import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
 
-/// ToDo Nat spec and test
+/// @title  PunksALot
+/// @dev    - Max supply of 1000.
+///         - Original onchain art.
+///         - Up to thee mint discounts based on Based Bits Check In streak.
+///         - Mint funds distributed between the artist, Greta Gremplin, and the BBITS token through a buyback and burn.
 contract PunksALot is ERC721, ReentrancyGuard, Ownable, PunksALotArt {
     /// @notice The BBITS burner contract that automates buy and burns
     Burner public immutable burner;
@@ -46,6 +50,8 @@ contract PunksALot is ERC721, ReentrancyGuard, Ownable, PunksALotArt {
 
     receive() external payable {}
 
+    /// @notice Mint a new NFT, paying a dynamic fee that may include a discount based on BBITS streaks.
+    /// @dev    Raise gas limit on transactions to prevent a revert; the pseudo-random generator fools the wallets.
     function mint() external payable nonReentrant {
         if (totalSupply >= supplyCap) revert CapExceeded();
         uint256 mintPrice = userMintPrice(msg.sender);

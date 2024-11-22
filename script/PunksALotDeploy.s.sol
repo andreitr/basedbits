@@ -16,10 +16,7 @@ contract PunksALotDeploy is Script, PunksALotArtInstall {
         vm.startBroadcast(deployerPrivateKey);
 
         punksALot = new PunksALot(
-            msg.sender,
-            artist,
-            0x1595409cbAEf3dD2485107fb1e328fA0fA505c10,
-            0xE842537260634175891925F058498F9099C102eB
+            msg.sender, artist, 0x1595409cbAEf3dD2485107fb1e328fA0fA505c10, 0xE842537260634175891925F058498F9099C102eB
         );
         _addArt();
 
