@@ -9,4 +9,9 @@ contract Reverter is ERC20 {
     receive() external payable {
         revert();
     }
+
+    function caller(address _to, bytes calldata _data) external {
+        (bool s,) = _to.call(_data);
+        assert(s);
+    }
 }

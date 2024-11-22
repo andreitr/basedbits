@@ -53,7 +53,7 @@ contract PunksALot is ERC721, ReentrancyGuard, Ownable, PunksALotArt {
         if (mintPrice < mintFee) numberDiscounted[msg.sender]++;
         uint256 burnAmount = (mintPrice * burnPercentage) / 10_000;
         burner.burn{value: burnAmount}(0);
-        (bool success,) = owner().call{value: mintPrice - burnAmount}("");
+        (bool success,) = artist.call{value: mintPrice - burnAmount}("");
         if (!success) revert TransferFailed();
         _set(totalSupply);
         _mint(msg.sender, totalSupply++);
