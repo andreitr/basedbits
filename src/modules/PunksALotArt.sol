@@ -22,7 +22,7 @@ abstract contract PunksALotArt is ERC721, Ownable, IPunksALot {
     mapping(uint256 => Set) public metadataForTokenId;
 
     /// @notice The description for the collection.
-    bytes public description = "!!! PUNKS A LOT DESCRIPTION !!!";
+    bytes public description = "Every minted punk can be endlessly remixed to create a unique combination of traits. The artwork by carlosthegreta.eth is fully on-chain.";
 
     /// @notice This function allows the owner to add art components to the metadata storage.
     /// @param  _array The mapping key to access the relevant array of components to be added.
@@ -90,7 +90,7 @@ abstract contract PunksALotArt is ERC721, Ownable, IPunksALot {
             "</svg>"
         );
         svgHTML = abi.encodePacked(
-            '{"name": "Punks A Lot #',
+            '{"name": "Punkalot #',
             bytes(Strings.toString(_tokenId)),
             '", "description": "',
             description,

@@ -9,7 +9,7 @@ import {PunksALotArtInstall} from "@script/punksALot/PunksALotArtInstall.sol";
 
 contract PunksALotDeploy is Script, PunksALotArtInstall {
     /// @dev !!! ADD ARTIST WALLET !!!
-    address public artist = 0x1595409cbAEf3dD2485107fb1e328fA0fA505c10;
+    address public artist = 0x5f81f6FB766d40Ceb7111FB1Eaa5c2632A617804;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
