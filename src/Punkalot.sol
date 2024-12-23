@@ -12,7 +12,7 @@ import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
 ///         - Original onchain art.
 ///         - Up to thee mint discounts based on Based Bits Check In streak.
 ///         - Mint funds distributed between the artist, Greta Gremplin, and the BBITS token through a buyback and burn.
-contract PunksALot is ERC721, ReentrancyGuard, Ownable, PunksALotArt {
+contract Punkalot is ERC721, ReentrancyGuard, Ownable, PunksALotArt {
     /// @notice The BBITS burner contract that automates buy and burns
     Burner public immutable burner;
 
@@ -36,15 +36,15 @@ contract PunksALot is ERC721, ReentrancyGuard, Ownable, PunksALotArt {
     mapping(address => uint256) numberDiscounted;
 
     constructor(address _owner, address _artist, address _burner, address _checkIn)
-        ERC721("Punks A Lot", "PUNKS")
+        ERC721("Punkalot", "PUNKS")
         Ownable(_owner)
     {
         artist = _artist;
         burner = Burner(_burner);
         checkIn = IBBitsCheckIn(_checkIn);
-        burnPercentage = 2000;
+        burnPercentage = 5000;
         supplyCap = 1000;
-        mintFee = 0.001 ether;
+        mintFee = 0.0015 ether;
     }
 
     receive() external payable {}

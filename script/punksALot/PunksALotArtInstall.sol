@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {PunksALot} from "@src/PunksALot.sol";
+import {Punkalot} from "@src/Punkalot.sol";
 import {IPunksALot} from "@src/interfaces/IPunksALot.sol";
 
 contract PunksALotArtInstall {
-    PunksALot public punksALot;
+    Punkalot public punksALot;
 
     function _addArt() internal {
         _addBackgrounds();

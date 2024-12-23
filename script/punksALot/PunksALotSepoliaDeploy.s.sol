@@ -3,7 +3,7 @@ pragma solidity 0.8.25;
 
 import "forge-std/Script.sol";
 import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
-import {PunksALot, Burner} from "@src/PunksALot.sol";
+import {Punkalot, Burner} from "@src/Punkalot.sol";
 import {IPunksALot} from "@src/interfaces/IPunksALot.sol";
 import {PunksALotArtInstall} from "@script/punksALot/PunksALotArtInstall.sol";
 
@@ -14,7 +14,7 @@ contract PunksALotSepoliaDeploy is Script, PunksALotArtInstall {
 
         MockBurner mockBurner = new MockBurner();
         MockCheckIn mockCheckIn = new MockCheckIn();
-        punksALot = new PunksALot(
+        punksALot = new Punkalot(
             0x42e84F0bCe28696cF1D254F93DfDeaeEB6F0D67d,
             0xa2ef4A5fB028b4543700AC83e87a0B8b4572202e,
             address(mockBurner),

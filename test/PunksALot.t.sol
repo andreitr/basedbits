@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {BBitsTestUtils, PunksALot, BBitsCheckIn, BBitsBurner, console} from "@test/utils/BBitsTestUtils.sol";
+import {BBitsTestUtils, Punkalot, BBitsCheckIn, BBitsBurner, console} from "@test/utils/BBitsTestUtils.sol";
 import {IPunksALot} from "@src/interfaces/IPunksALot.sol";
 import {Reverter} from "@test/utils/Reverter.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
@@ -22,7 +22,7 @@ contract PunksALotTest is BBitsTestUtils, IPunksALot {
         basedBits = ERC721(0x617978b8af11570c2dAb7c39163A8bdE1D282407);
         burner = BBitsBurner(payable(0x1595409cbAEf3dD2485107fb1e328fA0fA505c10));
         checkIn = BBitsCheckIn(0xE842537260634175891925F058498F9099C102eB);
-        punksALot = new PunksALot(owner, user0, address(burner), address(checkIn));
+        punksALot = new Punkalot(owner, user0, address(burner), address(checkIn));
         addArt();
 
         vm.startPrank(owner);
