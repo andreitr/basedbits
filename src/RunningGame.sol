@@ -5,9 +5,16 @@ import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {ERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {RunningGameArt} from "@src/modules/RunningGameArt.sol";
+import {LibLinkedList, LibLinkedListNode, data_ptr, node_ptr, LL} from "@mll/MemoryLinkedList.sol";
 
-/// @dev how do i ensure noon start time? hard, maybe ignore for now
+/// @dev lots of bugs in this
+///      shouldn't have used a memory only library kek
 contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
+    using LibLinkedListNode for node_ptr;
+    using LibLinkedList for LL;
+
+    LL public positions;
+
     /// @notice The BBITS burner contract that automates buy and burns
     Burner public immutable burner;
 
@@ -48,10 +55,7 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
     /// @dev    Race Id => Race Information
     mapping(uint256 => Race) public race;
 
-    /// @dev    Race Id => Lap Id => Lap Information
-    mapping(uint256 => mapping(uint256 => Lap)) public lap;
-
-    /// @dev events here
+    /// @dev events in interface
 
     constructor(address _owner, address _burner) ERC721("Running Game", "RG") Ownable(_owner) {
         burner = Burner(_burner);
@@ -61,51 +65,53 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
         status = GameStatus.Pending;
         burnPercentage = 2000;
         mintFee = 0.001 ether;
+        totalSupply = 1;
     }
 
-    //receive() external payable {}
+    receive() external payable {}
 
     function mint() external payable nonReentrant {
         if (status != GameStatus.InMint) revert WrongStatus();
         if (msg.value < mintFee) revert InsufficientETHPaid();
 
-        ///tokenIdToRaceId[totalSupply] = raceCount;
+        /// Burn some bbits
+        uint256 burnAmount = (msg.value * burnPercentage) / 10_000;
+        burner.burn{value: burnAmount}(0);
 
-        /// some logic about the set in each race?
+        /// keep rest for winner
+        /// @dev don't need to bother updating state, can just use balance
+        
+        /// Update race info
+        race[raceCount].entries++;
+        Runner storage runner = Runner({
+            tokenId: totalSupply
+        });
+        //race[raceCount].positions.push(_toDataPtr(runner));
+        positions.push(_toDataPtr(runner));
 
-        _mint(msg.sender, totalSupply++);
+        /// Mint NFT
         //_setArt();
-
-        /// some logic about updating status if mint time exceeded?
+        _mint(msg.sender, totalSupply++);
     }
 
+    function getPositionsLength() external view returns (uint256) {
+        return positions.length;
+    }
+    
+    /// @dev this is broken
     function boost(uint256 _tokenId) external nonReentrant {
         if (status != GameStatus.InRace) revert WrongStatus();
         if (ownerOf(_tokenId) != msg.sender) revert NotNFTOwner();
 
-        /// Find the NFT's position - AAAAHHHHHHHHHH
-        uint256 index = ~uint256(0);
-        uint256[] memory positions = lap[raceCount][lapCount].positions;
-        uint256 length = positions.length;
-        for (uint256 i; i < length; i++) {
-            if (_tokenId == positions[i]) {
-                index = i;
-                break;
-            }
-        }
-        if (index == ~uint256(0)) revert NotInRace();
-
-        /// Boost given index
-
-        /// Move winner to OG index position
-
-        /// This might not work that well, I think the red-black tree might be the way to go
-
-        uint256 currentWinner = lap[raceCount][lapCount].positions[0];
-
-        lap[raceCount][lapCount].positions[0] = _tokenId;
-
-        //lap[raceCount][lapCount].positions[index]
+        /// get node and index
+        (node_ptr node, uint256 idx) = race[raceCount].positions.find(_matchesRunner, abi.encode(_tokenId));
+        node; /// @dev delete later
+        idx;
+        /// remove node
+        ///race[raceCount].positions.at(idx)
+        race[raceCount].positions.remove(node);
+        /// make it the head
+        race[raceCount].positions.insertBefore(race[raceCount].positions.head, _toDataPtr(Runner(_tokenId)));
     }
 
     /// OWNER ///
@@ -116,37 +122,30 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
         race[++raceCount].startedAt = block.timestamp;
         status = GameStatus.InMint;
         
-
         /// some event emission
     }
 
-    /// @dev should make the number of laps modifiable too, he'll want that for sure 
-
-    /// @dev maybe re-think this, messy
     function startNextLap() external onlyOwner {
         if (status == GameStatus.Pending) revert WrongStatus();
         
-        /// @dev lap accounting
-
         if (status == GameStatus.InMint) {
             /// First lap
             if (block.timestamp - race[raceCount].startedAt < mintingTime) revert MintingStillActive();
             status = GameStatus.InRace;
-            lapCount = 1;
-            lap[raceCount][lapCount].startedAt = block.timestamp;
-            /// Some other logic?
+            _recordPositions(raceCount, lapCount++);
+            race[raceCount].laps[lapCount].startedAt = block.timestamp;
         } else {
-            /// Laps 2-final
-            if (block.timestamp - lap[raceCount][lapCount].startedAt < lapTime) revert LapStillActive();
+            /// Laps 2 - final
+            if (block.timestamp - race[raceCount].laps[lapCount].startedAt < lapTime) revert LapStillActive();
             if (lapCount == lapTotal) revert IsFinalLap();
-            lap[raceCount][lapCount].endedAt = block.timestamp;
-            lapCount++; /// @dev can condense later
-            lap[raceCount][lapCount].startedAt = block.timestamp;
+            race[raceCount].laps[lapCount].endedAt = block.timestamp;
+            _recordPositions(raceCount, lapCount++);
+            race[raceCount].laps[lapCount].startedAt = block.timestamp;
+
+            /// @dev this is broken too
+            ///(race[raceCount].entries / lapTotal) - 1
+            //_eliminateRunners(1);
         }
-
-        /// @dev position accounting
-
-        /// some logic about the elimination
 
         /// event emission
     }
@@ -154,14 +153,18 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
     function finishGame() external onlyOwner {
         if (status != GameStatus.InRace) revert WrongStatus();
         if (lapCount != lapTotal) revert FinalLapNotReached();
-        if (block.timestamp - lap[raceCount][lapCount].startedAt < lapTime) revert LapStillActive();
-
-        lap[raceCount][lapCount].endedAt = block.timestamp;
+        if (block.timestamp - race[raceCount].laps[lapCount].startedAt < lapTime) revert LapStillActive();
+        race[raceCount].laps[lapCount].endedAt = block.timestamp;
+        _recordPositions(raceCount, lapCount);
         lapCount = 0;
 
-        /// Get winner
+        /// Get winner and pay them
+        node_ptr node = race[raceCount].positions.head;
+        uint256 tokenIdOfWinner = _fromDataPtr(node.data()).tokenId;
+        address winner = _ownerOf(tokenIdOfWinner);
 
-        /// Pay winner
+        (bool s,) = winner.call{value: address(this).balance}("");
+        if (!s) revert TransferFailed();
 
         /// Reset whatever else needs resetting
 
@@ -171,6 +174,48 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
     function setBurnPercentage(uint256 _newBurnPercentage) external onlyOwner {
         if (_newBurnPercentage > 10_000) revert InvalidPercentage();
         burnPercentage = _newBurnPercentage;
+    }
+
+    /// INTERNAL ///
+    
+    function _recordPositions(uint256 _raceCount, uint256 _lapCount) internal {
+        node_ptr node = race[_raceCount].positions.head;
+        while (node.isValid()) {
+            race[_raceCount].laps[_lapCount].positionsAtLapEnd.push(_fromDataPtr(node.data()).tokenId);
+            node = node.next();
+        }
+    }
+
+    /// @dev CHECK THIS WORKS
+    function _eliminateRunners(uint256 _numberToEliminate) internal {
+        uint256 i;
+        while (i < _numberToEliminate) {
+            race[raceCount].positions.pop();
+            i++;
+        }
+    }
+
+    /// LINKED LIST ///
+
+    function _fromDataPtr(data_ptr ptr) private pure returns (Runner storage data) {
+        uint256 pointer = uint256(data_ptr.unwrap(ptr)); 
+        assembly {
+            data := pointer
+        }
+    }
+
+    function _toDataPtr(Runner storage data) private pure returns (data_ptr ptr) {
+        uint256 pointer;
+        assembly {
+            pointer := data
+        }
+        require(pointer < 2**48, "Pointer exceeds 48 bits");
+        ptr = data_ptr.wrap(uint48(pointer));
+    }
+
+    function _matchesRunner(node_ptr node, uint256, bytes memory callerData) private pure returns (bool) {
+        uint256 needle = abi.decode(callerData, (uint256));
+        return _fromDataPtr(node.data()).tokenId == needle;
     }
 
     /// VIEW ///
@@ -187,6 +232,8 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
     function getLineUp() external view returns (uint256[] memory) {
     
     }
+
+    Also a winners and losers array per lap
     */
 
     /// @notice Retrieves the URI for a given token ID.

@@ -24,7 +24,51 @@ contract RunningGameTest is BBitsTestUtils {
 
     function testInit() public view {}
 
+
+    function testDoesThisEvenWork() public prank(owner) {
+        runningGame.startGame();
+
+        assertEq(runningGame.getPositionsLength(), 0);
+        runningGame.mint{value: 0.01 ether}();
+        assertEq(runningGame.getPositionsLength(), 1);
+        runningGame.mint{value: 0.01 ether}();
+        runningGame.mint{value: 0.01 ether}();
+        runningGame.mint{value: 0.01 ether}();
+        runningGame.mint{value: 0.01 ether}();
+        runningGame.mint{value: 0.01 ether}();
+        runningGame.mint{value: 0.01 ether}();
+        runningGame.mint{value: 0.01 ether}();
+        runningGame.mint{value: 0.01 ether}();
+        runningGame.mint{value: 0.01 ether}();
+        runningGame.mint{value: 0.01 ether}();
+        runningGame.mint{value: 0.01 ether}();
+        vm.warp(block.timestamp + 1 days);
+
+        runningGame.startNextLap();
+
+        runningGame.boost(3);
+        //runningGame.boost(4);
+        vm.warp(block.timestamp + 1 days);
+        runningGame.startNextLap();
+
+        vm.warp(block.timestamp + 1 days);
+        runningGame.startNextLap();
+
+        vm.warp(block.timestamp + 1 days);
+        runningGame.startNextLap();
+
+        vm.warp(block.timestamp + 1 days);
+        runningGame.startNextLap();
+
+        vm.warp(block.timestamp + 1 days);
+        runningGame.startNextLap();
+
+        vm.warp(block.timestamp + 1 days);
+        runningGame.finishGame();
+
+
+
+    }
+
     /// ART ///
-
-
 }
