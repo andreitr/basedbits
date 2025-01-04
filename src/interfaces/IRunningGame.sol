@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {LL} from "@mll/MemoryLinkedList.sol";
+import {DLL} from "@dll/DoublyLinkedList.sol";
 
-/// https://github.com/merklejerk/memory-linked-list
 /// https://docs.google.com/document/d/10AesZM5kg7tM4OJB43hraZxLZA2YpqBTgUVOpuBK_Bo/edit?tab=t.0
 
 interface IRunningGame {
@@ -17,10 +16,9 @@ interface IRunningGame {
         uint256 startedAt;
         uint256 endedAt;
         uint256 prize; /// Winning amount - having already burned some amount
-        uint256 winner;
-        uint256 entries;
+        uint256 winner; /// Might be unnecessary also
         mapping(uint256 => Lap) laps;
-        LL positions; /// Head is the winner
+        DLL positions; /// Head is the winner
     }
 
     struct Lap {
@@ -28,11 +26,6 @@ interface IRunningGame {
         uint256 endedAt;
         uint256[] positionsAtLapEnd; 
         mapping(uint256 => bool) boosted;
-    }
-
-    /// @dev needs to be a struct for the linked list logic to work
-    struct Runner {
-        uint256 tokenId;
     }
 
     struct NamedBytes {
@@ -46,18 +39,18 @@ interface IRunningGame {
     }
 
     error InvalidPercentage();
-    //error MintingTimeExceeded();
-    //error LapTimeExceeded();
     error InsufficientETHPaid();
     error WrongStatus();
-
     error MintingStillActive();
     error LapStillActive();
     error IsFinalLap();
     error FinalLapNotReached();
-
-    error NotInRace();
     error NotNFTOwner();
-
     error TransferFailed();
+    error InvalidNode();
+    error InvalidSetting();
+
+    event GameStarted(uint256 indexed _raceId, uint256 _timestamp);
+    event GameEnded(uint256 indexed _raceId, uint256 _timestamp);
+    event LapStarted(uint256 indexed _raceId, uint256 indexed _lapId, uint256 _timestamp);
 }

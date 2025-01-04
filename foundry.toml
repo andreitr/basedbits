@@ -21,7 +21,7 @@ gas_reports = [
 
 remappings = [
     "@openzeppelin/=lib/openzeppelin-contracts/contracts",
-    "@mll/=lib/memory-linked-list/src",
+    "@dll/=lib/Doubly-Linked-List/src",
     "@script/=script",
     "@src/=src",
     "@test/=test",
