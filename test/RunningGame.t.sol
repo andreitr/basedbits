@@ -6,8 +6,6 @@ import {IRunningGame} from "@src/interfaces/IRunningGame.sol";
 import {ERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
 
 /// @dev forge test --match-contract RunningGameTest -vvv
-
-/// Emit events
 contract RunningGameTest is BBitsTestUtils, IRunningGame {
     function setUp() public override {
         forkBase();
@@ -193,6 +191,8 @@ contract RunningGameTest is BBitsTestUtils, IRunningGame {
         assertEq(startedAt, 0);
         assert(runningGame.status() == GameStatus.Pending);
 
+        vm.expectEmit(true, true, true, true);
+        emit GameStarted(1, block.timestamp);
         runningGame.startGame();
 
         (, startedAt,,,,) = runningGame.getRace(1);
@@ -249,6 +249,8 @@ contract RunningGameTest is BBitsTestUtils, IRunningGame {
         assertEq(endedAt, 0);
         assertEq(positions.length, 0);
 
+        vm.expectEmit(true, true, true, true);
+        emit LapStarted(1, 1, block.timestamp);
         runningGame.startNextLap();
 
         assert(runningGame.status() == GameStatus.InRace);
@@ -260,6 +262,9 @@ contract RunningGameTest is BBitsTestUtils, IRunningGame {
 
         /// Second lap
         vm.warp(block.timestamp + 1.01 days);
+
+        vm.expectEmit(true, true, true, true);
+        emit LapStarted(1, 2, block.timestamp);
         runningGame.startNextLap();
 
         assertEq(runningGame.lapCount(), 2);
@@ -323,54 +328,71 @@ contract RunningGameTest is BBitsTestUtils, IRunningGame {
 
     /// FINISH GAME ///
 
-    /*
-    function testFullGame() public prank(owner) {
-        runningGame.startGame();
-
-        runningGame.mint{value: 0.001 ether}();
-        runningGame.mint{value: 0.001 ether}();
-        runningGame.mint{value: 0.001 ether}();
-        runningGame.mint{value: 0.001 ether}();
-        runningGame.mint{value: 0.001 ether}();
-        runningGame.mint{value: 0.001 ether}();
-
-        vm.warp(block.timestamp + 1.01 days);
-        runningGame.startNextLap();
-
-        vm.warp(block.timestamp + 1.01 days);
-        runningGame.startNextLap();
-
-        vm.warp(block.timestamp + 1.01 days);
-        runningGame.startNextLap();
-
-        vm.warp(block.timestamp + 1.01 days);
-        runningGame.startNextLap();
-
-        vm.warp(block.timestamp + 1.01 days);
-        runningGame.startNextLap();
-
-        vm.warp(block.timestamp + 1.01 days);
-        runningGame.startNextLap();
-
-        vm.warp(block.timestamp + 1.01 days);
+    function testFinishGameRevertConditions() public prank(owner) {
+        /// Wrong status - Pending
+        vm.expectRevert(WrongStatus.selector);
         runningGame.finishGame();
-        
-        /// Second race
+
+        /// Wrong status - InMint
         runningGame.startGame();
 
-        runningGame.mint{value: 0.001 ether}();
-        runningGame.mint{value: 0.001 ether}();
-        runningGame.mint{value: 0.001 ether}();
-        runningGame.mint{value: 0.001 ether}();
-        runningGame.mint{value: 0.001 ether}();
+        vm.expectRevert(WrongStatus.selector);
+        runningGame.finishGame();
+
+        /// Final lap not reached
+        vm.warp(block.timestamp + 1.01 days);
+        runningGame.startNextLap();
+
+        vm.expectRevert(FinalLapNotReached.selector);
+        runningGame.finishGame();
+
+        /// Lap still active
+        vm.warp(block.timestamp + 1.01 days);
+        runningGame.startNextLap();
+        vm.warp(block.timestamp + 1.01 days);
+        runningGame.startNextLap();
+        vm.warp(block.timestamp + 1.01 days);
+        runningGame.startNextLap();
+        vm.warp(block.timestamp + 1.01 days);
+        runningGame.startNextLap();
+        vm.warp(block.timestamp + 1.01 days);
+        runningGame.startNextLap();
+
+        vm.expectRevert(LapStillActive.selector);
+        runningGame.finishGame();
+    }
+
+    function testFinishGameSuccessConditions() public prank(owner) {
+        runningGame.startGame();
+
         runningGame.mint{value: 0.001 ether}();
 
         vm.warp(block.timestamp + 1.01 days);
         runningGame.startNextLap();
+        vm.warp(block.timestamp + 1.01 days);
+        runningGame.startNextLap();
+        vm.warp(block.timestamp + 1.01 days);
+        runningGame.startNextLap();
+        vm.warp(block.timestamp + 1.01 days);
+        runningGame.startNextLap();
+        vm.warp(block.timestamp + 1.01 days);
+        runningGame.startNextLap();
+        vm.warp(block.timestamp + 1.01 days);
+        runningGame.startNextLap();
+        vm.warp(block.timestamp + 1.01 days);
 
-        runningGame.boost(8);
+        uint256 mintFee = runningGame.mintFee();
+        uint256 winnerBalanceBefore = owner.balance;
+        assertEq(address(runningGame).balance, (mintFee - (mintFee * runningGame.burnPercentage()) / 10_000));
+
+        vm.expectEmit(true, true, true, true);
+        emit GameEnded(1, block.timestamp);
+        runningGame.finishGame();
+
+        assertEq(address(runningGame).balance, 0);
+        assertEq(owner.balance, winnerBalanceBefore + (mintFee - (mintFee * runningGame.burnPercentage()) / 10_000));
+        assert(runningGame.status() == GameStatus.Pending);
     }
-    */
 
     /// SETTINGS ///
 

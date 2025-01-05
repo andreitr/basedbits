@@ -111,7 +111,7 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
         if (status != GameStatus.Pending) revert WrongStatus();
         race[++raceCount].startedAt = block.timestamp;
         status = GameStatus.InMint;
-        emit GameStarted(raceCount - 1, block.timestamp);
+        emit GameStarted(raceCount, block.timestamp);
     }
 
     /// @notice This function allows the owner to start the next lap in the current game.
@@ -140,6 +140,9 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
         emit LapStarted(raceCount, lapCount, block.timestamp);
     }
 
+    /// @notice This function allows the owner to finish the current game.
+    /// @dev    Game status must be in the `InRace` stage.
+    ///         Awards the race winner, which is the NFT at the head of the DLL positions list.
     function finishGame() external onlyOwner {
         if (status != GameStatus.InRace) revert WrongStatus();
         if (lapCount != lapTotal) revert FinalLapNotReached();
