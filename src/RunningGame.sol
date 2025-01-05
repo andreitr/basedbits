@@ -88,6 +88,9 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
         _mint(msg.sender, totalSupply++);
     }
 
+    /// @notice This function allows any user who has an NFT Runner in the current race to boost their Runner
+    ///         to the front of the pack.
+    /// @param  _tokenId The token Id of the NFT Runner to be boosted.
     function boost(uint256 _tokenId) external nonReentrant {
         if (status != GameStatus.InRace) revert WrongStatus();
         if (ownerOf(_tokenId) != msg.sender) revert NotNFTOwner();
@@ -102,6 +105,8 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
 
     /// OWNER ///
 
+    /// @notice This function allows the owner to start the next game.
+    /// @dev    Game status must be in the `Pending` stage.
     function startGame() external onlyOwner {
         if (status != GameStatus.Pending) revert WrongStatus();
         race[++raceCount].startedAt = block.timestamp;
@@ -109,6 +114,10 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
         emit GameStarted(raceCount - 1, block.timestamp);
     }
 
+    /// @notice This function allows the owner to start the next lap in the current game.
+    /// @dev    Game status must be in either `InMint` or `InRace` stage.
+    ///         Records runner positions for the end of the previous lap.
+    ///         Eliminates the slowest runners at the end of each lap.
     function startNextLap() external onlyOwner {
         if (status == GameStatus.Pending) revert WrongStatus();
         if (status == GameStatus.InMint) {
@@ -117,17 +126,16 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
             status = GameStatus.InRace;
             _recordPositions(raceCount, lapCount++);
             race[raceCount].laps[lapCount].startedAt = block.timestamp;
+            race[raceCount].entries = race[raceCount].positions.length;
         } else {
             /// Laps 2 - final
             if (block.timestamp - race[raceCount].laps[lapCount].startedAt < lapTime) revert LapStillActive();
             if (lapCount == lapTotal) revert IsFinalLap();
             race[raceCount].laps[lapCount].endedAt = block.timestamp;
+            uint256 x = (race[raceCount].entries == 0) ? race[raceCount].entries : (race[raceCount].entries - 1);
+            _eliminateRunners(x / lapTotal);
             _recordPositions(raceCount, lapCount++);
             race[raceCount].laps[lapCount].startedAt = block.timestamp;
-            /// @dev careful of divide by zero here
-            ///      check for edge cases also
-            uint256 numberToEminate = (race[raceCount].positions.length / lapTotal);
-            _eliminateRunners(numberToEminate);
         }
         emit LapStarted(raceCount, lapCount, block.timestamp);
     }
@@ -139,14 +147,15 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
         race[raceCount].laps[lapCount].endedAt = block.timestamp;
         _recordPositions(raceCount, lapCount);
         lapCount = 0;
-
         /// Get winner and pay them
         ptr node = race[raceCount].positions.head;
-        uint256 tokenIdOfWinner = _valueAtNode(node);
-        address winner = _ownerOf(tokenIdOfWinner);
-        (bool s,) = winner.call{value: address(this).balance}("");
-        if (!s) revert TransferFailed();
-
+        uint256 tokenIdOfWinner;
+        if (isValidPointer(node)) {
+            tokenIdOfWinner = _valueAtNode(node);
+            address winner = _ownerOf(tokenIdOfWinner);
+            (bool s,) = winner.call{value: address(this).balance}("");
+            if (!s) revert TransferFailed();
+        }
         /// Save game state
         race[raceCount].winner = tokenIdOfWinner;
         status = GameStatus.Pending;
@@ -221,7 +230,7 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
         view
         returns (uint256 entries, uint256 startedAt, uint256 endedAt, uint256 currentLap, uint256 prize, uint256 winner)
     {
-        entries = race[_raceId].positions.length;
+        entries = race[_raceId].entries;
         startedAt = race[_raceId].startedAt;
         endedAt = race[_raceId].endedAt;
         currentLap = lapCount;
@@ -230,7 +239,13 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
     }
 
     /// @dev    To get initial positions pass _lapId as zero
-    function getPositionsAtLapEnd(uint256 _raceId, uint256 _lapId) external view returns (uint256[] memory positions) {
+    function getLap(uint256 _raceId, uint256 _lapId)
+        external
+        view
+        returns (uint256 startedAt, uint256 endedAt, uint256[] memory positions)
+    {
+        startedAt = race[_raceId].laps[_lapId].startedAt;
+        endedAt = race[_raceId].laps[_lapId].endedAt;
         positions = race[_raceId].laps[_lapId].positionsAtLapEnd;
     }
 

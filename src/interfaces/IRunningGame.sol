@@ -16,6 +16,7 @@ interface IRunningGame {
         uint256 endedAt;
         uint256 prize;
         uint256 winner;
+        uint256 entries;
         mapping(uint256 => Lap) laps;
         DLL positions;
     }
