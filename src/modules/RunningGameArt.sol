@@ -8,6 +8,10 @@ import {Base64} from "@openzeppelin/utils/Base64.sol";
 import {ERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
 
 abstract contract RunningGameArt is IRunningGame {
+    string ja;
 
-    function _draw(uint256 _tokenId) internal view returns (string memory) {}
+    function _draw(uint256 _tokenId) internal view returns (string memory) {
+        _tokenId;
+        return ja;
+    }
 }

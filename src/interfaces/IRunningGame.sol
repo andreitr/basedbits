@@ -3,8 +3,6 @@ pragma solidity 0.8.25;
 
 import {DLL} from "@dll/DoublyLinkedList.sol";
 
-/// https://docs.google.com/document/d/10AesZM5kg7tM4OJB43hraZxLZA2YpqBTgUVOpuBK_Bo/edit?tab=t.0
-
 interface IRunningGame {
     enum GameStatus {
         Pending,
@@ -12,33 +10,34 @@ interface IRunningGame {
         InRace
     }
 
+    /// @dev Head of positions is the winner
     struct Race {
         uint256 startedAt;
         uint256 endedAt;
-        uint256 prize; /// Winning amount - having already burned some amount
-        uint256 winner; /// Might be unnecessary also
+        uint256 prize;
+        uint256 winner;
         mapping(uint256 => Lap) laps;
-        DLL positions; /// Head is the winner
+        DLL positions;
     }
 
     struct Lap {
         uint256 startedAt;
         uint256 endedAt;
-        uint256[] positionsAtLapEnd; 
+        uint256[] positionsAtLapEnd;
         mapping(uint256 => bool) boosted;
     }
 
+    /// @dev might be unnecessary here
     struct NamedBytes {
         bytes core;
         bytes name;
     }
 
+    /// @dev flesh out more
     struct Set {
         uint256 background;
-        /// @dev flesh out more
     }
 
-    error InvalidPercentage();
     error InsufficientETHPaid();
     error WrongStatus();
     error MintingStillActive();
@@ -49,6 +48,7 @@ interface IRunningGame {
     error TransferFailed();
     error InvalidNode();
     error InvalidSetting();
+    error HasBoosted();
 
     event GameStarted(uint256 indexed _raceId, uint256 _timestamp);
     event GameEnded(uint256 indexed _raceId, uint256 _timestamp);

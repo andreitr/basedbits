@@ -7,9 +7,8 @@ import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {RunningGameArt} from "@src/modules/RunningGameArt.sol";
 import {ptr, isValidPointer, createPointer, DLL, DoublyLinkedListLib} from "@dll/DoublyLinkedList.sol";
 
-/// @dev also need to randomise positions at each lap too, do later, hard tbh
-/// Also a winners and losers array per lap?
-
+/// @title  Running Game
+/// @notice This contract ...
 contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
     using DoublyLinkedListLib for DLL;
 
@@ -19,17 +18,16 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
     /// @notice The current game status of this contract.
     ///         Pending: Minting not started (just deployed/just settled last game).
     ///         InMint:  Accepting new mints.
-    ///         InRace:  Race underway, not accepting new mints.    
+    ///         InRace:  Race underway, not accepting new mints.
     GameStatus public status;
 
     /// @notice The time (in seconds) minting for each round is open.
     uint256 public mintingTime;
-    
+
     /// @notice The time (in seconds) for each lap.
     uint256 public lapTime;
 
     /// @notice The total number of laps for each race.
-    /// @dev if modifiable, ensure not 0?
     uint256 public lapTotal;
 
     /// @notice The percentage of mint funds used to buy back and burn BBITS tokens.
@@ -41,7 +39,7 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
 
     /// @notice The price to mint an NFT and enter a game.
     uint256 public mintFee;
-    
+
     /// @notice The current Race Id.
     /// @dev    This is also the total number of races held by this contract.
     ///         Skips zero
@@ -52,13 +50,12 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
     uint256 public lapCount;
 
     /// @dev    Race Id => Race Information
-    /// @dev must build getter functions for this
     mapping(uint256 => Race) private race;
 
-    /// @dev value Ptr => value
+    /// @dev    Value Ptr => Value
     mapping(ptr => uint256) private runners;
 
-    /// @dev used for ptr generation
+    /// @dev    Used for ptr generation to prevent collisions.
     uint64 private counter;
 
     constructor(address _owner, address _burner) ERC721("Running Game", "RG") Ownable(_owner) {
@@ -73,35 +70,33 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
 
     receive() external payable {}
 
+    /// @notice This function allows any user to mint an NFT and enter into the forthcoming race.
+    /// @dev    Must pay the mintFee in ETH.
+    ///         Game status must be in the `InMint` stage.
     function mint() external payable nonReentrant {
         if (status != GameStatus.InMint) revert WrongStatus();
         if (msg.value < mintFee) revert InsufficientETHPaid();
-
-        /// Burn some bbits
+        /// Burn some BBITS
         uint256 burnAmount = (msg.value * burnPercentage) / 10_000;
         burner.burn{value: burnAmount}(0);
-        
-        /// Update race info
+        /// Add runner to race
         ptr newPtr = _createPtrForRunner(totalSupply);
         race[raceCount].positions.push(newPtr);
-
-        /// Mint NFT
+        race[raceCount].prize = address(this).balance;
+        /// Mint
         //_setArt();
         _mint(msg.sender, totalSupply++);
     }
-    
+
     function boost(uint256 _tokenId) external nonReentrant {
         if (status != GameStatus.InRace) revert WrongStatus();
         if (ownerOf(_tokenId) != msg.sender) revert NotNFTOwner();
-
-        /// get node ptr
+        if (race[raceCount].laps[lapCount].boosted[_tokenId]) revert HasBoosted();
+        race[raceCount].laps[lapCount].boosted[_tokenId] = true;
+        /// Get node ptr, remove it, and make it head
         (ptr node,) = race[raceCount].positions.find(_matchesRunner, abi.encode(_tokenId));
         if (!isValidPointer(node)) revert InvalidNode();
-
-        /// remove node
         race[raceCount].positions.remove(node);
-
-        /// make it the head
         race[raceCount].positions.insertBefore(race[raceCount].positions.head, _createPtrForRunner(_tokenId));
     }
 
@@ -130,6 +125,7 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
             _recordPositions(raceCount, lapCount++);
             race[raceCount].laps[lapCount].startedAt = block.timestamp;
             /// @dev careful of divide by zero here
+            ///      check for edge cases also
             uint256 numberToEminate = (race[raceCount].positions.length / lapTotal);
             _eliminateRunners(numberToEminate);
         }
@@ -148,24 +144,25 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
         ptr node = race[raceCount].positions.head;
         uint256 tokenIdOfWinner = _valueAtNode(node);
         address winner = _ownerOf(tokenIdOfWinner);
-        uint256 prize = address(this).balance;
-
-        (bool s,) = winner.call{value: prize}("");
+        (bool s,) = winner.call{value: address(this).balance}("");
         if (!s) revert TransferFailed();
 
         /// Save game state
-        race[raceCount].prize = prize;
         race[raceCount].winner = tokenIdOfWinner;
         status = GameStatus.Pending;
-
         emit GameEnded(raceCount, block.timestamp);
     }
 
     /// SETTINGS ///
 
     function setBurnPercentage(uint256 _newBurnPercentage) external onlyOwner {
-        if (_newBurnPercentage > 10_000) revert InvalidPercentage();
+        if (_newBurnPercentage > 10_000) revert InvalidSetting();
         burnPercentage = _newBurnPercentage;
+    }
+
+    function setMintFee(uint256 _newMintFee) external onlyOwner {
+        if (_newMintFee < 10_000) revert InvalidSetting();
+        mintFee = _newMintFee;
     }
 
     function setMintingTime(uint256 _newMintingTime) external onlyOwner {
@@ -219,20 +216,27 @@ contract RunningGame is ERC721, Ownable, ReentrancyGuard, RunningGameArt {
 
     /// VIEW ///
 
-    /*
-    function getRace(uint256 _raceId) external view returns (Race memory) {
-        /// is valid race Id
+    function getRace(uint256 _raceId)
+        external
+        view
+        returns (uint256 entries, uint256 startedAt, uint256 endedAt, uint256 currentLap, uint256 prize, uint256 winner)
+    {
+        entries = race[_raceId].positions.length;
+        startedAt = race[_raceId].startedAt;
+        endedAt = race[_raceId].endedAt;
+        currentLap = lapCount;
+        prize = race[_raceId].prize;
+        winner = race[_raceId].winner;
     }
 
-    function getLap() external view returns (Lap memory) {
-
+    /// @dev    To get initial positions pass _lapId as zero
+    function getPositionsAtLapEnd(uint256 _raceId, uint256 _lapId) external view returns (uint256[] memory positions) {
+        positions = race[_raceId].laps[_lapId].positionsAtLapEnd;
     }
 
-    function getLineUp() external view returns (uint256[] memory) {
-    
+    function getHasBoosted(uint256 _raceId, uint256 _lapId, uint256 _tokenId) external view returns (bool) {
+        return race[_raceId].laps[_lapId].boosted[_tokenId];
     }
-
-    */
 
     /// @notice Retrieves the URI for a given token ID.
     /// @param  tokenId The ID of the token to retrieve the URI for.
