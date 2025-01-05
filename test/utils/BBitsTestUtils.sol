@@ -22,6 +22,7 @@ import {IBBMintRaffleNFT} from "@src/interfaces/IBBMintRaffleNFT.sol";
 import {BBitsSocialRewards} from "@src/BBitsSocialRewards.sol";
 import {BBitsBurnerNFT} from "@src/BBitsBurnerNFT.sol";
 import {PunksALot} from "@src/PunksALot.sol";
+import {RunningGame} from "@src/RunningGame.sol";
 
 // Minters
 import {BBitsBadge7Day} from "@src/minters/BBitsBadge7Day.sol";
@@ -45,6 +46,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
     BBitsSocialRewards public socialRewards;
     BBitsBurnerNFT public burnerNFT;
     PunksALot public punksALot;
+    RunningGame public runningGame;
 
     BBitsBadge7Day public badge7DayMinter;
     BBitsBadgeFirstClick public badgeFirstClickMinter;
@@ -89,6 +91,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
         mintRaffle = new BBMintRaffleNFT(owner, user0, address(burner), 100, checkIn);
         socialRewards = new BBitsSocialRewards(owner, bbits);
         punksALot = new PunksALot(owner, user0, address(burner), address(checkIn));
+        runningGame = new RunningGame(owner, address(burner));
 
         // Minters
         badge7DayMinter = new BBitsBadge7Day(checkIn, badges, 1, owner);
@@ -121,7 +124,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
 
         owner = 0x1d671d1B191323A38490972D58354971E5c1cd2A;
         /// @dev Use this to access owner token Ids to allow for easy test updating
-        ownerTokenIds = [6311, 5222, 5219, 4770, 3121];
+        ownerTokenIds = [1469, 573, 6499, 6911, 6515];
     }
 
     /// ON RECEIVED ///
