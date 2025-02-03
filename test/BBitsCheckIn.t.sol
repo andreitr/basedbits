@@ -83,15 +83,11 @@ contract BBitsCheckInTest is BBitsTestUtils {
         bool success;
         bytes memory data;
 
-        // Try to check in again too soon and catch the revert
         (success, data) = address(checkIn).call(abi.encodeWithSignature("checkIn()"));
 
-        // Assert that the call failed
         assertFalse(success, "Call should have failed");
 
-        // Check the revert message
         if (data.length > 0) {
-            // The revert reason is returned as a string
             string memory revertReason = abi.decode(data, (string));
             assertEq(revertReason, "Check-in too soon");
         }
@@ -101,18 +97,13 @@ contract BBitsCheckInTest is BBitsTestUtils {
         bool success;
         bytes memory data;
 
-        // Ensure the user does not have enough NFTs
         assertFalse(checkIn.canCheckIn(user2), "User2 should not have enough NFTs");
 
-        // Try to check in and catch the revert
         (success, data) = address(checkIn).call(abi.encodeWithSignature("checkIn()"));
 
-        // Assert that the call failed
         assertFalse(success, "Call should have failed");
 
-        // Check the revert message
         if (data.length > 0) {
-            // The revert reason is returned as a string
             string memory revertReason = abi.decode(data, (string));
             assertEq(revertReason, "Not enough NFTs to check in");
         }
@@ -135,15 +126,11 @@ contract BBitsCheckInTest is BBitsTestUtils {
         bool success;
         bytes memory data;
 
-        // Try to check in and catch the revert
         (success, data) = address(checkIn).call(abi.encodeWithSignature("checkIn()"));
 
-        // Assert that the call failed
         assertFalse(success, "Call should have failed");
 
-        // Check the revert message
         if (data.length > 0) {
-            // The revert reason is returned as a string
             string memory revertReason = abi.decode(data, (string));
             assertEq(revertReason, "User is banned");
         }
@@ -155,15 +142,11 @@ contract BBitsCheckInTest is BBitsTestUtils {
         bool success;
         bytes memory data;
 
-        // Try to check in and catch the revert
         (success, data) = address(checkIn).call(abi.encodeWithSignature("checkIn()"));
 
-        // Assert that the call failed
         assertFalse(success, "Call should have failed");
 
-        // Check the revert message
         if (data.length > 0) {
-            // The revert reason is returned as a string
             string memory revertReason = abi.decode(data, (string));
             assertEq(revertReason, "Pausable: paused");
         }
