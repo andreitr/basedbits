@@ -7,9 +7,11 @@ import {IERC721} from "@openzeppelin/token/ERC721/IERC721.sol";
 import {IBBitsCheckIn} from "@src/interfaces/IBBitsCheckIn.sol";
 
 contract BBitsCheckIn is IBBitsCheckIn, Ownable, Pausable {
-    address public collection;
+    mapping(address => bool) public collections;
     mapping(address => bool) public banned;
     mapping(address => UserCheckIns) public checkIns;
+
+    address[] private collectionList;
 
     struct UserCheckIns {
         uint256 lastCheckIn;
@@ -17,15 +19,19 @@ contract BBitsCheckIn is IBBitsCheckIn, Ownable, Pausable {
         uint16 count;
     }
 
-    event CheckIn(address indexed sender, uint256 timestamp);
+    event CheckIn(address indexed sender, uint256 timestamp, uint16 streak, uint16 totalCheckIns);
+    event CollectionAdded(address indexed collectionAddress);
+    event CollectionRemoved(address indexed collectionAddress);
 
-    constructor(address _collection, address _initialOwner) Ownable(_initialOwner) {
-        collection = _collection;
+    constructor(address _initialCollection, address _initialOwner) Ownable(_initialOwner) {
+        collections[_initialCollection] = true;
+        collectionList.push(_initialCollection);
+        emit CollectionAdded(_initialCollection);
     }
 
     function checkIn() public whenNotPaused {
         UserCheckIns storage user = checkIns[msg.sender];
-        require(canCheckIn(msg.sender), "Must have at least one NFT to check in");
+        require(canCheckIn(msg.sender), "Must have at least one NFT from an allowed collection to check in");
         require(!banned[msg.sender], "This address is banned from posting");
         require(
             user.lastCheckIn == 0 || block.timestamp >= user.lastCheckIn + 1 days,
@@ -36,7 +42,7 @@ contract BBitsCheckIn is IBBitsCheckIn, Ownable, Pausable {
         user.lastCheckIn = block.timestamp;
         user.count += 1;
 
-        emit CheckIn(msg.sender, block.timestamp);
+        emit CheckIn(msg.sender, block.timestamp, user.streak, user.count);
     }
 
     function isBanned(address _address) public view returns (bool) {
@@ -44,7 +50,12 @@ contract BBitsCheckIn is IBBitsCheckIn, Ownable, Pausable {
     }
 
     function canCheckIn(address _address) public view returns (bool) {
-        return IERC721(collection).balanceOf(_address) > 0;
+        for (uint256 i = 0; i < collectionList.length; i++) {
+            if (IERC721(collectionList[i]).balanceOf(_address) > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     function pause() public onlyOwner {
@@ -63,7 +74,29 @@ contract BBitsCheckIn is IBBitsCheckIn, Ownable, Pausable {
         banned[_address] = false;
     }
 
-    function updateCollection(address newCollection) public onlyOwner {
-        collection = newCollection;
+    function addCollection(address newCollection) public onlyOwner {
+        require(!collections[newCollection], "Collection already exists");
+        collections[newCollection] = true;
+        collectionList.push(newCollection);
+        emit CollectionAdded(newCollection);
+    }
+
+    function removeCollection(address existingCollection) public onlyOwner {
+        require(collections[existingCollection], "Collection does not exist");
+        collections[existingCollection] = false;
+
+        // Remove from collectionList
+        for (uint256 i = 0; i < collectionList.length; i++) {
+            if (collectionList[i] == existingCollection) {
+                collectionList[i] = collectionList[collectionList.length - 1];
+                collectionList.pop();
+                break;
+            }
+        }
+        emit CollectionRemoved(existingCollection);
+    }
+
+    function getCollections() public view returns (address[] memory) {
+        return collectionList;
     }
 }
