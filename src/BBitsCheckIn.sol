@@ -31,7 +31,7 @@ contract BBitsCheckIn is IBBitsCheckIn, Ownable, Pausable {
 
     function checkIn() public whenNotPaused {
         UserCheckIns storage user = checkIns[msg.sender];
-        require(canCheckIn(msg.sender), "Must have at least one NFT from an allowed collection to check in");
+        require(isEligible(msg.sender), "Must have at least one NFT from an allowed collection to check in");
         require(!banned[msg.sender], "This address is banned from posting");
         require(
             user.lastCheckIn == 0 || block.timestamp >= user.lastCheckIn + 1 days,
@@ -49,13 +49,18 @@ contract BBitsCheckIn is IBBitsCheckIn, Ownable, Pausable {
         return banned[_address];
     }
 
-    function canCheckIn(address _address) public view returns (bool) {
+    function isEligible(address _address) public view returns (bool) {
         for (uint256 i = 0; i < collectionList.length; i++) {
             if (IERC721(collectionList[i]).balanceOf(_address) > 0) {
                 return true;
             }
         }
         return false;
+    }
+
+    function canCheckIn(address _address) public view returns (bool) {
+        UserCheckIns storage user = checkIns[_address];
+        return isEligible(_address) && (user.lastCheckIn == 0 || block.timestamp >= user.lastCheckIn + 1 days);
     }
 
     function pause() public onlyOwner {
