@@ -97,7 +97,7 @@ contract BBitsCheckInTest is BBitsTestUtils {
         bool success;
         bytes memory data;
 
-        assertFalse(checkIn.canCheckIn(user2), "User2 should not have enough NFTs");
+        assertFalse(checkIn.isEligible(user2), "User2 should not have enough NFTs");
 
         (success, data) = address(checkIn).call(abi.encodeWithSignature("checkIn()"));
 
@@ -109,14 +109,14 @@ contract BBitsCheckInTest is BBitsTestUtils {
         }
     }
 
-    function testCanCheckInFalse() public {
+    function testIsEligibleFalse() public {
         vm.prank(user2);
-        assertFalse(checkIn.canCheckIn(user2));
+        assertFalse(checkIn.isEligible(user2));
     }
 
-    function testCanCheckIn() public {
+    function testIsEligible() public {
         vm.prank(user0);
-        assertTrue(checkIn.canCheckIn(user0));
+        assertTrue(checkIn.isEligible(user0));
     }
 
     function testFailCheckInBanned() public {
@@ -150,6 +150,26 @@ contract BBitsCheckInTest is BBitsTestUtils {
             string memory revertReason = abi.decode(data, (string));
             assertEq(revertReason, "Pausable: paused");
         }
+    }
+
+    function testCanCheckInEligibleAndMoreThan24Hours() public {
+        vm.prank(user0);
+        checkIn.checkIn();
+
+        vm.warp(block.timestamp + 1.01 days);
+        assertTrue(checkIn.canCheckIn(user0), "User0 should be able to check in after 24 hours");
+    }
+
+    function testCanCheckInEligibleAndLessThan24Hours() public {
+        vm.prank(user0);
+        checkIn.checkIn();
+
+        vm.warp(block.timestamp + 23 hours);
+        assertFalse(checkIn.canCheckIn(user0), "User0 should not be able to check in before 24 hours");
+    }
+
+    function testCanCheckInNotEligible() public {
+        assertFalse(checkIn.canCheckIn(user2), "User2 should not be able to check in as they are not eligible");
     }
 
     function testPauseContract() public {
