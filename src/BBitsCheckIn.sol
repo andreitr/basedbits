@@ -104,4 +104,12 @@ contract BBitsCheckIn is IBBitsCheckIn, Ownable, Pausable {
     function getCollections() public view returns (address[] memory) {
         return collectionList;
     }
+
+    function migrateOldCheckIns(address oldContract, address[] calldata users) public onlyOwner {
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            (uint256 lastCheckIn, uint16 streak, uint16 count) = IBBitsCheckIn(oldContract).checkIns(user);
+            checkIns[user] = UserCheckIns(lastCheckIn, streak, count);
+        }
+    }
 }
