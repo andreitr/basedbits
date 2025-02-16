@@ -23,6 +23,8 @@ contract BBMintRaffleNFTTest is BBitsTestUtils, IBBMintRaffleNFT {
         checkIn = BBitsCheckIn(0xE842537260634175891925F058498F9099C102eB);
         mintRaffle = new BBMintRaffleNFT(owner, user0, address(burner), 100, checkIn);
 
+        unpauseLegacyCheckin();
+
         /// @dev Owner contract set up
         addArt();
         vm.startPrank(owner);

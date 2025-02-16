@@ -121,7 +121,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
 
         owner = 0x1d671d1B191323A38490972D58354971E5c1cd2A;
         /// @dev Use this to access owner token Ids to allow for easy test updating
-        ownerTokenIds = [6311, 5222, 5219, 4770, 3121];
+        ownerTokenIds = [6499, 6515, 6602, 6529, 1454];
     }
 
     /// ON RECEIVED ///
@@ -178,6 +178,11 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
         vm.prank(owner);
         checkIn.ban(user);
         assertEq(checkIn.banned(user), true);
+    }
+
+    /// @dev Ensure is called on legacy check in contract: 0xE842537260634175891925F058498F9099C102eB
+    function unpauseLegacyCheckin() public prank(0x4FCfb1b0A8B44fE0A7c0DcfA4EF36d48d758C64D) {
+        checkIn.unpause();
     }
 
     /// RAFFLE ///

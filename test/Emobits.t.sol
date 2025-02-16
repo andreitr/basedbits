@@ -23,6 +23,8 @@ contract EmobitsTest is BBitsTestUtils, IBBitsEmoji {
         checkIn = BBitsCheckIn(0xE842537260634175891925F058498F9099C102eB);
         emoji = new Emobits(owner, address(burner), checkIn);
 
+        unpauseLegacyCheckin();
+
         /// @dev Owner contract set up
         addArt();
         vm.startPrank(owner);
