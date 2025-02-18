@@ -94,6 +94,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         race[raceCount].positions.push(newPtr);
         race[raceCount].prize = address(this).balance;
         raceEntriesPerUser[raceCount][msg.sender].push(totalSupply);
+        race[raceCount].entries++;
         /// Mint
         //_setArt();
         _mint(msg.sender, totalSupply++);
@@ -136,7 +137,6 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
             if (block.timestamp - race[raceCount].startedAt < mintingTime) revert MintingStillActive();
             status = GameStatus.InRace;
             lapCount++;
-            race[raceCount].entries = race[raceCount].positions.length;
             race[raceCount].laps[lapCount].startedAt = block.timestamp;
             _recordNumberToEliminate();
             _shufflePositions();
@@ -144,14 +144,14 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
             /// Laps 2 - final
             if (block.timestamp - race[raceCount].laps[lapCount].startedAt < lapTime) revert LapStillActive();
             if (lapCount == lapTotal) revert IsFinalLap();
-            /// finish current lap ///
+            /// finish current lap
             race[raceCount].laps[lapCount].endedAt = block.timestamp;
             _updateStorageArrays();
-            /// start next lap ///
+            /// Start next lap
             lapCount++;
             race[raceCount].laps[lapCount].startedAt = block.timestamp;
             _recordNumberToEliminate();
-            _shufflePositions();          
+            _shufflePositions();
         }
         emit LapStarted(raceCount, lapCount, block.timestamp);
     }
@@ -162,8 +162,8 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     function finishGame() external onlyRole(ADMIN_ROLE) {
         if (status != GameStatus.InRace) revert WrongStatus();
         if (lapCount != lapTotal) revert FinalLapNotReached();
-        if (block.timestamp - race[raceCount].laps[lapCount].startedAt < lapTime) revert LapStillActive();    
-        /// finish current and final lap ///
+        if (block.timestamp - race[raceCount].laps[lapCount].startedAt < lapTime) revert LapStillActive();
+        /// Finish current and final lap
         race[raceCount].laps[lapCount].endedAt = block.timestamp;
         _updateStorageArrays();
         lapCount = 0;
@@ -303,10 +303,11 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     function getLap(uint256 _raceId, uint256 _lapId)
         external
         view
-        returns (uint256 startedAt, uint256 endedAt, uint256[] memory positions)
+        returns (uint256 startedAt, uint256 endedAt, uint256 eliminations, uint256[] memory positions)
     {
         startedAt = race[_raceId].laps[_lapId].startedAt;
         endedAt = race[_raceId].laps[_lapId].endedAt;
+        eliminations = race[_raceId].laps[_lapId].eliminations;
         if (_raceId == raceCount && _lapId == lapCount) {
             /// Active lap
             uint256 length = race[raceCount].positions.length;

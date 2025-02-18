@@ -12,7 +12,6 @@ contract PunksALotDeploy is Script, PunksALotArtInstall {
     address public artist = 0x5f81f6FB766d40Ceb7111FB1Eaa5c2632A617804;
 
     function run() external {
-
         vm.startBroadcast();
 
         punksALot = new Punkalot(

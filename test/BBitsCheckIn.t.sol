@@ -4,7 +4,6 @@ pragma solidity 0.8.25;
 import {BBitsTestUtils, console} from "@test/utils/BBitsTestUtils.sol";
 
 contract BBitsCheckInTest is BBitsTestUtils {
-
     function testInitialSettings() public view {
         assertTrue(checkIn.collections(address(basedBits)), "Initial collection should be set correctly");
 

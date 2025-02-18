@@ -25,8 +25,10 @@ interface IBaseRace {
     struct Lap {
         uint256 startedAt;
         uint256 endedAt;
-        uint256 eliminations; /// need to worked out at lap start now
-        uint256[] winners;    /// filled in at lap end
+        uint256 eliminations;
+        /// need to worked out at lap start now
+        uint256[] winners;
+        /// filled in at lap end
         uint256[] losers;
         mapping(uint256 => bool) boosted;
     }
