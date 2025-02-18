@@ -60,6 +60,9 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     /// @dev    Value Ptr => Value
     mapping(ptr => uint256) private runners;
 
+    /// @dev    RaceId => User = Entries
+    mapping(uint256 => mapping(address => uint256[])) private raceEntriesPerUser;
+
     /// @dev    Used for ptr generation to prevent collisions.
     uint64 private counter;
 
@@ -90,6 +93,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         ptr newPtr = _createPtrForRunner(totalSupply);
         race[raceCount].positions.push(newPtr);
         race[raceCount].prize = address(this).balance;
+        raceEntriesPerUser[raceCount][msg.sender].push(totalSupply);
         /// Mint
         //_setArt();
         _mint(msg.sender, totalSupply++);
@@ -112,7 +116,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
 
     /// RACE ///
 
-    /// @notice This function allows the owner to start the next game.
+    /// @notice This function allows the admin to start the next game.
     /// @dev    Game status must be in the `Pending` stage.
     function startGame() external onlyRole(ADMIN_ROLE) {
         if (status != GameStatus.Pending) revert WrongStatus();
@@ -121,7 +125,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         emit GameStarted(raceCount, block.timestamp);
     }
 
-    /// @notice This function allows the owner to start the next lap in the current game.
+    /// @notice This function allows the admin to start the next lap in the current game.
     /// @dev    Game status must be in either `InMint` or `InRace` stage.
     ///         Records runner positions for the end of the previous lap.
     ///         Eliminates the slowest runners at the end of each lap.
@@ -131,31 +135,37 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
             /// First lap
             if (block.timestamp - race[raceCount].startedAt < mintingTime) revert MintingStillActive();
             status = GameStatus.InRace;
-            _recordPositions(raceCount, lapCount++);
-            race[raceCount].laps[lapCount].startedAt = block.timestamp;
+            lapCount++;
             race[raceCount].entries = race[raceCount].positions.length;
+            race[raceCount].laps[lapCount].startedAt = block.timestamp;
+            _recordNumberToEliminate();
+            _shufflePositions();
         } else {
             /// Laps 2 - final
             if (block.timestamp - race[raceCount].laps[lapCount].startedAt < lapTime) revert LapStillActive();
             if (lapCount == lapTotal) revert IsFinalLap();
+            /// finish current lap ///
             race[raceCount].laps[lapCount].endedAt = block.timestamp;
-            uint256 x = (race[raceCount].entries == 0) ? race[raceCount].entries : (race[raceCount].entries - 1);
-            _eliminateRunners(x / lapTotal);
-            _recordPositions(raceCount, lapCount++);
+            _updateStorageArrays();
+            /// start next lap ///
+            lapCount++;
             race[raceCount].laps[lapCount].startedAt = block.timestamp;
+            _recordNumberToEliminate();
+            _shufflePositions();          
         }
         emit LapStarted(raceCount, lapCount, block.timestamp);
     }
 
-    /// @notice This function allows the owner to finish the current game.
+    /// @notice This function allows the admin to finish the current game.
     /// @dev    Game status must be in the `InRace` stage.
     ///         Awards the race winner, which is the NFT at the head of the DLL positions list.
     function finishGame() external onlyRole(ADMIN_ROLE) {
         if (status != GameStatus.InRace) revert WrongStatus();
         if (lapCount != lapTotal) revert FinalLapNotReached();
-        if (block.timestamp - race[raceCount].laps[lapCount].startedAt < lapTime) revert LapStillActive();
+        if (block.timestamp - race[raceCount].laps[lapCount].startedAt < lapTime) revert LapStillActive();    
+        /// finish current and final lap ///
         race[raceCount].laps[lapCount].endedAt = block.timestamp;
-        _recordPositions(raceCount, lapCount);
+        _updateStorageArrays();
         lapCount = 0;
         /// Get winner and pay them
         ptr node = race[raceCount].positions.head;
@@ -201,19 +211,56 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
 
     /// INTERNAL ///
 
-    function _recordPositions(uint256 _raceCount, uint256 _lapCount) internal {
-        ptr node = race[_raceCount].positions.head;
-        while (isValidPointer(node)) {
-            race[_raceCount].laps[_lapCount].positionsAtLapEnd.push(_valueAtNode(node));
-            node = race[raceCount].positions.nextAt(node);
+    function _recordNumberToEliminate() internal {
+        uint256 x = (race[raceCount].entries == 0) ? race[raceCount].entries : (race[raceCount].entries - 1);
+        race[raceCount].laps[lapCount].eliminations = x / lapTotal;
+    }
+
+    function _updateStorageArrays() internal {
+        uint256 tokenId;
+        uint256 numberToEliminate = race[raceCount].laps[lapCount].eliminations;
+        /// Get losers array and pop them from the positions list
+        for (uint256 i; i < numberToEliminate; i++) {
+            tokenId = _valueAtNode(race[raceCount].positions.tail);
+            race[raceCount].laps[lapCount].losers.push(tokenId);
+            race[raceCount].positions.pop();
+        }
+        /// Record remaining winners
+        uint256 length = race[raceCount].positions.length;
+        ptr ptrPosition = race[raceCount].positions.head;
+        for (uint256 j; j < length; j++) {
+            tokenId = _valueAtNode(ptrPosition);
+            race[raceCount].laps[lapCount].losers.push(tokenId);
+            ptrPosition = race[raceCount].positions.nextAt(ptrPosition);
         }
     }
 
-    function _eliminateRunners(uint256 _numberToEliminate) internal {
-        uint256 i;
-        while (i < _numberToEliminate) {
-            race[raceCount].positions.pop();
-            i++;
+    function _shufflePositions() internal {
+        uint256 length = race[raceCount].positions.length;
+        if (length < 2) return;
+        /// Record ptrs in an array
+        ptr[] memory ptrs = new ptr[](length);
+        ptr ptrPosition = race[raceCount].positions.head;
+        for (uint256 a; a < length; a++) {
+            ptrs[a] = ptrPosition;
+            ptrPosition = race[raceCount].positions.nextAt(ptrPosition);
+        }
+        /// Shuffle array using Fisher-Yates
+        uint256 seed;
+        uint256 x;
+        ptr temp;
+        /// @dev double-check b>0 or b>=0 here?
+        for (uint256 b = length - 1; b > 0; b--) {
+            seed = uint256(keccak256(abi.encode(block.timestamp, b)));
+            x = seed % (b + 1);
+            temp = ptrs[b];
+            ptrs[b] = ptrs[x];
+            ptrs[x] = temp;
+        }
+        /// Rebuild dll
+        race[raceCount].positions.clear();
+        for (uint256 c; c < length; c++) {
+            race[raceCount].positions.push(ptrs[c]);
         }
     }
 
@@ -248,7 +295,11 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         winner = race[_raceId].winner;
     }
 
-    /// @dev    To get initial positions pass _lapId as zero
+    /// @dev returns a list of token ids for a given wallet address / race. This will help me query all entries for a user for a given race
+    function getRaceEntries(uint256 _raceId, address _user) external view returns (uint256[] memory entries) {
+        return raceEntriesPerUser[_raceId][_user];
+    }
+
     function getLap(uint256 _raceId, uint256 _lapId)
         external
         view
@@ -256,7 +307,19 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     {
         startedAt = race[_raceId].laps[_lapId].startedAt;
         endedAt = race[_raceId].laps[_lapId].endedAt;
-        positions = race[_raceId].laps[_lapId].positionsAtLapEnd;
+        if (_raceId == raceCount && _lapId == lapCount) {
+            /// Active lap
+            uint256 length = race[raceCount].positions.length;
+            positions = new uint256[](length);
+            ptr ptrPosition = race[raceCount].positions.head;
+            for (uint256 i; i < length; i++) {
+                positions[i] = _valueAtNode(ptrPosition);
+                ptrPosition = race[raceCount].positions.nextAt(ptrPosition);
+            }
+        } else {
+            /// Finished lap
+            positions = race[_raceId].laps[_lapId].winners;
+        }
     }
 
     function isBoosted(uint256 _raceId, uint256 _lapId, uint256 _tokenId) external view returns (bool) {
