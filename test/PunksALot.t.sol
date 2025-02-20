@@ -25,6 +25,8 @@ contract PunksALotTest is BBitsTestUtils, IPunksALot {
         punksALot = new Punkalot(owner, user0, address(burner), address(checkIn));
         addArt();
 
+        unpauseLegacyCheckin();
+
         vm.startPrank(owner);
         basedBits.transferFrom(owner, user0, ownerTokenIds[0]);
         basedBits.transferFrom(owner, user1, ownerTokenIds[1]);
@@ -38,10 +40,10 @@ contract PunksALotTest is BBitsTestUtils, IPunksALot {
         assertEq(address(punksALot.checkIn()), address(checkIn));
         assertEq(punksALot.artist(), user0);
         assertEq(punksALot.owner(), owner);
-        assertEq(punksALot.burnPercentage(), 2000);
+        assertEq(punksALot.burnPercentage(), 5000);
         assertEq(punksALot.totalSupply(), 0);
         assertEq(punksALot.supplyCap(), 1000);
-        assertEq(punksALot.mintFee(), 0.001 ether);
+        assertEq(punksALot.mintFee(), 0.0015 ether);
     }
 
     /// MINT ///
@@ -53,12 +55,12 @@ contract PunksALotTest is BBitsTestUtils, IPunksALot {
 
         /// CapExceeded
         for (uint256 i; i < 1000; i++) {
-            punksALot.mint{value: 0.001 ether}();
+            punksALot.mint{value: 0.0015 ether}();
         }
 
         assertEq(punksALot.totalSupply(), 1000);
         vm.expectRevert(CapExceeded.selector);
-        punksALot.mint{value: 0.001 ether}();
+        punksALot.mint{value: 0.0015 ether}();
     }
 
     function testMintSuccessConditions() public prank(user1) {
@@ -66,12 +68,12 @@ contract PunksALotTest is BBitsTestUtils, IPunksALot {
         assertEq(punksALot.balanceOf(user1), 0);
         uint256 artistBalanceBeforeMint = user0.balance;
 
-        punksALot.mint{value: 0.001 ether}();
+        punksALot.mint{value: 0.0015 ether}();
 
         assertEq(punksALot.totalSupply(), 1);
         assertEq(punksALot.balanceOf(user1), 1);
         assertEq(
-            user0.balance, artistBalanceBeforeMint + ((0.001 ether * (10_000 - punksALot.burnPercentage()) / 10_000))
+            user0.balance, artistBalanceBeforeMint + ((0.0015 ether * (10_000 - punksALot.burnPercentage()) / 10_000))
         );
     }
 
@@ -91,16 +93,16 @@ contract PunksALotTest is BBitsTestUtils, IPunksALot {
         vm.stopPrank();
         vm.startPrank(user1);
 
-        punksALot.mint{value: 0.0001 ether}();
-        punksALot.mint{value: 0.0001 ether}();
-        punksALot.mint{value: 0.0001 ether}();
+        punksALot.mint{value: 0.00015 ether}();
+        punksALot.mint{value: 0.00015 ether}();
+        punksALot.mint{value: 0.00015 ether}();
         assertEq(punksALot.userMintPrice(user1), mintFee);
     }
 
     /// OWNER ///
 
     function testSetBurnPercentage() public prank(owner) {
-        assertEq(punksALot.burnPercentage(), 2000);
+        assertEq(punksALot.burnPercentage(), 5000);
 
         /// Invalid percentage
         vm.expectRevert(InvalidPercentage.selector);
@@ -114,7 +116,7 @@ contract PunksALotTest is BBitsTestUtils, IPunksALot {
     /// ART ///
 
     function testSetArt() public prank(user1) {
-        punksALot.mint{value: 0.001 ether}();
+        punksALot.mint{value: 0.0015 ether}();
 
         /// Not NFT Owner
         vm.stopPrank();
@@ -138,7 +140,7 @@ contract PunksALotTest is BBitsTestUtils, IPunksALot {
     }
 
     function testDraw() public prank(user1) {
-        punksALot.mint{value: 0.001 ether}();
+        punksALot.mint{value: 0.0015 ether}();
         string memory image = punksALot.tokenURI(0);
         image;
         console.log(image);

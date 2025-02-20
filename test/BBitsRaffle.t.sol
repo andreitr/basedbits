@@ -20,6 +20,8 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
         checkIn = BBitsCheckIn(0xE842537260634175891925F058498F9099C102eB);
         raffle = new BBitsRaffle(owner, basedBits, checkIn);
 
+        unpauseLegacyCheckin();
+
         /// @dev Ancillary test setup:
         ///      Owner approvals raffle for all tokens
         ///      User0 given one token

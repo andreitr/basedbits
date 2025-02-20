@@ -4,7 +4,6 @@ pragma solidity 0.8.25;
 import {BBitsTestUtils, console} from "@test/utils/BBitsTestUtils.sol";
 
 contract BBitsCheckInTest is BBitsTestUtils {
-
     function testInitialSettings() public view {
         assertTrue(checkIn.collections(address(basedBits)), "Initial collection should be set correctly");
 
@@ -168,7 +167,7 @@ contract BBitsCheckInTest is BBitsTestUtils {
         assertFalse(checkIn.canCheckIn(user0), "User0 should not be able to check in before 24 hours");
     }
 
-    function testCanCheckInNotEligible() public {
+    function testCanCheckInNotEligible() public view {
         assertFalse(checkIn.canCheckIn(user2), "User2 should not be able to check in as they are not eligible");
     }
 

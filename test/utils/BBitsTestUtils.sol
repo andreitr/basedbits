@@ -22,6 +22,7 @@ import {IBBMintRaffleNFT} from "@src/interfaces/IBBMintRaffleNFT.sol";
 import {BBitsSocialRewards} from "@src/BBitsSocialRewards.sol";
 import {BBitsBurnerNFT} from "@src/BBitsBurnerNFT.sol";
 import {Punkalot} from "@src/Punkalot.sol";
+import {BaseRace} from "@src/BaseRace.sol";
 
 // Minters
 import {BBitsBadge7Day} from "@src/minters/BBitsBadge7Day.sol";
@@ -45,6 +46,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
     BBitsSocialRewards public socialRewards;
     BBitsBurnerNFT public burnerNFT;
     Punkalot public punksALot;
+    BaseRace public baseRace;
 
     BBitsBadge7Day public badge7DayMinter;
     BBitsBadgeFirstClick public badgeFirstClickMinter;
@@ -89,6 +91,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
         mintRaffle = new BBMintRaffleNFT(owner, user0, address(burner), 100, checkIn);
         socialRewards = new BBitsSocialRewards(owner, bbits);
         punksALot = new Punkalot(owner, user0, address(burner), address(checkIn));
+        baseRace = new BaseRace(owner, user0, address(burner));
 
         // Minters
         badge7DayMinter = new BBitsBadge7Day(checkIn, badges, 1, owner);
@@ -121,7 +124,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
 
         owner = 0x1d671d1B191323A38490972D58354971E5c1cd2A;
         /// @dev Use this to access owner token Ids to allow for easy test updating
-        ownerTokenIds = [6311, 5222, 5219, 4770, 3121];
+        ownerTokenIds = [6499, 6515, 6602, 6529, 1454];
     }
 
     /// ON RECEIVED ///
@@ -178,6 +181,11 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
         vm.prank(owner);
         checkIn.ban(user);
         assertEq(checkIn.banned(user), true);
+    }
+
+    /// @dev Ensure is called on legacy check in contract: 0xE842537260634175891925F058498F9099C102eB
+    function unpauseLegacyCheckin() public prank(0x4FCfb1b0A8B44fE0A7c0DcfA4EF36d48d758C64D) {
+        checkIn.unpause();
     }
 
     /// RAFFLE ///
