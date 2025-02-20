@@ -8,12 +8,15 @@ import {BaseRaceArt} from "@src/modules/BaseRaceArt.sol";
 import {ptr, isValidPointer, createPointer, DLL, DoublyLinkedListLib} from "@dll/DoublyLinkedList.sol";
 
 /// @title  Base Race
-/// @notice This contract ...
+/// @notice This contract manages a race between NFT runners. Users can mint NFTs to participate in races, 
+///         boost their runners, and win the prize pool of deposited ETH.
 /// @dev    DEFAULT_ADMIN_ROLE - Settings and Admin role authority
 ///         ADMIN_ROLE         - Race progression
+/// NOTE    !!! STILL LACKS ART !!!
 contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     using DoublyLinkedListLib for DLL;
 
+    /// @notice Admin role that controls the race stages.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     /// @notice The BBITS burner contract that automates buy and burns
@@ -51,7 +54,6 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
 
     /// @notice The Lap Id for the current race.
     /// @dev    The lap count is reset to 0 after each race.
-    /// @dev    inspect
     uint256 private lapCount;
 
     /// @dev    Race Id => Race Information
@@ -93,8 +95,8 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         ptr newPtr = _createPtrForRunner(totalSupply);
         race[raceCount].positions.push(newPtr);
         race[raceCount].prize = address(this).balance;
-        raceEntriesPerUser[raceCount][msg.sender].push(totalSupply);
         race[raceCount].entries++;
+        raceEntriesPerUser[raceCount][msg.sender].push(totalSupply);
         /// Mint
         //_setArt();
         _mint(msg.sender, totalSupply++);
@@ -230,7 +232,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         ptr ptrPosition = race[raceCount].positions.head;
         for (uint256 j; j < length; j++) {
             tokenId = _valueAtNode(ptrPosition);
-            race[raceCount].laps[lapCount].losers.push(tokenId);
+            race[raceCount].laps[lapCount].winners.push(tokenId);
             ptrPosition = race[raceCount].positions.nextAt(ptrPosition);
         }
     }
@@ -238,29 +240,30 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     function _shufflePositions() internal {
         uint256 length = race[raceCount].positions.length;
         if (length < 2) return;
-        /// Record ptrs in an array
-        ptr[] memory ptrs = new ptr[](length);
+        /// Record tokenIds in array
+        uint256[] memory tokenIds = new uint256[](length);
         ptr ptrPosition = race[raceCount].positions.head;
         for (uint256 a; a < length; a++) {
-            ptrs[a] = ptrPosition;
+            tokenIds[a] = _valueAtNode(ptrPosition);
             ptrPosition = race[raceCount].positions.nextAt(ptrPosition);
         }
         /// Shuffle array using Fisher-Yates
         uint256 seed;
         uint256 x;
-        ptr temp;
-        /// @dev double-check b>0 or b>=0 here?
+        uint256 temp;
         for (uint256 b = length - 1; b > 0; b--) {
             seed = uint256(keccak256(abi.encode(block.timestamp, b)));
             x = seed % (b + 1);
-            temp = ptrs[b];
-            ptrs[b] = ptrs[x];
-            ptrs[x] = temp;
+            temp = tokenIds[b];
+            tokenIds[b] = tokenIds[x];
+            tokenIds[x] = temp;
         }
         /// Rebuild dll
         race[raceCount].positions.clear();
+        ptr newPtr;
         for (uint256 c; c < length; c++) {
-            race[raceCount].positions.push(ptrs[c]);
+            newPtr = _createPtrForRunner(tokenIds[c]);
+            race[raceCount].positions.push(newPtr);
         }
     }
 
@@ -282,6 +285,14 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
 
     /// VIEW ///
 
+    /// @notice Returns the race information for a given race ID.
+    /// @param  _raceId The ID of the race to retrieve information for.
+    /// @return entries The number of entries in the race.
+    /// @return startedAt The timestamp when the race started.
+    /// @return endedAt The timestamp when the race ended (0 if not finished).
+    /// @return currentLap The current lap number of the race.
+    /// @return prize The prize pool for the race (outsanding balance of the contract).
+    /// @return winner The token ID of the winning runner (0 if not finished).
     function getRace(uint256 _raceId)
         external
         view
@@ -295,11 +306,22 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         winner = race[_raceId].winner;
     }
 
-    /// @dev returns a list of token ids for a given wallet address / race. This will help me query all entries for a user for a given race
+    /// @notice Returns the list of token IDs entered by a user in a given race.
+    /// @param  _raceId The ID of the race.
+    /// @param  _user The address of the user.
+    /// @return entries An array of token IDs representing the user's entries in the race.
     function getRaceEntries(uint256 _raceId, address _user) external view returns (uint256[] memory entries) {
         return raceEntriesPerUser[_raceId][_user];
     }
 
+    /// @notice Returns the lap information for a given race and lap ID.
+    /// @param  _raceId The ID of the race.
+    /// @param  _lapId The ID of the lap.
+    /// @return startedAt The timestamp when the lap started.
+    /// @return endedAt The timestamp when the lap ended (0 if not finished).
+    /// @return eliminations The number of runners eliminated in this lap.
+    /// @return positions An array of token IDs representing the positions of the runners at the end of the lap 
+    ///         (winners for finished laps, current positions for the active lap).
     function getLap(uint256 _raceId, uint256 _lapId)
         external
         view
@@ -310,12 +332,12 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         eliminations = race[_raceId].laps[_lapId].eliminations;
         if (_raceId == raceCount && _lapId == lapCount) {
             /// Active lap
-            uint256 length = race[raceCount].positions.length;
+            uint256 length = race[_raceId].positions.length;
             positions = new uint256[](length);
-            ptr ptrPosition = race[raceCount].positions.head;
+            ptr ptrPosition = race[_raceId].positions.head;
             for (uint256 i; i < length; i++) {
                 positions[i] = _valueAtNode(ptrPosition);
-                ptrPosition = race[raceCount].positions.nextAt(ptrPosition);
+                ptrPosition = race[_raceId].positions.nextAt(ptrPosition);
             }
         } else {
             /// Finished lap
@@ -323,6 +345,11 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         }
     }
 
+    /// @notice Checks if a runner has used their boost in a given lap.
+    /// @param  _raceId The ID of the race.
+    /// @param  _lapId The ID of the lap.
+    /// @param  _tokenId The token ID of the runner.
+    /// @return True if the runner has used their boost in the specified lap, false otherwise.
     function isBoosted(uint256 _raceId, uint256 _lapId, uint256 _tokenId) external view returns (bool) {
         return race[_raceId].laps[_lapId].boosted[_tokenId];
     }

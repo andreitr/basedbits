@@ -44,7 +44,6 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         assertEq(baseRace.totalSupply(), 0);
         assertEq(baseRace.mintFee(), 0.001 ether);
         assertEq(baseRace.raceCount(), 0);
-        //assertEq(baseRace.lapCount(), 0);
         assert(baseRace.status() == GameStatus.Pending);
     }
 
@@ -165,7 +164,12 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
 
         (,,, uint256[] memory positionsB) = baseRace.getLap(1, 1);
         hasBoosted = baseRace.isBoosted(1, 1, 1);
-        assertEq(positionsA[0], positionsB[1]);
+
+        if (positionsA[0] == 1) {
+            assertEq(positionsA[0], positionsB[0]);
+        } else {
+            assertEq(positionsA[0], positionsB[1]);
+        }
         assertEq(hasBoosted, true);
     }
 
