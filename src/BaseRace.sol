@@ -97,6 +97,10 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         race[raceCount].prize = address(this).balance;
         race[raceCount].entries++;
         raceEntriesPerUser[raceCount][msg.sender].push(totalSupply);
+
+        uint256 numEntries = race[raceCount].entries;
+        race[raceCount].lapTotal = _calculateLapCount(numEntries);
+
         /// Mint
         //_setArt();
         _mint(msg.sender, totalSupply++);
@@ -124,6 +128,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     function startGame() external onlyRole(ADMIN_ROLE) {
         if (status != GameStatus.Pending) revert WrongStatus();
         race[++raceCount].startedAt = block.timestamp;
+        race[raceCount].lapTotal = 1;
         status = GameStatus.InMint;
         emit GameStarted(raceCount, block.timestamp);
     }
@@ -213,9 +218,39 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
 
     /// INTERNAL ///
 
-    function _recordNumberToEliminate() internal {
-        uint256 x = (race[raceCount].entries == 0) ? race[raceCount].entries : (race[raceCount].entries - 1);
-        race[raceCount].laps[lapCount].eliminations = x / lapTotal;
+    function _calculateLapCount(uint256 numEntries) internal pure returns (uint256) {
+        if (numEntries <= 2) {
+            return 1; // Minimum 1 lap required
+        }
+
+        uint256 maxLaps = 6;
+        uint256 lapCount = numEntries - _calculateFinalLapPlayers(numEntries); // Ensuring at least one elimination per lap
+
+        if (lapCount > maxLaps) {
+            lapCount = maxLaps;
+        }
+
+        return lapCount;
+    }
+
+    function _calculateFinalLapPlayers(uint256 numEntries) internal pure returns (uint256) {
+        return numEntries > 16 ? 5 : numEntries > 8 ? 3 : 2;
+    }
+
+
+    function _recordNumberToEliminate(uint256 raceId, uint256 currentLap) internal view returns (uint256) {
+
+        uint256 remainingEntries = race[raceId].entries.length;
+        uint256 lapsRemaining = race[raceId].lapTotal - currentLap;
+
+        if (lapsRemaining == 1) {
+            uint256 finalPlayers = _calculateFinalLapPlayers(race[raceId].entries.length);
+            return remainingEntries - finalPlayers; // Allow more players in final lap
+        }
+
+        // Ensure at least one elimination per lap
+        uint256 baseElimination = (remainingEntries - _calculateFinalLapPlayers(race.entries.length)) / lapsRemaining;
+        return baseElimination > 0 ? baseElimination : 1;
     }
 
     function _updateStorageArrays() internal {
@@ -294,9 +329,9 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     /// @return prize The prize pool for the race (outsanding balance of the contract).
     /// @return winner The token ID of the winning runner (0 if not finished).
     function getRace(uint256 _raceId)
-        external
-        view
-        returns (uint256 entries, uint256 startedAt, uint256 endedAt, uint256 currentLap, uint256 prize, uint256 winner)
+    external
+    view
+    returns (uint256 entries, uint256 startedAt, uint256 endedAt, uint256 currentLap, uint256 prize, uint256 winner)
     {
         entries = race[_raceId].entries;
         startedAt = race[_raceId].startedAt;
@@ -323,9 +358,9 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     /// @return positions An array of token IDs representing the positions of the runners at the end of the lap 
     ///         (winners for finished laps, current positions for the active lap).
     function getLap(uint256 _raceId, uint256 _lapId)
-        external
-        view
-        returns (uint256 startedAt, uint256 endedAt, uint256 eliminations, uint256[] memory positions)
+    external
+    view
+    returns (uint256 startedAt, uint256 endedAt, uint256 eliminations, uint256[] memory positions)
     {
         startedAt = race[_raceId].laps[_lapId].startedAt;
         endedAt = race[_raceId].laps[_lapId].endedAt;
