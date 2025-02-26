@@ -39,7 +39,6 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         assertEq(address(baseRace.burner()), address(burner));
         assertEq(baseRace.mintingTime(), 22.5 hours);
         assertEq(baseRace.lapTime(), 10 minutes);
-        assertEq(baseRace.lapTotal(), 6);
         assertEq(baseRace.burnPercentage(), 2000);
         assertEq(baseRace.totalSupply(), 0);
         assertEq(baseRace.mintFee(), 0.001 ether);
@@ -73,7 +72,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
 
         uint256 mintFee = baseRace.mintFee();
 
-        (uint256 entries,,,, uint256 prize,) = baseRace.getRace(1);
+        (uint256 entries,,,,, uint256 prize,) = baseRace.getRace(1);
         assertEq(address(baseRace).balance, 0);
         assertEq(entries, 0);
         assertEq(prize, address(baseRace).balance);
@@ -81,7 +80,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         /// Mint one
         baseRace.mint{value: mintFee}();
 
-        (,,,, prize,) = baseRace.getRace(1);
+        (,,,,, prize,) = baseRace.getRace(1);
         assertEq(baseRace.totalSupply(), 1);
         assertEq(baseRace.ownerOf(0), admin);
         assertEq(address(baseRace).balance, (mintFee - (mintFee * baseRace.burnPercentage()) / 10_000));
@@ -90,7 +89,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         /// Mint another
         baseRace.mint{value: mintFee}();
 
-        (,,,, prize,) = baseRace.getRace(1);
+        (,,,,, prize,) = baseRace.getRace(1);
         assertEq(baseRace.totalSupply(), 2);
         assertEq(baseRace.ownerOf(1), admin);
         assertEq(address(baseRace).balance, 2 * (mintFee - (mintFee * baseRace.burnPercentage()) / 10_000));
@@ -191,7 +190,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
     }
 
     function testStartGameSuccessConditions() public prank(admin) {
-        (, uint256 startedAt,,,,) = baseRace.getRace(1);
+        (, uint256 startedAt,,,,,) = baseRace.getRace(1);
         assertEq(startedAt, 0);
         assert(baseRace.status() == GameStatus.Pending);
 
@@ -199,7 +198,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         emit GameStarted(1, block.timestamp);
         baseRace.startGame();
 
-        (, startedAt,,,,) = baseRace.getRace(1);
+        (, startedAt,,,,,) = baseRace.getRace(1);
         assertEq(startedAt, block.timestamp);
         assert(baseRace.status() == GameStatus.InMint);
     }
@@ -295,7 +294,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
 
-        (uint256 entries,,,,,) = baseRace.getRace(1);
+        (uint256 entries,,,,,,) = baseRace.getRace(1);
         assertEq(entries, 7);
         (,, uint256 eliminations, uint256[] memory positions) = baseRace.getLap(1, 1);
         assertEq(eliminations, 1);
