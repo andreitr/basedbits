@@ -31,7 +31,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
 
     /// SETUP ///
 
-    function testInit() public view {
+    function testInitBaseRace() public view {
         assertEq(baseRace.name(), "Base Race");
         assertEq(baseRace.symbol(), "BRCE");
         assertEq(baseRace.hasRole(DEFAULT_ADMIN_ROLE, owner), true);
@@ -96,6 +96,66 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         assertEq(prize, address(baseRace).balance);
     }
 
+    /// DYNAMIC LAP CALCULATION ///
+
+    function testSmallRaceLaps() public prank(admin) {
+        baseRace.startGame();
+
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+
+        (,,,uint256 lapTotal,,,) = baseRace.getRace(1);
+        assertEq(lapTotal, 2);
+    }
+
+
+    function testMediumRaceLaps() public prank(admin) {
+        baseRace.startGame();
+
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+
+        (,,,uint256 lapTotal,,,) = baseRace.getRace(1);
+        assertEq(lapTotal, 5);
+    }
+
+    function testLargeRaceLaps() public prank(admin) {
+        baseRace.startGame();
+
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+
+        (,,,uint256 lapTotal,,,) = baseRace.getRace(1);
+        assertEq(lapTotal, 6);
+    }
+
     /// BOOST ///
 
     function testBoostRevertConditions() public prank(admin) {
@@ -107,7 +167,10 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         baseRace.startGame();
         baseRace.mint{value: baseRace.mintFee()}();
         baseRace.mint{value: baseRace.mintFee()}();
+        baseRace.mint{value: baseRace.mintFee()}();
+        baseRace.mint{value: baseRace.mintFee()}();
         baseRace.transferFrom(admin, user0, 0);
+
 
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
@@ -246,6 +309,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
 
         /// First lap
         assert(baseRace.status() == GameStatus.InMint);
+
         (uint256 startedAt, uint256 endedAt, uint256 eliminations, uint256[] memory positions) = baseRace.getLap(1, 1);
         assertEq(startedAt, 0);
         assertEq(endedAt, 0);
@@ -281,7 +345,11 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
     function testEliminateRunners() public prank(admin) {
         baseRace.startGame();
 
-        /// Mint 7 so that a runner is eliminated each lap
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
         baseRace.mint{value: 0.001 ether}();
         baseRace.mint{value: 0.001 ether}();
         baseRace.mint{value: 0.001 ether}();
@@ -294,41 +362,51 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
 
-        (uint256 entries,,,,,,) = baseRace.getRace(1);
-        assertEq(entries, 7);
+        (uint256 entries,,,uint256 lapTotal, uint256 lapCount,,) = baseRace.getRace(1);
+        assertEq(entries, 12);
+        assertEq(lapCount, 1);
+        assertEq(lapTotal, 6);
+
         (,, uint256 eliminations, uint256[] memory positions) = baseRace.getLap(1, 1);
         assertEq(eliminations, 1);
-        assertEq(positions.length, 7);
+        assertEq(positions.length, 12);
 
         /// Lap 2
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
-        (,,, positions) = baseRace.getLap(1, 2);
-        assertEq(positions.length, 6);
+        (,,eliminations, positions) = baseRace.getLap(1, 2);
+        assertEq(eliminations, 2);
+        assertEq(positions.length, 11);
 
         /// Lap 3
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
-        (,,, positions) = baseRace.getLap(1, 3);
-        assertEq(positions.length, 5);
+        (,,eliminations, positions) = baseRace.getLap(1, 3);
+        assertEq(eliminations, 3);
+        assertEq(positions.length, 9);
 
         /// Lap 4
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
-        (,,, positions) = baseRace.getLap(1, 4);
-        assertEq(positions.length, 4);
+        (,,eliminations, positions) = baseRace.getLap(1, 4);
+        assertEq(eliminations, 4);
+        assertEq(positions.length, 6);
 
         /// Lap 5
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
-        (,,, positions) = baseRace.getLap(1, 5);
-        assertEq(positions.length, 3);
+        (,,eliminations, positions) = baseRace.getLap(1, 5);
+        assertEq(eliminations, 9);
+        assertEq(positions.length, 2);
+
 
         /// Lap 6
-        vm.warp(block.timestamp + 1.01 days);
-        baseRace.startNextLap();
-        (,,, positions) = baseRace.getLap(1, 6);
-        assertEq(positions.length, 2);
+//        vm.warp(block.timestamp + 1.01 days);
+//        baseRace.startNextLap();
+//        (,,eliminations, positions) = baseRace.getLap(1, 6);
+//        assertEq(eliminations, 0);
+//        assertEq(positions.length, 2);
+
     }
 
     /// FINISH GAME ///

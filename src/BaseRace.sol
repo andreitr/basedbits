@@ -95,7 +95,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         raceEntriesPerUser[raceCount][msg.sender].push(totalSupply);
 
         uint256 numEntries = race[raceCount].entries;
-        race[raceCount].lapCount = _calculateLapCount(numEntries);
+        race[raceCount].lapTotal = _calculateLapCount(numEntries);
 
         /// Mint
         //_setArt();
@@ -108,8 +108,10 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     function boost(uint256 _tokenId) external nonReentrant {
         if (status != GameStatus.InRace) revert WrongStatus();
         if (ownerOf(_tokenId) != msg.sender) revert NotNFTOwner();
+
         if (race[raceCount].laps[race[raceCount].lapCount].boosted[_tokenId]) revert HasBoosted();
         race[raceCount].laps[race[raceCount].lapCount].boosted[_tokenId] = true;
+
         /// Get node ptr, remove it, and make it head
         (ptr node,) = race[raceCount].positions.find(_matchesRunner, abi.encode(_tokenId));
         if (!isValidPointer(node)) revert InvalidNode();
@@ -142,9 +144,10 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
             status = GameStatus.InRace;
             race[raceCount].lapCount++;
             race[raceCount].laps[race[raceCount].lapCount].startedAt = block.timestamp;
+            race[raceCount].laps[race[raceCount].lapCount].eliminations = _calculateNumberToEliminate(raceCount, race[raceCount].lapCount);
 
-            _recordNumberToEliminate(raceCount, race[raceCount].lapCount);
             _shufflePositions();
+
         } else {
             /// Laps 2 - final
             if (block.timestamp - race[raceCount].laps[race[raceCount].lapCount].startedAt < lapTime) revert LapStillActive();
@@ -155,7 +158,8 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
             /// Start next lap
             race[raceCount].lapCount++;
             race[raceCount].laps[race[raceCount].lapCount].startedAt = block.timestamp;
-            _recordNumberToEliminate(raceCount, race[raceCount].lapCount);
+            race[raceCount].laps[race[raceCount].lapCount].eliminations = _calculateNumberToEliminate(raceCount, race[raceCount].lapCount);
+
             _shufflePositions();
         }
         emit LapStarted(raceCount, race[raceCount].lapCount, block.timestamp);
@@ -209,7 +213,6 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         lapTime = _newLapTime;
     }
 
-
     /// INTERNAL ///
 
     function _calculateLapCount(uint256 numEntries) internal pure returns (uint256) {
@@ -231,10 +234,11 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     }
 
 
-    function _recordNumberToEliminate(uint256 raceId, uint256 currentLap) internal view returns (uint256) {
+
+    function _calculateNumberToEliminate(uint256 raceId, uint256 currentLap) internal view returns (uint256) {
 
         uint256 remainingEntries = race[raceId].entries;
-        uint256 lapsRemaining = race[raceId].lapCount - currentLap;
+        uint256 lapsRemaining = race[raceId].lapTotal - currentLap;
 
         if (lapsRemaining == 1) {
             uint256 finalPlayers = _calculateFinalLapPlayers(race[raceId].entries);
