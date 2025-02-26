@@ -18,7 +18,7 @@ interface IBaseRace {
         uint256 prize;
         uint256 winner;
         uint256 entries;
-        uint256 laps;
+        uint256 lapCount;
         mapping(uint256 => Lap) laps;
         DLL positions;
     }

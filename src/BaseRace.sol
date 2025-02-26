@@ -99,7 +99,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         raceEntriesPerUser[raceCount][msg.sender].push(totalSupply);
 
         uint256 numEntries = race[raceCount].entries;
-        race[raceCount].lapTotal = _calculateLapCount(numEntries);
+        race[raceCount].lapCount = _calculateLapCount(numEntries);
 
         /// Mint
         //_setArt();
@@ -128,7 +128,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     function startGame() external onlyRole(ADMIN_ROLE) {
         if (status != GameStatus.Pending) revert WrongStatus();
         race[++raceCount].startedAt = block.timestamp;
-        race[raceCount].lapTotal = 1;
+        race[raceCount].lapCount = 1;
         status = GameStatus.InMint;
         emit GameStarted(raceCount, block.timestamp);
     }
@@ -145,7 +145,8 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
             status = GameStatus.InRace;
             lapCount++;
             race[raceCount].laps[lapCount].startedAt = block.timestamp;
-            _recordNumberToEliminate();
+//            TODO: Record number of elims in
+            _recordNumberToEliminate(raceCount, lapCount);
             _shufflePositions();
         } else {
             /// Laps 2 - final
@@ -157,7 +158,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
             /// Start next lap
             lapCount++;
             race[raceCount].laps[lapCount].startedAt = block.timestamp;
-            _recordNumberToEliminate();
+            _recordNumberToEliminate(raceCount, lapCount);
             _shufflePositions();
         }
         emit LapStarted(raceCount, lapCount, block.timestamp);
@@ -222,15 +223,14 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         if (numEntries <= 2) {
             return 1; // Minimum 1 lap required
         }
-
         uint256 maxLaps = 6;
-        uint256 lapCount = numEntries - _calculateFinalLapPlayers(numEntries); // Ensuring at least one elimination per lap
+        uint256 result = numEntries - _calculateFinalLapPlayers(numEntries); // Ensuring at least one elimination per lap
 
-        if (lapCount > maxLaps) {
-            lapCount = maxLaps;
+        if (result > maxLaps) {
+            result = maxLaps;
         }
 
-        return lapCount;
+        return result;
     }
 
     function _calculateFinalLapPlayers(uint256 numEntries) internal pure returns (uint256) {
@@ -240,16 +240,16 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
 
     function _recordNumberToEliminate(uint256 raceId, uint256 currentLap) internal view returns (uint256) {
 
-        uint256 remainingEntries = race[raceId].entries.length;
-        uint256 lapsRemaining = race[raceId].lapTotal - currentLap;
+        uint256 remainingEntries = race[raceId].entries;
+        uint256 lapsRemaining = race[raceId].lapCount - currentLap;
 
         if (lapsRemaining == 1) {
-            uint256 finalPlayers = _calculateFinalLapPlayers(race[raceId].entries.length);
+            uint256 finalPlayers = _calculateFinalLapPlayers(race[raceId].entries);
             return remainingEntries - finalPlayers; // Allow more players in final lap
         }
 
         // Ensure at least one elimination per lap
-        uint256 baseElimination = (remainingEntries - _calculateFinalLapPlayers(race.entries.length)) / lapsRemaining;
+        uint256 baseElimination = (remainingEntries - _calculateFinalLapPlayers(race[raceId].entries)) / lapsRemaining;
         return baseElimination > 0 ? baseElimination : 1;
     }
 
