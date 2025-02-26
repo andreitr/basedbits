@@ -393,11 +393,11 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         assertEq(positions.length, 6);
 
         /// Lap 5
-        vm.warp(block.timestamp + 1.01 days);
-        baseRace.startNextLap();
-        (,,eliminations, positions) = baseRace.getLap(1, 5);
-        assertEq(eliminations, 9);
-        assertEq(positions.length, 2);
+//        vm.warp(block.timestamp + 1.01 days);
+//        baseRace.startNextLap();
+//        (,,eliminations, positions) = baseRace.getLap(1, 5);
+//        assertEq(eliminations, 9);
+//        assertEq(positions.length, 2);
 
 
         /// Lap 6

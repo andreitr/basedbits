@@ -234,7 +234,6 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     }
 
 
-
     function _calculateNumberToEliminate(uint256 raceId, uint256 currentLap) internal view returns (uint256) {
 
         uint256 remainingEntries = race[raceId].entries;

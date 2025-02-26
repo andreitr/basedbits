@@ -31,6 +31,7 @@ interface IBaseRace {
         uint256[] winners;
         uint256[] losers;
         mapping(uint256 => bool) boosted;
+        uint256[] positions;
     }
 
     /// @dev might be unnecessary here
