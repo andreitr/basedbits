@@ -239,20 +239,24 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     }
 
 // Function to determine eliminations for a specific lap
-    function _calcEliminationsPerLap(uint256 numEntries, uint256 lapId) internal pure returns (uint256) {
-        uint256 totalLaps = _calcLaps(numEntries);
-        uint256 finalLapPlayers = _calcFinalLapPlayers(numEntries);
-        uint256 totalEliminations = numEntries - finalLapPlayers;
+function _calcEliminationsPerLap(uint256 numEntries, uint256 lapId) internal pure returns (uint256) {
+    uint256 totalLaps = _calcLaps(numEntries);
+    uint256 finalLapPlayers = _calcFinalLapPlayers(numEntries);
+    uint256 totalEliminations = numEntries - finalLapPlayers;
 
-        // Ensure eliminations per lap are distributed evenly but not too spread out
-        uint256 baseEliminations = (totalEliminations + totalLaps - 1) / totalLaps; // Ceil division
+    // Ensure eliminations per lap are distributed evenly but not too spread out
+    uint256 baseEliminations = (totalEliminations + totalLaps - 1) / totalLaps; // Ceil division
 
-        // Ensure every lap has at least 1 elimination and stops at final lap
-        uint256 eliminationsForLap = lapId < totalLaps ? baseEliminations : (numEntries - finalLapPlayers);
+    // Ensure every lap has at least 1 elimination and stops at final lap
+    uint256 eliminationsForLap = lapId < totalLaps ? baseEliminations : (numEntries - finalLapPlayers);
 
-        return eliminationsForLap;
+    // If it's the final lap, eliminate all but one player (the winner)
+    if (lapId == totalLaps) {
+        eliminationsForLap = numEntries - 1;
     }
 
+    return eliminationsForLap;
+}
 
 
     function _updateStorageArrays() internal {
