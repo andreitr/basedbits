@@ -95,7 +95,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         raceEntriesPerUser[raceCount][msg.sender].push(totalSupply);
 
         uint256 numEntries = race[raceCount].entries;
-        race[raceCount].lapTotal = _calculateLapCount(numEntries);
+        race[raceCount].lapTotal = _calcLaps(numEntries);
 
         /// Mint
         //_setArt();
@@ -144,7 +144,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
             status = GameStatus.InRace;
             race[raceCount].lapCount++;
             race[raceCount].laps[race[raceCount].lapCount].startedAt = block.timestamp;
-            race[raceCount].laps[race[raceCount].lapCount].eliminations = _calculateNumberToEliminate(raceCount, race[raceCount].lapCount);
+            race[raceCount].laps[race[raceCount].lapCount].eliminations = _calcEliminationsPerLap(race[raceCount].entries, race[raceCount].lapCount);
 
             _shufflePositions();
 
@@ -158,7 +158,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
             /// Start next lap
             race[raceCount].lapCount++;
             race[raceCount].laps[race[raceCount].lapCount].startedAt = block.timestamp;
-            race[raceCount].laps[race[raceCount].lapCount].eliminations = _calculateNumberToEliminate(raceCount, race[raceCount].lapCount);
+            race[raceCount].laps[race[raceCount].lapCount].eliminations = _calcEliminationsPerLap(race[raceCount].entries, race[raceCount].lapCount);
 
             _shufflePositions();
         }
@@ -215,39 +215,91 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
 
     /// INTERNAL ///
 
-    function _calculateLapCount(uint256 numEntries) internal pure returns (uint256) {
+    function _calcLaps(uint256 numEntries) internal pure returns (uint256) {
         if (numEntries <= 2) {
-            return 1; // Minimum 1 lap required
-        }
-        uint256 maxLaps = 6;
-        uint256 result = numEntries - _calculateFinalLapPlayers(numEntries); // Ensuring at least one elimination per lap
-
-        if (result > maxLaps) {
-            result = maxLaps;
+            return 1; // Single lap for 1v1 scenarios
         }
 
-        return result;
-    }
+        uint256 finalLapPlayers = _calcFinalLapPlayers(numEntries);
+        uint256 remainingPlayers = numEntries;
+        uint256 laps = 0;
 
-    function _calculateFinalLapPlayers(uint256 numEntries) internal pure returns (uint256) {
-        return numEntries > 16 ? 5 : numEntries > 8 ? 3 : 2;
-    }
+        while (remainingPlayers > finalLapPlayers && laps < 6) { // Cap at 6 laps
+            uint256 eliminationsThisLap = _calcEliminationsPerLap(numEntries, laps);
 
+            // Prevent an unnecessary extra lap with 0 eliminations
+            if (remainingPlayers - eliminationsThisLap <= finalLapPlayers) {
+                eliminationsThisLap = remainingPlayers - finalLapPlayers;
+            }
 
-    function _calculateNumberToEliminate(uint256 raceId, uint256 currentLap) internal view returns (uint256) {
+            remainingPlayers -= eliminationsThisLap;
+            laps++;
 
-        uint256 remainingEntries = race[raceId].entries;
-        uint256 lapsRemaining = race[raceId].lapTotal - currentLap;
-
-        if (lapsRemaining == 1) {
-            uint256 finalPlayers = _calculateFinalLapPlayers(race[raceId].entries);
-            return remainingEntries - finalPlayers; // Allow more players in final lap
+            // **Stop if we already reached the final lap player count**
+            if (remainingPlayers <= finalLapPlayers) {
+                break;
+            }
         }
 
-        // Ensure at least one elimination per lap
-        uint256 baseElimination = (remainingEntries - _calculateFinalLapPlayers(race[raceId].entries)) / lapsRemaining;
-        return baseElimination > 0 ? baseElimination : 1;
+        return laps;
     }
+
+
+// Function to determine how many players should be in the final lap
+    function _calcFinalLapPlayers(uint256 numEntries) internal pure returns (uint8) {
+        return numEntries > 32 ? 7 : numEntries > 16 ? 5 : numEntries > 8 ? 3 : 2;
+    }
+
+    function _calcEliminationsPerLap(uint256 numEntries, uint256 lapId) internal pure returns (uint256) {
+        if (numEntries <= 2) {
+            return 1; // Only one elimination in 1v1 case
+        }
+
+        uint256 remainingPlayers = numEntries;
+        uint256 eliminationRate;
+
+        for (uint256 i = 0; i < lapId; i++) {
+            if (i < 2) {
+                eliminationRate = 30; // 30% in first two laps
+            } else if (i < 4) {
+                eliminationRate = 40; // 40% in mid-game laps
+            } else {
+                eliminationRate = 50; // 50% in final laps
+            }
+
+            uint256 eliminationsThisLap = (remainingPlayers * eliminationRate) / 100;
+
+            if (eliminationsThisLap < 1) {
+                eliminationsThisLap = 1; // Ensure at least one elimination
+            }
+
+            remainingPlayers -= eliminationsThisLap;
+        }
+
+        // Calculate eliminations for the requested lapId
+        if (lapId < 2) {
+            eliminationRate = 30; // 30% in first two laps
+        } else if (lapId < 4) {
+            eliminationRate = 40; // 40% in mid-game laps
+        } else {
+            eliminationRate = 50; // 50% in final laps
+        }
+
+        uint256 eliminationsForLap = (remainingPlayers * eliminationRate) / 100;
+
+        if (eliminationsForLap < 1) {
+            eliminationsForLap = 1;
+        }
+
+        // Prevent the last lap from having 0 eliminations
+        if (remainingPlayers - eliminationsForLap <= _calcFinalLapPlayers(numEntries)) {
+            eliminationsForLap = remainingPlayers - _calcFinalLapPlayers(numEntries);
+        }
+
+        return eliminationsForLap;
+    }
+
+
 
     function _updateStorageArrays() internal {
         uint256 tokenId;
@@ -355,7 +407,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     /// @return startedAt The timestamp when the lap started.
     /// @return endedAt The timestamp when the lap ended (0 if not finished).
     /// @return eliminations The number of runners eliminated in this lap.
-    /// @return positions An array of token IDs representing the positions of the runners at the end of the lap 
+    /// @return positions An array of token IDs representing the positions of the runners at the end of the lap
     ///         (winners for finished laps, current positions for the active lap).
     function getLap(uint256 _raceId, uint256 _lapId)
     external

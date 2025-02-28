@@ -365,10 +365,10 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         (uint256 entries,,,uint256 lapTotal, uint256 lapCount,,) = baseRace.getRace(1);
         assertEq(entries, 12);
         assertEq(lapCount, 1);
-        assertEq(lapTotal, 6);
+        assertEq(lapTotal, 4);
 
         (,, uint256 eliminations, uint256[] memory positions) = baseRace.getLap(1, 1);
-        assertEq(eliminations, 1);
+        assertEq(eliminations, 2);
         assertEq(positions.length, 12);
 
         /// Lap 2
@@ -376,20 +376,20 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         baseRace.startNextLap();
         (,,eliminations, positions) = baseRace.getLap(1, 2);
         assertEq(eliminations, 2);
-        assertEq(positions.length, 11);
+        assertEq(positions.length, 10);
 
         /// Lap 3
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
         (,,eliminations, positions) = baseRace.getLap(1, 3);
-        assertEq(eliminations, 3);
-        assertEq(positions.length, 9);
+        assertEq(eliminations, 2);
+        assertEq(positions.length, 8);
 
         /// Lap 4
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
         (,,eliminations, positions) = baseRace.getLap(1, 4);
-        assertEq(eliminations, 4);
+        assertEq(eliminations, 1);
         assertEq(positions.length, 6);
 
         /// Lap 5
