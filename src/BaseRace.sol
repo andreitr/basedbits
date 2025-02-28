@@ -49,10 +49,6 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     ///         Skips zero
     uint256 public raceCount;
 
-    /// @notice The Lap Id for the current race.
-    /// @dev    The lap count is reset to 0 after each race.
-//    uint256 private lapCount;
-
     /// @dev    Race Id => Race Information
     mapping(uint256 => Race) private race;
 
@@ -127,7 +123,6 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         if (status != GameStatus.Pending) revert WrongStatus();
         race[++raceCount].startedAt = block.timestamp;
         race[raceCount].lapCount = 0;
-        race[raceCount].lapTotal = 1;
         status = GameStatus.InMint;
         emit GameStarted(raceCount, block.timestamp);
     }
@@ -144,11 +139,6 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
             status = GameStatus.InRace;
         } else {
             if (block.timestamp - race[raceCount].laps[race[raceCount].lapCount].startedAt < lapTime) revert LapStillActive();
-        }
-
-        // Set lapTotal dynamically on the first lap
-        if (race[raceCount].lapCount == 0) {
-            race[raceCount].lapTotal = _calcLaps(race[raceCount].entries);
         }
 
         // Prevent extra laps
