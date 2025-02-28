@@ -138,32 +138,37 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     ///         Eliminates the slowest runners at the end of each lap.
     function startNextLap() external onlyRole(ADMIN_ROLE) {
         if (status == GameStatus.Pending) revert WrongStatus();
+
         if (status == GameStatus.InMint) {
-            /// First lap
             if (block.timestamp - race[raceCount].startedAt < mintingTime) revert MintingStillActive();
             status = GameStatus.InRace;
-            race[raceCount].lapCount++;
-            race[raceCount].laps[race[raceCount].lapCount].startedAt = block.timestamp;
-            race[raceCount].laps[race[raceCount].lapCount].eliminations = _calcEliminationsPerLap(race[raceCount].entries, race[raceCount].lapCount);
-
-            _shufflePositions();
-
         } else {
-            /// Laps 2 - final
             if (block.timestamp - race[raceCount].laps[race[raceCount].lapCount].startedAt < lapTime) revert LapStillActive();
-            if (race[raceCount].lapCount == race[raceCount].lapTotal) revert IsFinalLap();
-            /// finish current lap
+        }
+
+        // Set lapTotal dynamically on the first lap
+        if (race[raceCount].lapCount == 0) {
+            race[raceCount].lapTotal = _calcLaps(race[raceCount].entries);
+        }
+
+        // Prevent extra laps
+        if (race[raceCount].lapCount >= race[raceCount].lapTotal) revert IsFinalLap();
+
+        // Finish current lap
+        if (race[raceCount].lapCount > 0) {
             race[raceCount].laps[race[raceCount].lapCount].endedAt = block.timestamp;
             _updateStorageArrays();
-            /// Start next lap
-            race[raceCount].lapCount++;
-            race[raceCount].laps[race[raceCount].lapCount].startedAt = block.timestamp;
-            race[raceCount].laps[race[raceCount].lapCount].eliminations = _calcEliminationsPerLap(race[raceCount].entries, race[raceCount].lapCount);
-
-            _shufflePositions();
         }
+
+        // Start next lap
+        race[raceCount].lapCount++;
+        race[raceCount].laps[race[raceCount].lapCount].startedAt = block.timestamp;
+        race[raceCount].laps[race[raceCount].lapCount].eliminations = _calcEliminationsPerLap(race[raceCount].entries, race[raceCount].lapCount);
+
+        _shufflePositions();
         emit LapStarted(raceCount, race[raceCount].lapCount, block.timestamp);
     }
+
 
     /// @notice This function allows the admin to finish the current game.
     /// @dev    Game status must be in the `InRace` stage.
@@ -214,87 +219,36 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     }
 
     /// INTERNAL ///
-
+/// Function to determine the number of laps (max 6) based on entries
     function _calcLaps(uint256 numEntries) internal pure returns (uint256) {
         if (numEntries <= 2) {
             return 1; // Single lap for 1v1 scenarios
         }
 
         uint256 finalLapPlayers = _calcFinalLapPlayers(numEntries);
-        uint256 remainingPlayers = numEntries;
-        uint256 laps = 0;
+        uint256 totalEliminations = numEntries - finalLapPlayers;
 
-        while (remainingPlayers > finalLapPlayers && laps < 6) { // Cap at 6 laps
-            uint256 eliminationsThisLap = _calcEliminationsPerLap(numEntries, laps);
-
-            // Prevent an unnecessary extra lap with 0 eliminations
-            if (remainingPlayers - eliminationsThisLap <= finalLapPlayers) {
-                eliminationsThisLap = remainingPlayers - finalLapPlayers;
-            }
-
-            remainingPlayers -= eliminationsThisLap;
-            laps++;
-
-            // **Stop if we already reached the final lap player count**
-            if (remainingPlayers <= finalLapPlayers) {
-                break;
-            }
-        }
-
+        // Ensure at least 1 elimination per lap, but do not force 6 laps unnecessarily
+        uint256 laps = totalEliminations < 6 ? totalEliminations : 6;
         return laps;
     }
 
-
-// Function to determine how many players should be in the final lap
+// Function to determine the number of players in the final lap
     function _calcFinalLapPlayers(uint256 numEntries) internal pure returns (uint8) {
         return numEntries > 32 ? 7 : numEntries > 16 ? 5 : numEntries > 8 ? 3 : 2;
     }
 
+// Function to determine eliminations for a specific lap
     function _calcEliminationsPerLap(uint256 numEntries, uint256 lapId) internal pure returns (uint256) {
-        if (numEntries <= 2) {
-            return 1; // Only one elimination in 1v1 case
-        }
+        uint256 totalLaps = _calcLaps(numEntries);
+        uint256 finalLapPlayers = _calcFinalLapPlayers(numEntries);
+        uint256 totalEliminations = numEntries - finalLapPlayers;
 
-        uint256 remainingPlayers = numEntries;
-        uint256 eliminationRate;
+        // Ensure eliminations per lap are distributed evenly but not too spread out
+        uint256 baseEliminations = (totalEliminations + totalLaps - 1) / totalLaps; // Ceil division
 
-        for (uint256 i = 0; i < lapId; i++) {
-            if (i < 2) {
-                eliminationRate = 30; // 30% in first two laps
-            } else if (i < 4) {
-                eliminationRate = 40; // 40% in mid-game laps
-            } else {
-                eliminationRate = 50; // 50% in final laps
-            }
-
-            uint256 eliminationsThisLap = (remainingPlayers * eliminationRate) / 100;
-
-            if (eliminationsThisLap < 1) {
-                eliminationsThisLap = 1; // Ensure at least one elimination
-            }
-
-            remainingPlayers -= eliminationsThisLap;
-        }
-
-        // Calculate eliminations for the requested lapId
-        if (lapId < 2) {
-            eliminationRate = 30; // 30% in first two laps
-        } else if (lapId < 4) {
-            eliminationRate = 40; // 40% in mid-game laps
-        } else {
-            eliminationRate = 50; // 50% in final laps
-        }
-
-        uint256 eliminationsForLap = (remainingPlayers * eliminationRate) / 100;
-
-        if (eliminationsForLap < 1) {
-            eliminationsForLap = 1;
-        }
-
-        // Prevent the last lap from having 0 eliminations
-        if (remainingPlayers - eliminationsForLap <= _calcFinalLapPlayers(numEntries)) {
-            eliminationsForLap = remainingPlayers - _calcFinalLapPlayers(numEntries);
-        }
+        // Ensure every lap has at least 1 elimination and stops at final lap
+        uint256 eliminationsForLap = lapId < totalLaps ? baseEliminations : (numEntries - finalLapPlayers);
 
         return eliminationsForLap;
     }
@@ -304,23 +258,27 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     function _updateStorageArrays() internal {
         uint256 tokenId;
         uint256 numberToEliminate = race[raceCount].laps[race[raceCount].lapCount].eliminations;
-        /// Get losers array and pop them from the positions list
+
+        // Remove only exact number of eliminations per lap
         for (uint256 i; i < numberToEliminate; i++) {
-            tokenId = _valueAtNode(race[raceCount].positions.tail);
-//            TODO: Remove losers
+            ptr node = race[raceCount].positions.tail;
+            if (!isValidPointer(node)) break;
+
+            tokenId = _valueAtNode(node);
             race[raceCount].laps[race[raceCount].lapCount].losers.push(tokenId);
             race[raceCount].positions.pop();
         }
-        /// Record remaining winners
+
+        // Update winners list
         uint256 length = race[raceCount].positions.length;
         ptr ptrPosition = race[raceCount].positions.head;
         for (uint256 j; j < length; j++) {
             tokenId = _valueAtNode(ptrPosition);
-//            TODO: Remove winners
             race[raceCount].laps[race[raceCount].lapCount].winners.push(tokenId);
             ptrPosition = race[raceCount].positions.nextAt(ptrPosition);
         }
     }
+
 
     function _shufflePositions() internal {
         uint256 length = race[raceCount].positions.length;
