@@ -239,7 +239,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     }
 
 // Function to determine eliminations for a specific lap
-function _calcEliminationsPerLap(uint256 numEntries, uint256 lapId) internal pure returns (uint256) {
+function _calcEliminationsPerLap(uint256 numEntries, uint256 lapId) internal view returns (uint256) {
     uint256 totalLaps = _calcLaps(numEntries);
     uint256 finalLapPlayers = _calcFinalLapPlayers(numEntries);
     uint256 totalEliminations = numEntries - finalLapPlayers;
@@ -252,7 +252,8 @@ function _calcEliminationsPerLap(uint256 numEntries, uint256 lapId) internal pur
 
     // If it's the final lap, eliminate all but one player (the winner)
     if (lapId == totalLaps) {
-        eliminationsForLap = numEntries - 1;
+        uint256 currentRunners = race[raceCount].positions.length;
+        eliminationsForLap = currentRunners - 1;
     }
 
     return eliminationsForLap;

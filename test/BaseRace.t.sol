@@ -387,15 +387,8 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
         (,,eliminations, positions) = baseRace.getLap(1, 5);
-        assertEq(eliminations, 6);
+        assertEq(eliminations, 2);
         assertEq(positions.length, 3);
-
-        /// Lap 6
-//        vm.warp(block.timestamp + 1.01 days);
-//        baseRace.startNextLap();
-//        (,,eliminations, positions) = baseRace.getLap(1, 6);
-//        assertEq(eliminations, 2);
-//        assertEq(positions.length, 2);
     }
 
     function testEliminate30Runners() public prank(admin) {
@@ -450,7 +443,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
         (,,eliminations, positions) = baseRace.getLap(1, 6);
-        assertEq(eliminations, 29);
+        assertEq(eliminations, 4);
         assertEq(positions.length, 5);
     }
 
@@ -507,7 +500,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
         (,,eliminations, positions) = baseRace.getLap(1, 6);
-        assertEq(eliminations, 114);
+        assertEq(eliminations, 24);
         assertEq(positions.length, 25);
     }
 
