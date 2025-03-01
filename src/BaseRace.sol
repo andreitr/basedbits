@@ -254,23 +254,23 @@ function _calcEliminationsPerLap(uint256 numEntries, uint256 lapId) internal vie
         uint256 tokenId;
         uint256 numberToEliminate = race[raceCount].laps[race[raceCount].lapCount].eliminations;
 
+        // Store current positions before eliminations
+        uint256 length = race[raceCount].positions.length;
+        uint256[] storage positionsArray = race[raceCount].laps[race[raceCount].lapCount].positions;
+        ptr ptrPosition = race[raceCount].positions.head;
+        for (uint256 j; j < length; j++) {
+            tokenId = _valueAtNode(ptrPosition);
+            positionsArray.push(tokenId);
+            ptrPosition = race[raceCount].positions.nextAt(ptrPosition);
+        }
+
         // Remove only exact number of eliminations per lap
         for (uint256 i; i < numberToEliminate; i++) {
             ptr node = race[raceCount].positions.tail;
             if (!isValidPointer(node)) break;
 
             tokenId = _valueAtNode(node);
-            race[raceCount].laps[race[raceCount].lapCount].losers.push(tokenId);
             race[raceCount].positions.pop();
-        }
-
-        // Update winners list
-        uint256 length = race[raceCount].positions.length;
-        ptr ptrPosition = race[raceCount].positions.head;
-        for (uint256 j; j < length; j++) {
-            tokenId = _valueAtNode(ptrPosition);
-            race[raceCount].laps[race[raceCount].lapCount].winners.push(tokenId);
-            ptrPosition = race[raceCount].positions.nextAt(ptrPosition);
         }
     }
 
@@ -370,8 +370,9 @@ function _calcEliminationsPerLap(uint256 numEntries, uint256 lapId) internal vie
         startedAt = race[_raceId].laps[_lapId].startedAt;
         endedAt = race[_raceId].laps[_lapId].endedAt;
         eliminations = race[_raceId].laps[_lapId].eliminations;
+        
         if (_raceId == raceCount && _lapId == race[_raceId].lapCount) {
-            /// Active lap
+            // Active lap - get current positions from DLL
             uint256 length = race[_raceId].positions.length;
             positions = new uint256[](length);
             ptr ptrPosition = race[_raceId].positions.head;
@@ -380,8 +381,8 @@ function _calcEliminationsPerLap(uint256 numEntries, uint256 lapId) internal vie
                 ptrPosition = race[_raceId].positions.nextAt(ptrPosition);
             }
         } else {
-            /// Finished lap
-            positions = race[_raceId].laps[_lapId].winners;
+            // Finished lap - get stored positions
+            positions = race[_raceId].laps[_lapId].positions;
         }
     }
 
