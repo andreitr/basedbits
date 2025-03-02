@@ -6,12 +6,12 @@ import {BaseRace, Burner} from "@src/BaseRace.sol";
 
 contract BaseRaceSepoliaDeploy is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerPrivateKey);
+    
+        vm.startBroadcast();
 
         MockBurner mockBurner = new MockBurner();
         BaseRace baseRace = new BaseRace(
-            0x1d671d1B191323A38490972D58354971E5c1cd2A, 0x1d671d1B191323A38490972D58354971E5c1cd2A, address(mockBurner)
+            0x1d671d1B191323A38490972D58354971E5c1cd2A, 0x04De0234a17DA9293330a9FBb3bA81C6c96DCee1, address(mockBurner)
         );
         baseRace;
 
