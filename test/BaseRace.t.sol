@@ -3,7 +3,8 @@ pragma solidity 0.8.25;
 
 import {BBitsTestUtils, BBitsBurner, BaseRace} from "@test/utils/BBitsTestUtils.sol";
 import {IBaseRace} from "@src/interfaces/IBaseRace.sol";
-import {ERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
+import {ERC721, IERC721Errors} from "@openzeppelin/token/ERC721/ERC721.sol";
+import {InvalidPointer} from "@dll/DoublyLinkedList.sol";
 
 /// @dev forge test --match-contract BaseRaceTest -vvv
 contract BaseRaceTest is BBitsTestUtils, IBaseRace {
@@ -110,10 +111,9 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         baseRace.mint{value: 0.001 ether}();
         baseRace.mint{value: 0.001 ether}();
 
-        (,,,uint256 lapTotal,,,) = baseRace.getRace(1);
+        (,,, uint256 lapTotal,,,) = baseRace.getRace(1);
         assertEq(lapTotal, 2);
     }
-
 
     function testMediumRaceLaps() public prank(admin) {
         baseRace.startGame();
@@ -126,7 +126,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         baseRace.mint{value: 0.001 ether}();
         baseRace.mint{value: 0.001 ether}();
 
-        (,,,uint256 lapTotal,,,) = baseRace.getRace(1);
+        (,,, uint256 lapTotal,,,) = baseRace.getRace(1);
         assertEq(lapTotal, 5);
     }
 
@@ -166,7 +166,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         baseRace.mint{value: 0.001 ether}();
         baseRace.mint{value: 0.001 ether}();
 
-        (,,,uint256 lapTotal,,,) = baseRace.getRace(1);
+        (,,, uint256 lapTotal,,,) = baseRace.getRace(1);
         assertEq(lapTotal, 6);
     }
 
@@ -182,7 +182,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         // Test 2: Cannot boost in InMint state
         baseRace.startGame();
         baseRace.mint{value: mintFee}();
-        baseRace.mint{value: mintFee}();  // Need at least 2 runners
+        baseRace.mint{value: mintFee}(); // Need at least 2 runners
         vm.expectRevert(WrongStatus.selector);
         baseRace.boost(0);
 
@@ -198,20 +198,21 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         vm.expectRevert(HasBoosted.selector);
         baseRace.boost(1);
 
-//        // Test 5: Cannot boost non-existent token
-//        vm.expectRevert(0x4088c61c);  // InvalidPointer error from DLL
-//        baseRace.boost(99);
-//
-//        // Test 6: Cannot boost token from previous race
-//        vm.warp(block.timestamp + 1.01 days);
-//        baseRace.finishGame();
-//        baseRace.startGame();
-//        baseRace.mint{value: mintFee}();
-//        baseRace.mint{value: mintFee}();  // Need at least 2 runners
-//        vm.warp(block.timestamp + 1.01 days);
-//        baseRace.startNextLap();
-//        vm.expectRevert(0x4088c61c);  // InvalidPointer error from DLL
-//        baseRace.boost(0);  // Token from previous race
+        // Test 5: Cannot boost non-existent token
+
+        vm.expectRevert(abi.encodeWithSelector(IERC721Errors.ERC721NonexistentToken.selector, 99));
+        baseRace.boost(99); // InvalidPointer error from DLL
+
+        // Test 6: Cannot boost token from previous race
+        vm.warp(block.timestamp + 1.01 days);
+        baseRace.finishGame();
+        baseRace.startGame();
+        baseRace.mint{value: mintFee}();
+        baseRace.mint{value: mintFee}(); // Need at least 2 runners
+        vm.warp(block.timestamp + 1.01 days);
+        baseRace.startNextLap();
+        vm.expectRevert(NotNFTOwner.selector); // InvalidPointer error from DLL
+        baseRace.boost(0); // Token from previous race
     }
 
     function testBoostSuccessConditions() public prank(admin) {
@@ -327,7 +328,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         baseRace.mint{value: baseRace.mintFee()}();
 
         // Initial state checks
-        (,,,uint256 lapTotal, uint256 lapCount,,) = baseRace.getRace(1);
+        (,,, uint256 lapTotal, uint256 lapCount,,) = baseRace.getRace(1);
         assertEq(lapCount, 0);
         assertEq(lapTotal, 2);
         assert(baseRace.status() == GameStatus.InMint);
@@ -370,7 +371,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
 
-        (uint256 entries,,,uint256 lapTotal, uint256 lapCount,,) = baseRace.getRace(1);
+        (uint256 entries,,, uint256 lapTotal, uint256 lapCount,,) = baseRace.getRace(1);
         assertEq(entries, 7);
         assertEq(lapCount, 1);
         assertEq(lapTotal, 5);
@@ -419,7 +420,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
 
-        (uint256 entries,,,uint256 lapTotal, uint256 lapCount,,) = baseRace.getRace(1);
+        (uint256 entries,,, uint256 lapTotal, uint256 lapCount,,) = baseRace.getRace(1);
         assertEq(entries, 30);
         assertEq(lapCount, 1);
         assertEq(lapTotal, 6);
@@ -464,7 +465,6 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         assertEq(positions.length, 5);
     }
 
-
     function testEliminate115Runners() public prank(admin) {
         baseRace.startGame();
 
@@ -476,7 +476,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         vm.warp(block.timestamp + 1.01 days);
         baseRace.startNextLap();
 
-        (uint256 entries,,,uint256 lapTotal, uint256 lapCount,,) = baseRace.getRace(1);
+        (uint256 entries,,, uint256 lapTotal, uint256 lapCount,,) = baseRace.getRace(1);
         assertEq(entries, 115);
         assertEq(lapCount, 1);
         assertEq(lapTotal, 6);
@@ -549,7 +549,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
 
         /// Start final lap but try to finish too early
         vm.warp(block.timestamp + 1.01 days);
-        baseRace.startNextLap();  // Start lap 2 (final lap)
+        baseRace.startNextLap(); // Start lap 2 (final lap)
 
         /// Lap still active (try to finish before lap time is up)
         vm.expectRevert(LapStillActive.selector);
@@ -565,8 +565,8 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
 
         // Start and complete the only lap needed
         vm.warp(block.timestamp + 1.01 days);
-        baseRace.startNextLap();  // Start lap 1 (final lap)
-        vm.warp(block.timestamp + 1.01 days);  // Wait for lap time to complete
+        baseRace.startNextLap(); // Start lap 1 (final lap)
+        vm.warp(block.timestamp + 1.01 days); // Wait for lap time to complete
 
         uint256 mintFee = baseRace.mintFee();
         uint256 winnerBalanceBefore = admin.balance;
