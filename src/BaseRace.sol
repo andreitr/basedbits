@@ -186,6 +186,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         }
         /// Save game state
         race[raceCount].winner = tokenIdOfWinner;
+        race[raceCount].endedAt = block.timestamp;
         status = GameStatus.Pending;
         emit GameEnded(raceCount, block.timestamp);
     }

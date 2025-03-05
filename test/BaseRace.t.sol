@@ -165,6 +165,7 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         baseRace.mint{value: 0.001 ether}();
         baseRace.mint{value: 0.001 ether}();
         baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
 
         (,,, uint256 lapTotal,,,) = baseRace.getRace(1);
         assertEq(lapTotal, 6);
@@ -573,13 +574,59 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         uint256 expectedPrize = 2 * (mintFee - (mintFee * baseRace.burnPercentage()) / 10_000);
         assertEq(address(baseRace).balance, expectedPrize);
 
+        // Check endedAt is 0 before finishing
+        (,,,,,, uint256 endedAt) = baseRace.getRace(1);
+        assertEq(endedAt, 0);
+
         vm.expectEmit(true, true, true, true);
         emit GameEnded(1, block.timestamp);
         baseRace.finishGame();
 
+        // Check endedAt is set after finishing
+        (,,,,,, endedAt) = baseRace.getRace(1);
+        assertEq(endedAt, block.timestamp);
+
         assertEq(address(baseRace).balance, 0);
         assertEq(admin.balance, winnerBalanceBefore + expectedPrize);
         assert(baseRace.status() == GameStatus.Pending);
+    }
+
+    function testEndedAtTimestamps() public prank(admin) {
+        baseRace.startGame();
+
+        // Mint 4 runners to get 2 laps
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+        baseRace.mint{value: 0.001 ether}();
+
+        // Start first lap
+        vm.warp(block.timestamp + 1.01 days);
+        baseRace.startNextLap();
+
+        // Check first lap endedAt is set
+        (uint256 lapStartedAt, uint256 lapEndedAt,,) = baseRace.getLap(1, 1);
+        assertEq(lapEndedAt, block.timestamp);
+
+        // Start second lap
+        vm.warp(block.timestamp + 1.01 days);
+        baseRace.startNextLap();
+
+        // Check second lap endedAt is set
+        (lapStartedAt, lapEndedAt,,) = baseRace.getLap(1, 2);
+        assertEq(lapEndedAt, block.timestamp);
+
+        // Check race endedAt is still 0
+        (,,,,,, uint256 raceEndedAt) = baseRace.getRace(1);
+        assertEq(raceEndedAt, 0);
+
+        // Finish race
+        vm.warp(block.timestamp + 1.01 days);
+        baseRace.finishGame();
+
+        // Check race endedAt is now set
+        (,,,,,, raceEndedAt) = baseRace.getRace(1);
+        assertEq(raceEndedAt, block.timestamp);
     }
 
     /// SETTINGS ///
