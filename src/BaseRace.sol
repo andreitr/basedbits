@@ -240,8 +240,8 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         uint256 finalLapPlayers = _calcFinalLapPlayers(numEntries);
         uint256 totalEliminations = numEntries - finalLapPlayers;
 
-        // Ensure eliminations per lap are distributed evenly but not too spread out
-        uint256 baseEliminations = (totalEliminations + totalLaps - 1) / totalLaps; // Ceil division
+        // Ensure eliminations per lap are distributed evenly 
+        uint256 baseEliminations = totalEliminations / totalLaps; // Ceil division
 
         // Ensure every lap has at least 1 elimination and stops at final lap
         uint256 eliminationsForLap = lapId < totalLaps ? baseEliminations : (numEntries - finalLapPlayers);
