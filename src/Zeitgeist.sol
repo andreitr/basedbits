@@ -7,6 +7,7 @@ import {Ownable} from "@openzeppelin/access/Ownable.sol";
 import {AccessControl} from "@openzeppelin/access/AccessControl.sol";
 import {ERC1155Supply} from "@src/modules/ERC1155Supply.sol";
 import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
+import {IERC165} from "@openzeppelin/utils/introspection/IERC165.sol";
 
 /// @title  Zeitgeist
 /// @notice This contract allows users to mint daily NFTs with unique artwork.
@@ -43,7 +44,6 @@ contract Zeitgeist is ERC1155Supply, Ownable, Pausable, AccessControl, Reentranc
     }
 
     error MustPayMintPrice();
-    error OnlyAdmin();
     error MetadataNotSet();
     error WithdrawFailed();
 
@@ -62,6 +62,12 @@ contract Zeitgeist is ERC1155Supply, Ownable, Pausable, AccessControl, Reentranc
         _grantRole(ADMIN_ROLE, _owner);
         
         _pause();
+    }
+
+    /// @notice Override supportsInterface to resolve conflicts between ERC1155 and AccessControl
+    /// @param interfaceId The interface identifier to check
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155, AccessControl) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 
     /// @notice Allows the contract to receive ETH payments
@@ -153,10 +159,5 @@ contract Zeitgeist is ERC1155Supply, Ownable, Pausable, AccessControl, Reentranc
         ++currentMint;
         currentMintStartTime = block.timestamp;
         emit Start(currentMint);
-    }
-
-    modifier onlyRole(bytes32 role) {
-        if (!hasRole(role, msg.sender)) revert OnlyAdmin();
-        _;
     }
 } 
