@@ -11,20 +11,20 @@ import {IERC165} from "@openzeppelin/utils/introspection/IERC165.sol";
 
 /// @title  Zeitgeist
 /// @notice This contract allows users to mint daily NFTs with unique artwork.
-/// @dev    The contract operates on a 24-hour cycle, where admins can create new tokens with custom SVG and metadata.
+/// @dev    The contract operates on admin-initiated cycles, where admins can create new tokens with custom SVG and metadata.
 ///         The Owner retains admin rights over pausability and the mintPrice.
-contract Zeitgeist is ERC1155Supply, Ownable, Pausable, AccessControl, ReentrancyGuard {
-    /// @notice Length of time that a mint cycle lasts.
-    uint256 public constant MINT_DURATION = 24 hours;
-
+contract Zeitgeist is
+    ERC1155Supply,
+    Ownable,
+    Pausable,
+    AccessControl,
+    ReentrancyGuard
+{
     /// @notice The price to mint an NFT.
     uint256 public mintPrice;
 
     /// @notice The token id of the current NFT.
     uint256 public currentMint;
-
-    /// @notice Start timestamp of the current mint cycle
-    uint256 public currentMintStartTime;
 
     /// @notice A mapping to track addresses that have minted in a given cycle.
     /// @dev    cycleId => address => minted
@@ -55,18 +55,18 @@ contract Zeitgeist is ERC1155Supply, Ownable, Pausable, AccessControl, Reentranc
     /// @dev Begins paused to allow owner to add art.
     constructor(address _owner) ERC1155("") Ownable(_owner) {
         mintPrice = 0.0008 ether;
-        currentMintStartTime = block.timestamp;
-        
-        // Set up roles
+
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
         _grantRole(ADMIN_ROLE, _owner);
-        
+
         _pause();
     }
 
     /// @notice Override supportsInterface to resolve conflicts between ERC1155 and AccessControl
     /// @param interfaceId The interface identifier to check
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155, AccessControl) returns (bool) {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(ERC1155, AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 
@@ -76,22 +76,28 @@ contract Zeitgeist is ERC1155Supply, Ownable, Pausable, AccessControl, Reentranc
     /// @notice This function provides the core functionality for minting NFTs and transitioning to new cycles.
     function mint() external payable nonReentrant whenNotPaused {
         if (!hasMetadata(currentMint)) revert MetadataNotSet();
-        
-        if (willMintSettleCycle()) {
-            _startNewMint();
-            _mintEntry();
-        } else {
-            if (msg.value < mintPrice) revert MustPayMintPrice();
-            _mintEntry();
-        }
+        if (msg.value < mintPrice) revert MustPayMintPrice();
+        _mintEntry();
     }
 
     /// ADMIN ///
 
+    /// @notice Manually starts the next mint cycle
+    function startNextMint() external onlyRole(ADMIN_ROLE) {
+        emit End(currentMint);
+
+        // Start new cycle
+        ++currentMint;
+        emit Start(currentMint);
+    }
+
     /// @notice Create a new token with custom SVG and metadata
     /// @param _svg The SVG content for the token
     /// @param _metadata The metadata for the token
-    function createToken(string memory _svg, string memory _metadata) external onlyRole(ADMIN_ROLE) {
+    function createToken(
+        string memory _svg,
+        string memory _metadata
+    ) external onlyRole(ADMIN_ROLE) {
         uint256 tokenId = currentMint;
         tokenMetadata[tokenId] = TokenMetadata({
             svg: _svg,
@@ -100,8 +106,6 @@ contract Zeitgeist is ERC1155Supply, Ownable, Pausable, AccessControl, Reentranc
         });
         emit TokenCreated(tokenId, _svg, _metadata);
     }
-
-    /// OWNER ///
 
     /// @notice Allows the owner to withdraw accumulated ETH
     function withdraw() external onlyOwner {
@@ -123,25 +127,16 @@ contract Zeitgeist is ERC1155Supply, Ownable, Pausable, AccessControl, Reentranc
 
     /// @notice This view function returns the art for any given token Id.
     /// @param  _tokenId The token Id of the NFT.
-    function uri(uint256 _tokenId) public view override returns (string memory) {
+    function uri(
+        uint256 _tokenId
+    ) public view override returns (string memory) {
         return tokenMetadata[_tokenId].metadata;
-    }
-
-    /// @notice Returns the SVG content for a token
-    /// @param  _tokenId The token Id of the NFT.
-    function svgContent(uint256 _tokenId) public view returns (string memory) {
-        return tokenMetadata[_tokenId].svg;
     }
 
     /// @notice Checks if metadata has been set for a token
     /// @param  _tokenId The token Id to check
     function hasMetadata(uint256 _tokenId) public view returns (bool) {
         return bytes(tokenMetadata[_tokenId].metadata).length > 0;
-    }
-
-    /// @notice This view function returns whether calling the mint function will start a new cycle.
-    function willMintSettleCycle() public view returns (bool) {
-        return !(block.timestamp - currentMintStartTime < MINT_DURATION);
     }
 
     /// INTERNAL ///
@@ -151,13 +146,4 @@ contract Zeitgeist is ERC1155Supply, Ownable, Pausable, AccessControl, Reentranc
         _mint(msg.sender, currentMint, 1, "");
         hasMinted[currentMint][msg.sender] = true;
     }
-
-    function _startNewMint() internal {
-        emit End(currentMint);
-        
-        // Start new cycle
-        ++currentMint;
-        currentMintStartTime = block.timestamp;
-        emit Start(currentMint);
-    }
-} 
+}
