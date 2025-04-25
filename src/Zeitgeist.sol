@@ -82,29 +82,37 @@ contract Zeitgeist is
 
     /// ADMIN ///
 
-    /// @notice Manually starts the next mint cycle
-    function startNextMint() external onlyRole(ADMIN_ROLE) {
-        emit End(currentMint);
-
-        // Start new cycle
-        ++currentMint;
-        emit Start(currentMint);
-    }
-
     /// @notice Create a new token with custom SVG and metadata
     /// @param _svg The SVG content for the token
     /// @param _metadata The metadata for the token
+    /// @dev This function increments currentMint and creates a new token
     function createToken(
         string memory _svg,
         string memory _metadata
     ) external onlyRole(ADMIN_ROLE) {
-        uint256 tokenId = currentMint;
-        tokenMetadata[tokenId] = TokenMetadata({
+        // End the current mint cycle if not the first token
+        if (currentMint > 0) {
+            emit End(currentMint);
+        }
+
+        // Increment to the next token
+        ++currentMint;
+
+        // Create the new token
+        tokenMetadata[currentMint] = TokenMetadata({
             svg: _svg,
             metadata: _metadata,
             createdAt: block.timestamp
         });
-        emit TokenCreated(tokenId, _svg, _metadata);
+
+        emit TokenCreated(currentMint, _svg, _metadata);
+        emit Start(currentMint);
+    }
+
+    /// @notice Manually ends the current mint cycle without starting a new one
+    /// @dev Use this if you want to stop minting without creating a new token
+    function endCurrentMint() external onlyRole(ADMIN_ROLE) {
+        emit End(currentMint);
     }
 
     /// @notice Allows the owner to withdraw accumulated ETH
