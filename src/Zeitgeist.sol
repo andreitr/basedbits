@@ -9,11 +9,11 @@ import {ERC1155Supply} from "@src/modules/ERC1155Supply.sol";
 import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {IERC165} from "@openzeppelin/utils/introspection/IERC165.sol";
 
-/// @title  Zeitgeist
+/// @title  AEYE
 /// @notice This contract allows users to mint daily NFTs with unique artwork.
 /// @dev    The contract operates on admin-initiated cycles, where admins can create new tokens with custom SVG and metadata.
 ///         The Owner retains admin rights over pausability and the mintPrice.
-contract Zeitgeist is
+contract AEYE is
     ERC1155Supply,
     Ownable,
     Pausable,
