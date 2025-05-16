@@ -15,6 +15,7 @@ docs/
 # Dotenv file
 .env
 .idea
+.DS_Store
 
 # Test
 lcov.info
