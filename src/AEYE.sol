@@ -37,44 +37,47 @@ contract AEYE is
     Burner public immutable burner;
 
     /// @dev    10_000 = 100%
-    uint256 public burnPercentage;
+    uint16 public burnPercentage;
 
     /// @dev    10_000 = 100%
-    uint256 public artistPercentage;
+    uint16 public artistPercentage;
 
     /// @dev    10_000 = 100%
-    uint256 public communityPercentage;
+    uint16 public communityPercentage;
 
     /// @notice A mapping to track addresses that have minted in a given cycle.
     /// @dev    cycleId => address => minted
     mapping(uint256 => mapping(address => bool)) public hasMinted;
 
-    /// @notice A mapping to track active minters for the current token
-    /// @dev    address => isActive
-    mapping(address => bool) public activeMinters;
-
-    /// @notice Array of active minters for the current token
-    address[] public currentActiveMinters;
-
     /// @notice A mapping to track user's minting streak
     /// @dev    address => streak
-    mapping(address => uint256) public mintingStreak;
+    mapping(address => uint8) public mintingStreak;
 
     /// @notice A mapping to track total unique minters across all tokens
     /// @dev    address => totalMints
     mapping(address => uint256) public totalMints;
 
-    /// @notice A mapping to track total community rewards distributed
-    /// @dev    address => totalRewardsDistributed
-    mapping(address => uint256) public totalRewardsDistributed;
+    /// @notice Tracks total number of tokens minted (including multiple mints) per cycle
+    mapping(uint256 => uint256) private _totalMintsPerToken;
 
     /// @notice A mapping to track community rewards for each token
     /// @dev    tokenId => totalCommunityRewards
     mapping(uint256 => uint256) public tokenCommunityRewards;
 
-    /// @notice A mapping to track user's total accumulated rewards
-    /// @dev    address => totalRewards
-    mapping(address => uint256) public userRewards;
+    /// @notice OpenSea-style contract-level metadata URI
+    string public contractMetadataURI;
+
+    // --- Reward snapshot accounting ---
+    uint256 private constant PRECISION = 1e18;
+    /// @notice Accumulated reward per weight for each token cycle
+    mapping(uint256 => uint256) public accRewardPerShare;
+    /// @notice Snapshot of each user's weight for each token cycle
+    mapping(uint256 => mapping(address => uint256)) public weightSnapshot;
+    /// @notice Last token cycle a user has claimed rewards for
+    mapping(address => uint256) public lastClaimedToken;
+
+    /// @notice Total summed weight for each cycle (no loops needed at cycle-close)
+    mapping(uint256 => uint256) public totalWeightPerCycle;
 
     /// @notice A mapping to store token metadata
     /// @dev    tokenId => metadata
@@ -98,7 +101,6 @@ contract AEYE is
     error TransferFailed();
     error NoRewardsToClaim();
 
-    event Start(uint256 indexed tokenId);
     event TokenCreated(uint256 indexed tokenId, string metadata);
     event MetadataUpdated(uint256 indexed tokenId, string newMetadata);
     event PercentagesUpdated(
@@ -146,6 +148,9 @@ contract AEYE is
         if (!hasMetadata(currentMint)) revert MetadataNotSet();
         if (msg.value < mintPrice) revert MustPayMintPrice();
 
+        // Update internal state before any external transfers
+        _mintEntry();
+
         uint256 burnAmount = (msg.value * burnPercentage) / 10_000;
         uint256 artistAmount = (msg.value * artistPercentage) / 10_000;
         uint256 communityAmount = (msg.value * communityPercentage) / 10_000;
@@ -175,40 +180,56 @@ contract AEYE is
             (bool success, ) = owner().call{value: ownerAmount}("");
             if (!success) revert TransferFailed();
         }
-
-        _mintEntry();
     }
 
     /// @dev Mints the current token to the caller
     function _mintEntry() internal {
         _mint(msg.sender, currentMint, 1, "");
-        hasMinted[currentMint][msg.sender] = true;
+        // Count every token minted, even if same user
+        _totalMintsPerToken[currentMint] += 1;
 
-        // Update streak
-        if (currentMint > 0 && hasMinted[currentMint - 1][msg.sender]) {
-            mintingStreak[msg.sender]++;
-        } else {
-            mintingStreak[msg.sender] = 1;
-        }
+        if (!hasMinted[currentMint][msg.sender]) {
+            hasMinted[currentMint][msg.sender] = true;
 
-        if (!activeMinters[msg.sender]) {
-            activeMinters[msg.sender] = true;
-            currentActiveMinters.push(msg.sender);
+            // Update streak once per cycle
+            if (currentMint > 0 && hasMinted[currentMint - 1][msg.sender]) {
+                // Cap streak at 10 days to prevent storage bloat
+                if (mintingStreak[msg.sender] < 10) {
+                    mintingStreak[msg.sender]++;
+                }
+            } else {
+                mintingStreak[msg.sender] = 1;
+            }
+
+            // Snapshot this user's weight for the current cycle and update total weight
+            uint256 w = weightOf(msg.sender);
+            weightSnapshot[currentMint][msg.sender] = w;
+            totalWeightPerCycle[currentMint] += w;
         }
     }
 
     /// @notice Allows users to claim their accumulated rewards
     function claimRewards() external nonReentrant {
-        uint256 rewards = userRewards[msg.sender];
-        if (rewards == 0) revert NoRewardsToClaim();
+        uint256 start = lastClaimedToken[msg.sender] + 1;
+        uint256 end = currentMint;
+        uint256 payout;
 
-        // Reset user's rewards
-        userRewards[msg.sender] = 0;
+        for (uint256 tokenId = start; tokenId <= end; ) {
+            uint256 w = weightSnapshot[tokenId][msg.sender];
+            if (w > 0) {
+                payout += (accRewardPerShare[tokenId] * w) / PRECISION;
+                delete weightSnapshot[tokenId][msg.sender];
+            }
+            unchecked { tokenId++; }
+        }
 
-        (bool success, ) = msg.sender.call{value: rewards}("");
+        lastClaimedToken[msg.sender] = end;
+        if (payout == 0) revert NoRewardsToClaim();
+
+        (bool success, ) = msg.sender.call{value: payout}("");
         if (!success) revert TransferFailed();
 
-        emit CommunityRewardsClaimed(currentMint, msg.sender, rewards);
+        emit CommunityRewardsClaimed(currentMint, msg.sender, payout);
     }
 
     /// ADMIN ///
@@ -219,35 +240,23 @@ contract AEYE is
     function createToken(
         string memory _metadata
     ) external onlyRole(ADMIN_ROLE) {
-        // Distribute previous day's rewards to active minters
+        // Distribute previous cycle's rewards using stored totals (no loops)
         uint256 totalRewards = tokenCommunityRewards[currentMint];
-        if (totalRewards > 0 && currentActiveMinters.length > 0) {
-            // Calculate total weight based on streaks
-            uint256 totalWeight = 0;
-            for (uint256 i = 0; i < currentActiveMinters.length; i++) {
-                address minter = currentActiveMinters[i];
-                // Streak weight: 1 + (streak * 0.1), max 2x multiplier
-                uint256 weight = 10 +
-                    (mintingStreak[minter] > 10 ? 10 : mintingStreak[minter]);
-                totalWeight += weight;
-            }
-
-            // Distribute rewards based on weights
-            for (uint256 i = 0; i < currentActiveMinters.length; i++) {
-                address minter = currentActiveMinters[i];
-                uint256 weight = 10 +
-                    (mintingStreak[minter] > 10 ? 10 : mintingStreak[minter]);
-                uint256 share = (totalRewards * weight) / totalWeight;
-                userRewards[minter] += share;
-                totalRewardsDistributed[minter] += share;
+        uint256 totalWeight = totalWeightPerCycle[currentMint];
+        if (totalRewards > 0) {
+            if (totalWeight > 0) {
+                accRewardPerShare[currentMint] = (totalRewards * PRECISION) / totalWeight;
+                // Calculate dust and roll over
+                uint256 distributed = (accRewardPerShare[currentMint] * totalWeight) / PRECISION;
+                uint256 dust = totalRewards - distributed;
+                if (dust > 0) {
+                    tokenCommunityRewards[currentMint + 1] += dust;
+                }
+            } else {
+                // No weight recorded: roll entire pot
+                tokenCommunityRewards[currentMint + 1] += totalRewards;
             }
         }
-
-        // Reset active minters for new token
-        for (uint256 i = 0; i < currentActiveMinters.length; i++) {
-            activeMinters[currentActiveMinters[i]] = false;
-        }
-        delete currentActiveMinters;
 
         // Increment to the next token
         ++currentMint;
@@ -259,8 +268,8 @@ contract AEYE is
         });
 
         emit TokenCreated(currentMint, _metadata);
-        emit Start(currentMint);
     }
+
 
     function setPaused(bool _setPaused) external onlyOwner {
         _setPaused ? _pause() : _unpause();
@@ -281,9 +290,9 @@ contract AEYE is
     ) external onlyOwner {
         if (_burnPercentage + _artistPercentage + _communityPercentage > 10_000)
             revert InvalidPercentage();
-        burnPercentage = _burnPercentage;
-        artistPercentage = _artistPercentage;
-        communityPercentage = _communityPercentage;
+        burnPercentage = uint16(_burnPercentage);
+        artistPercentage = uint16(_artistPercentage);
+        communityPercentage = uint16(_communityPercentage);
         emit PercentagesUpdated(
             _burnPercentage,
             _artistPercentage,
@@ -319,32 +328,50 @@ contract AEYE is
         return bytes(tokenMetadata[_tokenId].metadata).length > 0;
     }
 
-    /// @notice Get the total accumulated rewards for a user
-    /// @param _user The address to check rewards for
-    /// @return The total amount of accumulated rewards
-    function getTotalRewards(address _user) public view returns (uint256) {
-        return userRewards[_user];
+/// @dev Helper to return a user's weight for reward distribution
+    function weightOf(address user) public view returns (uint256) {
+        // Streak weight: 1 + (streak * 0.1), max 2x multiplier
+        uint256 streak = mintingStreak[user];
+        return 10 + (streak > 10 ? 10 : streak);
     }
 
-    /// @notice Get a user's reward percentage for the current token
-    /// @param _user The address to check percentage for
-    /// @return The user's percentage of rewards (in basis points, 10000 = 100%)
-    function getRewardPercentage(address _user) public view returns (uint256) {
-        if (!activeMinters[_user] || !hasMinted[currentMint][_user]) return 0;
 
-        uint256 activeMinterCount = 0;
-        // Count active minters for current token only
-        if (hasMinted[currentMint][_user] && activeMinters[_user]) {
-            activeMinterCount++;
+    /// @notice Returns the total pending community rewards for a user
+    /// @param user The address of the minter
+    /// @return The total ETH amount currently claimable by the user
+    function unclaimedRewards(address user) external view returns (uint256) {
+        uint256 start = lastClaimedToken[user] + 1;
+        uint256 end = currentMint;
+        uint256 total;
+        for (uint256 tokenId = start; tokenId <= end; tokenId++) {
+            uint256 w = weightSnapshot[tokenId][user];
+            if (w > 0) {
+                total += (accRewardPerShare[tokenId] * w) / PRECISION;
+            }
         }
-        if (activeMinterCount == 0) return 0;
-
-        return 10_000 / activeMinterCount;
+        return total;
     }
 
-    function getTotalRewardsDistributed(
-        address _user
-    ) public view returns (uint256) {
-        return totalRewardsDistributed[_user];
+    /// @notice Returns the original community pot for a given cycle
+    /// @param tokenId The cycle/token ID to query
+    function communityRewards(uint256 tokenId) external view returns (uint256) {
+        return tokenCommunityRewards[tokenId];
+    }
+
+    /// @notice Returns the contract-level metadata URI for marketplaces
+    function contractURI() external view returns (string memory) {
+        return contractMetadataURI;
+    }
+
+    /// @notice Sets the contract-level metadata URI (e.g., OpenSea contract metadata)
+    function setContractURI(string calldata _uri) external onlyOwner {
+        contractMetadataURI = _uri;
+    }
+
+    /// @notice Returns the total number of mints for a given token
+    /// @param tokenId The token ID to check
+    /// @return The total number of mints for the token
+    function mintsPerToken(uint256 tokenId) public view returns (uint256) {
+        return _totalMintsPerToken[tokenId];
     }
 }
