@@ -2,7 +2,10 @@
 pragma solidity 0.8.25;
 
 import {BBitsTestUtils, console, BBitsSocial} from "@test/utils/BBitsTestUtils.sol";
+import {Ownable} from "@openzeppelin/access/Ownable.sol";
+import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 
+/// @dev forge test --match-contract BBitsSocialTest -vvv
 contract BBitsSocialTest is BBitsTestUtils {
     event Message(address indexed sender, string message, uint256 timestamp);
     event ThresholdUpdated(uint16 newThreshold, uint256 timestamp);
@@ -58,24 +61,27 @@ contract BBitsSocialTest is BBitsTestUtils {
         vm.stopPrank();
     }
 
-    function testFailPostMessageNotEnoughStreaks() public {
+    function testPostMessageNotEnoughStreaks() public {
         setCheckInStreak(user0, 3);
         vm.prank(user0);
+        vm.expectRevert('Not enough streaks to post');
         social.post("This should fail");
     }
 
-    function testFailPostMessageTooManyCharacters() public {
+    function testPostMessageTooManyCharacters() public {
         setCheckInStreak(user0, 22);
         vm.prank(user0);
+        vm.expectRevert('Message exceeds character limit');
         social.post(
             "Today, I stumbled upon an old journal. Reading my past thoughts feels like meeting an old friend. Memories flood back, reminding me of who I am."
         );
     }
 
-    function testFailPostMessageUserBanned() public {
+    function testPostMessageUserBanned() public {
         setCheckInStreak(user0, 22);
         setCheckInBan(user0);
         vm.prank(user0);
+        vm.expectRevert('Account is banned from Based Bits');
         social.post("Test message");
     }
 
@@ -94,8 +100,9 @@ contract BBitsSocialTest is BBitsTestUtils {
         assertEq(social.streakThreshold(), 0);
     }
 
-    function testFailUpdateThresholdNotOwner() public {
+    function testUpdateThresholdNotOwner() public {
         vm.prank(user0); // Acting as a non-owner
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user0));
         social.updateStreakThreshold(10);
     }
 
@@ -105,9 +112,10 @@ contract BBitsSocialTest is BBitsTestUtils {
         assertEq(social.checkInContract(), newCheckInContract);
     }
 
-    function testFailUpdateCheckInContractNotOwner() public {
+    function testUpdateCheckInContractNotOwner() public {
         address newCheckInContract = address(0x3);
         vm.prank(user0); // Acting as a non-owner
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user0));
         social.updateCheckInContract(newCheckInContract);
     }
 
@@ -116,8 +124,9 @@ contract BBitsSocialTest is BBitsTestUtils {
         assertTrue(social.paused());
     }
 
-    function testFailPauseNotOwner() public {
+    function testPauseNotOwner() public {
         vm.prank(user0); // Acting as a non-owner
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user0));
         social.pause();
     }
 
@@ -127,16 +136,18 @@ contract BBitsSocialTest is BBitsTestUtils {
         assertFalse(social.paused());
     }
 
-    function testFailUnpauseNotOwner() public {
+    function testUnpauseNotOwner() public {
         social.pause();
         vm.prank(user0); // Acting as a non-owner
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user0));
         social.unpause();
     }
 
-    function testFailPostMessageWhenPaused() public {
+    function testPostMessageWhenPaused() public {
         setCheckInStreak(user0, 22);
         social.pause();
         vm.prank(user0);
+        vm.expectRevert(Pausable.EnforcedPause.selector);
         social.post("This should fail");
     }
 
