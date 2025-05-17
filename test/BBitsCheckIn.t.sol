@@ -2,7 +2,10 @@
 pragma solidity 0.8.25;
 
 import {BBitsTestUtils, console} from "@test/utils/BBitsTestUtils.sol";
+import {Ownable} from "@openzeppelin/access/Ownable.sol";
+import {Pausable} from "@openzeppelin/utils/Pausable.sol";
 
+/// @dev forge test --match-contract BBitsCheckInTest -vvv
 contract BBitsCheckInTest is BBitsTestUtils {
     function testInitialSettings() public view {
         assertTrue(checkIn.collections(address(basedBits)), "Initial collection should be set correctly");
@@ -75,37 +78,21 @@ contract BBitsCheckInTest is BBitsTestUtils {
         assertEq(count, 3);
     }
 
-    function testFailCheckInTooSoon() public {
-        vm.prank(user0);
+    function testCheckInTooSoon() public {
+        vm.startPrank(user0);
         checkIn.checkIn();
 
-        bool success;
-        bytes memory data;
-
-        (success, data) = address(checkIn).call(abi.encodeWithSignature("checkIn()"));
-
-        assertFalse(success, "Call should have failed");
-
-        if (data.length > 0) {
-            string memory revertReason = abi.decode(data, (string));
-            assertEq(revertReason, "Check-in too soon");
-        }
+        vm.expectRevert('At least 24 hours must have passed since the last check-in or this is the first check-in');
+        checkIn.checkIn();
+        vm.stopPrank();
     }
 
-    function testFailCheckInNotEnoughNFTs() public {
-        bool success;
-        bytes memory data;
-
+    function testCheckInNotEnoughNFTs() public {
         assertFalse(checkIn.isEligible(user2), "User2 should not have enough NFTs");
 
-        (success, data) = address(checkIn).call(abi.encodeWithSignature("checkIn()"));
-
-        assertFalse(success, "Call should have failed");
-
-        if (data.length > 0) {
-            string memory revertReason = abi.decode(data, (string));
-            assertEq(revertReason, "Not enough NFTs to check in");
-        }
+        vm.prank(user2);
+        vm.expectRevert('Must have at least one NFT from an allowed collection to check in');
+        checkIn.checkIn();
     }
 
     function testIsEligibleFalse() public {
@@ -118,37 +105,19 @@ contract BBitsCheckInTest is BBitsTestUtils {
         assertTrue(checkIn.isEligible(user0));
     }
 
-    function testFailCheckInBanned() public {
-        address bannedUser = address(0x2);
-        checkIn.ban(bannedUser);
+    function testCheckInBanned() public {
+        checkIn.ban(user0);
 
-        bool success;
-        bytes memory data;
-
-        (success, data) = address(checkIn).call(abi.encodeWithSignature("checkIn()"));
-
-        assertFalse(success, "Call should have failed");
-
-        if (data.length > 0) {
-            string memory revertReason = abi.decode(data, (string));
-            assertEq(revertReason, "User is banned");
-        }
+        vm.prank(user0);
+        vm.expectRevert('This address is banned from posting');
+        checkIn.checkIn();
     }
 
-    function testFailCheckInPaused() public {
+    function testCheckInPaused() public {
         checkIn.pause();
 
-        bool success;
-        bytes memory data;
-
-        (success, data) = address(checkIn).call(abi.encodeWithSignature("checkIn()"));
-
-        assertFalse(success, "Call should have failed");
-
-        if (data.length > 0) {
-            string memory revertReason = abi.decode(data, (string));
-            assertEq(revertReason, "Pausable: paused");
-        }
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        checkIn.checkIn();
     }
 
     function testCanCheckInEligibleAndMoreThan24Hours() public {
@@ -206,30 +175,18 @@ contract BBitsCheckInTest is BBitsTestUtils {
         assertFalse(checkIn.collections(newCollection));
     }
 
-    function testFailAddExistingCollection() public {
-        bool success;
-        bytes memory data;
-
+    function testAddExistingCollection() public {
         // Ensure the collection exists
         assertTrue(checkIn.collections(address(basedBits)), "Initial collection should exist");
 
         // Try to add the existing collection and catch the revert
-        (success, data) = address(checkIn).call(abi.encodeWithSignature("addCollection(address)", address(basedBits)));
-
-        // Assert that the call failed
-        assertFalse(success, "Call should have failed");
-
-        // Check the revert message
-        if (data.length > 0) {
-            // The revert reason is returned as a string
-            string memory revertReason = abi.decode(data, (string));
-            assertEq(revertReason, "Collection already exists");
-        }
+        vm.expectRevert('Collection already exists');
+        checkIn.addCollection(address(basedBits));
     }
 
-    function testFailAddCollectionNotOwner() public {
+    function testAddCollectionNotOwner() public {
         vm.prank(user0);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user0));
         checkIn.addCollection(address(0x3));
     }
 
@@ -238,9 +195,9 @@ contract BBitsCheckInTest is BBitsTestUtils {
         assertEq(checkIn.owner(), user0);
     }
 
-    function testFailOwnershipTransferNotOwner() public {
+    function testOwnershipTransferNotOwner() public {
         vm.prank(user0);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user0));
         checkIn.transferOwnership(user1);
     }
 }

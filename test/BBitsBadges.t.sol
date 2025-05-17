@@ -5,6 +5,7 @@ import {IERC1155MetadataURI, IERC1155} from "@openzeppelin/token/ERC1155/ERC1155
 import {IAccessControl} from "@openzeppelin/access/AccessControl.sol";
 import {BBitsTestUtils, console} from "@test/utils/BBitsTestUtils.sol";
 
+/// @dev forge test --match-contract BBitsBadgesTest -vvv
 contract BBitsBadgesTest is BBitsTestUtils {
     address public minter;
 
@@ -44,9 +45,11 @@ contract BBitsBadgesTest is BBitsTestUtils {
         assertEq(badges.contractURI(), "https://newuri.com/api/badges");
     }
 
-    function testFailUpdateContractMetadataURIIfNotOwner() public {
+    function testUpdateContractMetadataURIIfNotOwner() public {
         vm.prank(user0);
-        vm.expectRevert("AccessControl: account is missing role");
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user0, bytes32(0))
+        );
         badges.updateContractURI("https://newuri.com/api/badges");
     }
 
@@ -56,17 +59,23 @@ contract BBitsBadgesTest is BBitsTestUtils {
         assertEq(badges.uri(1), "https://newuri.com/token/{id}.json");
     }
 
-    function testFailMintIfNotMinter() public {
+    function testMintIfNotMinter() public {
+        bytes32 minter_role = badges.MINTER_ROLE();
         vm.prank(user0);
-        vm.expectRevert("AccessControl: account is missing role");
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, user0, minter_role)
+        );
         badges.mint(user0, 1);
     }
 
-    function testFailIfMinterRevoked() public {
+    function testIfMinterRevoked() public {
+        bytes32 minter_role = badges.MINTER_ROLE();
         vm.prank(owner);
-        badges.revokeRole(badges.MINTER_ROLE(), minter);
+        badges.revokeRole(minter_role, minter);
         vm.prank(minter);
-        vm.expectRevert("AccessControl: account is missing role");
+        vm.expectRevert(
+            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, minter, minter_role)
+        );
         badges.mint(user0, 1);
     }
 
