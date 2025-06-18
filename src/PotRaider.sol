@@ -16,10 +16,10 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     address public burnerContract;
     uint256 public totalMinted;
 
-    event NFTBurned(
+    event NFTExchanged(
         uint256 indexed tokenId,
         address indexed owner,
-        uint256 share
+        uint256 amount
     );
 
     constructor(
@@ -35,8 +35,10 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         burnerContract = _burnerContract;
     }
 
-    function mint() external payable whenNotPaused {
-        require(msg.value >= mintPrice, "Insufficient payment");
+    function mint(uint256 quantity) external payable whenNotPaused {
+        require(quantity > 0, "Quantity must be greater than 0");
+        require(quantity <= 10, "Cannot mint more than 10 NFTs at once");
+        require(msg.value >= mintPrice * quantity, "Insufficient payment");
 
         uint256 burnAmount = (msg.value * burnPercentage) / 100;
         uint256 treasuryAmount = msg.value - burnAmount;
@@ -45,28 +47,30 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         (bool burnSuccess, ) = burnerContract.call{value: burnAmount}("");
         require(burnSuccess, "Burn transfer failed");
 
-        _tokenIds.increment();
-        uint256 newTokenId = _tokenIds.current();
-        _safeMint(msg.sender, newTokenId);
-        totalMinted++;
+        for (uint256 i = 0; i < quantity; i++) {
+            _tokenIds.increment();
+            uint256 newTokenId = _tokenIds.current();
+            _safeMint(msg.sender, newTokenId);
+            totalMinted++;
+        }
     }
 
-    function burnForTreasury(uint256 tokenId) external whenNotPaused {
+    function exchange(uint256 tokenId) external whenNotPaused {
         require(ownerOf(tokenId) == msg.sender, "Not the owner");
         require(totalMinted > 0, "No NFTs minted");
 
         // Calculate share based on total minted NFTs
-        uint256 share = address(this).balance / totalMinted;
-        require(share > 0, "No treasury available");
+        uint256 amount = address(this).balance / totalMinted;
+        require(amount > 0, "No treasury available");
 
         // Burn the NFT
         burn(tokenId);
 
         // Send share to the owner
-        (bool success, ) = msg.sender.call{value: share}("");
+        (bool success, ) = msg.sender.call{value: amount}("");
         require(success, "Transfer failed");
 
-        emit NFTBurned(tokenId, msg.sender, share);
+        emit NFTExchanged(tokenId, msg.sender, amount);
     }
 
     function setMintPrice(uint256 _mintPrice) external onlyOwner {
