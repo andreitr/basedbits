@@ -18,6 +18,12 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     address public burnerContract;
     uint256 public totalMinted;
 
+    /// @notice The artist address that receives a portion of mint fees
+    address public immutable artist;
+
+    /// @dev    10_000 = 100%
+    uint16 public artistPercentage;
+
     /// @notice OpenSea-style contract-level metadata URI
     string public contractMetadataURI;
 
@@ -27,17 +33,25 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         uint256 amount
     );
 
+    event PercentagesUpdated(
+        uint256 burnPercentage,
+        uint256 artistPercentage
+    );
+
+    error InvalidPercentage();
+    error TransferFailed();
+
     constructor(
-        string memory name,
-        string memory symbol,
         uint256 _mintPrice,
-        uint256 _burnPercentage,
-        address _burnerContract
-    ) ERC721(name, symbol) Ownable(msg.sender) {
-        require(_burnPercentage <= 100, "Burn percentage cannot exceed 100");
+        address _burnerContract,
+        address _artist
+    ) ERC721("Pot Raider", "POTRAIDER") Ownable(msg.sender) {
+        
         mintPrice = _mintPrice;
-        burnPercentage = _burnPercentage;
         burnerContract = _burnerContract;
+        artist = _artist;
+        artistPercentage = 1000; // 10%
+        burnPercentage = 1000; // 10%
     }
 
     function mint(uint256 quantity) external payable whenNotPaused {
@@ -46,11 +60,20 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         require(msg.value >= mintPrice * quantity, "Insufficient payment");
 
         uint256 burnAmount = (msg.value * burnPercentage) / 100;
-        uint256 treasuryAmount = msg.value - burnAmount;
+        uint256 artistAmount = (msg.value * artistPercentage) / 10_000;
+        uint256 treasuryAmount = msg.value - burnAmount - artistAmount;
 
         // Send burn amount to burner contract
-        (bool burnSuccess, ) = burnerContract.call{value: burnAmount}("");
-        require(burnSuccess, "Burn transfer failed");
+        if (burnAmount > 0) {
+            (bool burnSuccess, ) = burnerContract.call{value: burnAmount}("");
+            require(burnSuccess, "Burn transfer failed");
+        }
+
+        // Send artist amount to artist
+        if (artistAmount > 0) {
+            (bool artistSuccess, ) = artist.call{value: artistAmount}("");
+            require(artistSuccess, "Artist transfer failed");
+        }
 
         for (uint256 i = 0; i < quantity; i++) {
             _tokenIds.increment();
@@ -87,6 +110,23 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         burnPercentage = _burnPercentage;
     }
 
+    /// @notice Update the burn and artist percentages
+    /// @param _burnPercentage New burn percentage (100 = 100%)
+    /// @param _artistPercentage New artist percentage (10_000 = 100%)
+    function setPercentages(
+        uint256 _burnPercentage,
+        uint256 _artistPercentage
+    ) external onlyOwner {
+        require(_burnPercentage <= 100, "Burn percentage cannot exceed 100");
+        require(_artistPercentage <= 10_000, "Artist percentage cannot exceed 100%");
+        require(_burnPercentage + _artistPercentage <= 100, "Total percentages cannot exceed 100%");
+        
+        burnPercentage = uint16(_burnPercentage);
+        artistPercentage = uint16(_artistPercentage);
+        
+        emit PercentagesUpdated(_burnPercentage, _artistPercentage);
+    }
+
     function setBurnerContract(address _burnerContract) external onlyOwner {
         burnerContract = _burnerContract;
     }
@@ -119,7 +159,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
             bytes(
                 string(
                     abi.encodePacked(
-                        '{"name": "Pot Raider #',
+                        '{"name": "Raider #',
                         Strings.toString(tokenId),
                         '", "description": "A Pot Raider NFT", "image": "data:image/svg+xml;base64,',
                         Base64.encode(bytes(svg)),
