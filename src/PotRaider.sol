@@ -1,22 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/utils/Base64.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/token/ERC721/ERC721.sol";
+import "@openzeppelin/token/ERC721/extensions/ERC721Burnable.sol";
+import "@openzeppelin/access/Ownable.sol";
+import "@openzeppelin/utils/Pausable.sol";
+import "@openzeppelin/utils/Base64.sol";
+import "@openzeppelin/utils/Strings.sol";
 
 contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
-    using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
-
+    uint256 public totalSupply;
     uint256 public mintPrice;
     uint256 public burnPercentage;
     address public burnerContract;
     uint256 public totalMinted;
+    uint256 public totalBurned;
 
     /// @notice The artist address that receives a portion of mint fees
     address public immutable artist;
@@ -59,7 +57,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         require(quantity <= 10, "Cannot mint more than 10 NFTs at once");
         require(msg.value >= mintPrice * quantity, "Insufficient payment");
 
-        uint256 burnAmount = (msg.value * burnPercentage) / 100;
+        uint256 burnAmount = (msg.value * burnPercentage) / 10_000;
         uint256 artistAmount = (msg.value * artistPercentage) / 10_000;
         uint256 treasuryAmount = msg.value - burnAmount - artistAmount;
 
@@ -76,9 +74,8 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         }
 
         for (uint256 i = 0; i < quantity; i++) {
-            _tokenIds.increment();
-            uint256 newTokenId = _tokenIds.current();
-            _safeMint(msg.sender, newTokenId);
+            _safeMint(msg.sender, totalSupply);
+            totalSupply++;
             totalMinted++;
         }
     }
@@ -139,17 +136,8 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         _unpause();
     }
 
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId,
-        uint256 batchSize
-    ) internal override(ERC721, ERC721Burnable) whenNotPaused {
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
-    }
-
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
+        require(_ownerOf(tokenId) != address(0), "ERC721Metadata: URI query for nonexistent token");
         return _generateTokenURI(tokenId);
     }
 
@@ -226,5 +214,11 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     /// @notice Sets the contract-level metadata URI (e.g., OpenSea contract metadata)
     function setContractURI(string calldata _uri) external onlyOwner {
         contractMetadataURI = _uri;
+    }
+
+    /// @dev Override _burn to track total burned tokens
+    function _burn(uint256 tokenId) internal virtual override {
+        super._burn(tokenId);
+        totalBurned++;
     }
 }
