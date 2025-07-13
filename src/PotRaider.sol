@@ -24,6 +24,9 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     /// @notice OpenSea-style contract-level metadata URI
     string public contractMetadataURI;
 
+    /// @notice Timestamp when the contract was deployed
+    uint256 public immutable deploymentTimestamp;
+
     event NFTExchanged(
         uint256 indexed tokenId,
         address indexed owner,
@@ -49,6 +52,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         artist = _artist;
         artistPercentage = 1000; // 10%
         burnPercentage = 1000; // 10%
+        deploymentTimestamp = block.timestamp;
     }
 
     function mint(uint256 quantity) external payable whenNotPaused {
@@ -228,5 +232,10 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     /// @notice Returns the RGB color for a given tokenId
     function getHueRGB(uint256 tokenId) external view returns (uint8 r, uint8 g, uint8 b) {
         return _generateHueRGB(tokenId);
+    }
+
+    /// @notice Returns the current day since deployment (1-indexed)
+    function day() external view returns (uint256) {
+        return ((block.timestamp - deploymentTimestamp) / 1 days) + 1;
     }
 }

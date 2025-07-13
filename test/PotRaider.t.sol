@@ -256,6 +256,98 @@ contract PotRaiderTest is Test {
         assertTrue(entropyB >= 4, "B channel should have good entropy");
     }
 
+    function testDayFunction() public {
+        // Day should start at 1 on deployment
+        assertEq(potRaider.day(), 1, "Day should start at 1");
+    }
+
+    function testDayFunctionAfterTimePasses() public {
+        uint256 deploymentTimestamp = potRaider.deploymentTimestamp();
+        // Advance time by 1 day
+        vm.warp(deploymentTimestamp + 1 days);
+        assertEq(potRaider.day(), 2, "Day should be 2 after 1 day");
+        
+        // Advance time by another day (total 2 days from deployment)
+        vm.warp(deploymentTimestamp + 2 days);
+        assertEq(potRaider.day(), 3, "Day should be 3 after 2 days");
+    }
+
+    function testDayFunctionPartialDays() public {
+        uint256 deploymentTimestamp = potRaider.deploymentTimestamp();
+        // Advance time by 12 hours (half a day)
+        vm.warp(deploymentTimestamp + 12 hours);
+        assertEq(potRaider.day(), 1, "Day should still be 1 after 12 hours");
+        
+        // Advance time by 23 hours and 59 minutes (total 23:59 from deployment)
+        vm.warp(deploymentTimestamp + 23 hours + 59 minutes);
+        assertEq(potRaider.day(), 1, "Day should still be 1 after 23 hours 59 minutes");
+        
+        // Advance time by 1 more minute to complete the day (24 hours)
+        vm.warp(deploymentTimestamp + 24 hours);
+        assertEq(potRaider.day(), 2, "Day should be 2 after exactly 24 hours");
+    }
+
+    function testDayFunctionMultipleDays() public {
+        // Advance time by 7 days
+        vm.warp(block.timestamp + 7 days);
+        assertEq(potRaider.day(), 8, "Day should be 8 after 7 days");
+        
+        // Advance time by 30 days
+        vm.warp(block.timestamp + 30 days);
+        assertEq(potRaider.day(), 38, "Day should be 38 after 30 more days");
+    }
+
+    function testDayFunctionEdgeCases() public {
+        // Test with very small time increments
+        vm.warp(block.timestamp + 1 seconds);
+        assertEq(potRaider.day(), 1, "Day should be 1 after 1 second");
+        
+        vm.warp(block.timestamp + 1 minutes);
+        assertEq(potRaider.day(), 1, "Day should be 1 after 1 minute");
+        
+        vm.warp(block.timestamp + 1 hours);
+        assertEq(potRaider.day(), 1, "Day should be 1 after 1 hour");
+        
+        // Test with exactly 24 hours
+        vm.warp(block.timestamp + 24 hours);
+        assertEq(potRaider.day(), 2, "Day should be 2 after exactly 24 hours");
+    }
+
+    function testDayFunctionLargeTimeGaps() public {
+        uint256 deploymentTimestamp = potRaider.deploymentTimestamp();
+        // Test with a large time gap (1 year)
+        vm.warp(deploymentTimestamp + 365 days);
+        assertEq(potRaider.day(), 366, "Day should be 366 after 1 year");
+        
+        // Test with multiple years (total 2 years from deployment)
+        vm.warp(deploymentTimestamp + 2 * 365 days);
+        assertEq(potRaider.day(), 731, "Day should be 731 after 2 years");
+    }
+
+    function testDayFunctionConsistency() public {
+        // Call day() multiple times without time changes
+        uint256 day1 = potRaider.day();
+        uint256 day2 = potRaider.day();
+        uint256 day3 = potRaider.day();
+        
+        assertEq(day1, day2, "Day should be consistent");
+        assertEq(day2, day3, "Day should be consistent");
+        assertEq(day1, 1, "Day should start at 1");
+    }
+
+
+
+    function testDayFunctionDeploymentTimestamp() public {
+        // Get the deployment timestamp
+        uint256 deploymentTimestamp = potRaider.deploymentTimestamp();
+        
+        // Verify that the day calculation matches our expectation
+        uint256 expectedDay = ((block.timestamp - deploymentTimestamp) / 1 days) + 1;
+        uint256 actualDay = potRaider.day();
+        
+        assertEq(actualDay, expectedDay, "Day calculation should match expected formula");
+    }
+
     // Helper function to count unique values in an array
     function countUniqueValues(uint8[] memory values) internal pure returns (uint256) {
         uint256 uniqueCount = 0;
