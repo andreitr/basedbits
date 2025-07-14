@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity 0.8.30;
 
 import "@openzeppelin/token/ERC721/ERC721.sol";
 import "@openzeppelin/token/ERC721/extensions/ERC721Burnable.sol";
@@ -27,6 +27,11 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     /// @notice Timestamp when the contract was deployed
     uint256 public immutable deploymentTimestamp;
 
+    /// @notice Lottery ticket purchase system variables
+    uint256 public constant LOTTERY_DURATION_DAYS = 365;
+    address public lotteryContract;
+    mapping(uint256 => uint256) public lotteryPurchasedForDay;
+
     event NFTExchanged(
         uint256 indexed tokenId,
         address indexed owner,
@@ -38,8 +43,19 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         uint256 artistPercentage
     );
 
+    event LotteryTicketPurchased(
+        uint256 indexed day,
+        uint256 amount
+    );
+
+    event LotteryContractUpdated(address indexed newContract);
+
     error InvalidPercentage();
     error TransferFailed();
+    error LotteryNotConfigured();
+    error LotteryAlreadyPurchased();
+    error LotteryPeriodEnded();
+    error InsufficientTreasury();
 
     constructor(
         uint256 _mintPrice,
@@ -238,4 +254,58 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     function day() external view returns (uint256) {
         return ((block.timestamp - deploymentTimestamp) / 1 days) + 1;
     }
+
+    /// @notice Purchase a lottery ticket for the current day
+    /// @dev Can only be called once per day, automatically calculates spending amount
+    function purchaseLotteryTicket() external whenNotPaused {
+        uint256 currentDay = this.day();
+        
+        // Check if lottery period has ended
+        if (currentDay > LOTTERY_DURATION_DAYS) {
+            revert LotteryPeriodEnded();
+        }
+        
+        // Check if lottery contract is configured
+        if (lotteryContract == address(0)) {
+            revert LotteryNotConfigured();
+        }
+        
+        // Check if lottery ticket was already purchased for this day
+        if (lotteryPurchasedForDay[currentDay] > 0) {
+            revert LotteryAlreadyPurchased();
+        }
+        
+        // Get the amount to spend for this day
+        uint256 dailyAmount = this.getDailyPurchaseAmount();
+        
+        if (dailyAmount == 0) {
+            revert InsufficientTreasury();
+        }
+        
+        // Purchase lottery ticket
+        (bool success, ) = lotteryContract.call{value: dailyAmount}("");
+        require(success, "Lottery purchase failed");
+        
+        // Update state
+        lotteryPurchasedForDay[currentDay] = dailyAmount;
+        
+        emit LotteryTicketPurchased(currentDay, dailyAmount);
+    }
+
+    /// @notice Get the amount of ETH that will be spent on the next lottery ticket purchase
+    /// @return The amount in ETH that will be spent
+    function getDailyPurchaseAmount() external view returns (uint256) {
+;
+        uint256 remainingDays = LOTTERY_DURATION_DAYS - (this.day() + 1);
+        return address(this).balance / remainingDays;
+    }
+
+    /// @notice Set the lottery contract address
+    /// @param _lotteryContract The address of the lottery contract
+    function setLotteryContract(address _lotteryContract) external onlyOwner {
+        lotteryContract = _lotteryContract;
+        emit LotteryContractUpdated(_lotteryContract);
+    }
+
+
 }
