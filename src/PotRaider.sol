@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.30;
+pragma solidity 0.8.25;
 
 import "@openzeppelin/token/ERC721/ERC721.sol";
 import "@openzeppelin/token/ERC721/extensions/ERC721Burnable.sol";
@@ -7,8 +7,27 @@ import "@openzeppelin/access/Ownable.sol";
 import "@openzeppelin/utils/Pausable.sol";
 import "@openzeppelin/utils/Base64.sol";
 import "@openzeppelin/utils/Strings.sol";
+import "@openzeppelin/token/ERC20/IERC20.sol";
+import "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
+
+// Uniswap V3 Router interface for ETH→USDC swaps
+interface ISwapRouter {
+    struct ExactInputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint24 fee;
+        address recipient;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 sqrtPriceLimitX96;
+    }
+
+    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
+}
 
 contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
+    using SafeERC20 for IERC20;
     uint256 public totalSupply;
     uint256 public circulatingSupply;
     uint256 public mintPrice;
@@ -29,7 +48,11 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
 
     /// @notice Lottery ticket purchase system variables
     uint256 public constant LOTTERY_DURATION_DAYS = 365;
+    uint256 public constant LOTTERY_TICKET_PRICE_USD = 1; // $1 per ticket
+    uint256 public constant USDC_DECIMALS = 6; // USDC has 6 decimals
     address public lotteryContract;
+    address public usdcContract;
+    address public uniswapRouter; // Uniswap V3 Router for ETH→USDC swaps
     mapping(uint256 => uint256) public lotteryPurchasedForDay;
 
     event NFTExchanged(
@@ -49,6 +72,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     );
 
     event LotteryContractUpdated(address indexed newContract);
+    event USDCContractUpdated(address indexed newContract);
 
     error InvalidPercentage();
     error TransferFailed();
@@ -56,6 +80,8 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     error LotteryAlreadyPurchased();
     error LotteryPeriodEnded();
     error InsufficientTreasury();
+    error USDCNotConfigured();
+    error InsufficientUSDCBalance();
 
     constructor(
         uint256 _mintPrice,
@@ -255,7 +281,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         return ((block.timestamp - deploymentTimestamp) / 1 days) + 1;
     }
 
-    /// @notice Purchase a lottery ticket for the current day
+    /// @notice Purchase a lottery ticket for the current day using ETH→USDC swap
     /// @dev Can only be called once per day, automatically calculates spending amount
     function purchaseLotteryTicket() external whenNotPaused {
         uint256 currentDay = this.day();
@@ -270,20 +296,33 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
             revert LotteryNotConfigured();
         }
         
+        // Check if USDC contract is configured
+        if (usdcContract == address(0)) {
+            revert USDCNotConfigured();
+        }
+        
         // Check if lottery ticket was already purchased for this day
         if (lotteryPurchasedForDay[currentDay] > 0) {
             revert LotteryAlreadyPurchased();
         }
         
-        // Get the amount to spend for this day
+        // Get the amount to spend for this day (in ETH)
         uint256 dailyAmount = this.getDailyPurchaseAmount();
         
         if (dailyAmount == 0) {
             revert InsufficientTreasury();
         }
         
-        // Purchase lottery ticket
-        (bool success, ) = lotteryContract.call{value: dailyAmount}("");
+        // Check if contract has enough ETH balance
+        if (address(this).balance < dailyAmount) {
+            revert InsufficientTreasury();
+        }
+        
+        // Swap ETH to USDC using Uniswap V3
+        uint256 usdcAmount = _swapETHForUSDC(dailyAmount);
+        
+        // Purchase lottery ticket with USDC
+        bool success = IERC20(usdcContract).transfer(lotteryContract, usdcAmount);
         require(success, "Lottery purchase failed");
         
         // Update state
@@ -293,11 +332,22 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     }
 
     /// @notice Get the amount of ETH that will be spent on the next lottery ticket purchase
-    /// @return The amount in ETH that will be spent
+    /// @return The amount in ETH (in wei) that will be spent
     function getDailyPurchaseAmount() external view returns (uint256) {
-;
-        uint256 remainingDays = LOTTERY_DURATION_DAYS - (this.day() + 1);
-        return address(this).balance / remainingDays;
+        uint256 currentDay = this.day();
+        uint256 remainingDays = LOTTERY_DURATION_DAYS - currentDay;
+        
+        if (remainingDays == 0) {
+            return 0;
+        }
+        
+        // Get ETH balance of the contract
+        uint256 contractETHBalance = address(this).balance;
+        
+        // Calculate ETH amount per day (divide total ETH by remaining days)
+        uint256 ethPerDay = contractETHBalance / remainingDays;
+        
+        return ethPerDay;
     }
 
     /// @notice Set the lottery contract address
@@ -307,5 +357,41 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         emit LotteryContractUpdated(_lotteryContract);
     }
 
+    /// @notice Set the USDC contract address
+    /// @param _usdcContract The address of the USDC contract
+    function setUSDCContract(address _usdcContract) external onlyOwner {
+        usdcContract = _usdcContract;
+        emit USDCContractUpdated(_usdcContract);
+    }
 
+    /// @notice Set the Uniswap router address
+    /// @param _uniswapRouter The address of the Uniswap V3 router
+    function setUniswapRouter(address _uniswapRouter) external onlyOwner {
+        uniswapRouter = _uniswapRouter;
+    }
+
+    /// @notice Internal function to swap ETH for USDC using Uniswap V3
+    /// @param ethAmount The amount of ETH to swap
+    /// @return usdcAmount The amount of USDC received
+    function _swapETHForUSDC(uint256 ethAmount) internal returns (uint256 usdcAmount) {
+        require(uniswapRouter != address(0), "Uniswap router not configured");
+        require(usdcContract != address(0), "USDC contract not configured");
+        
+        // Create swap parameters
+        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
+            tokenIn: address(0), // Native ETH
+            tokenOut: usdcContract,
+            fee: 500, // 0.05% fee tier
+            recipient: address(this),
+            deadline: block.timestamp + 300, // 5 minutes
+            amountIn: ethAmount,
+            amountOutMinimum: 0, // No slippage protection for now
+            sqrtPriceLimitX96: 0
+        });
+        
+        // Execute the swap
+        usdcAmount = ISwapRouter(uniswapRouter).exactInputSingle{value: ethAmount}(params);
+        
+        return usdcAmount;
+    }
 }
