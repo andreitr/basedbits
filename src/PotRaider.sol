@@ -26,6 +26,15 @@ interface ISwapRouter {
     function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
 }
 
+// Lottery contract interface
+interface ILotteryContract {
+    function purchaseTickets(address referrer, uint256 value, address recipient) external;
+    function withdrawWinnings() external;
+    function lpPoolTotal() external view returns (uint256);
+    function lastJackpotEndTime() external view returns (uint256);
+    function roundDurationInSeconds() external view returns (uint256);
+}
+
 contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     using SafeERC20 for IERC20;
     uint256 public totalSupply;
@@ -281,16 +290,9 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         return ((block.timestamp - deploymentTimestamp) / 1 days) + 1;
     }
 
-    /// @notice Purchase a lottery ticket for the current day using ETH→USDC swap
-    /// @dev Can only be called once per day, automatically calculates spending amount
+    /// @notice Purchase a lottery ticket for the current lottery round using ETH→USDC swap
+    /// @dev Can only be called once per lottery round, automatically calculates spending amount
     function purchaseLotteryTicket() external whenNotPaused {
-        uint256 currentDay = this.day();
-        
-        // Check if lottery period has ended
-        if (currentDay > LOTTERY_DURATION_DAYS) {
-            revert LotteryPeriodEnded();
-        }
-        
         // Check if lottery contract is configured
         if (lotteryContract == address(0)) {
             revert LotteryNotConfigured();
@@ -301,8 +303,11 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
             revert USDCNotConfigured();
         }
         
-        // Check if lottery ticket was already purchased for this day
-        if (lotteryPurchasedForDay[currentDay] > 0) {
+        // Get current lottery round based on lastJackpotEndTime and roundDurationInSeconds
+        uint256 currentLotteryRound = getCurrentLotteryRound();
+        
+        // Check if lottery ticket was already purchased for this round
+        if (lotteryPurchasedForDay[currentLotteryRound] > 0) {
             revert LotteryAlreadyPurchased();
         }
         
@@ -321,33 +326,79 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         // Swap ETH to USDC using Uniswap V3
         uint256 usdcAmount = _swapETHForUSDC(dailyAmount);
         
-        // Purchase lottery ticket with USDC
-        bool success = IERC20(usdcContract).transfer(lotteryContract, usdcAmount);
-        require(success, "Lottery purchase failed");
+        // Purchase lottery tickets using the lottery contract's purchaseTickets method
+        // Parameters: (referrer, value, recipient)
+        ILotteryContract(lotteryContract).purchaseTickets(
+            0xDAdA5bAd8cdcB9e323d0606d081E6Dc5D3a577a1, // referrer
+            usdcAmount, // value
+            address(this) // recipient (PotRaider contract)
+        );
         
         // Update state
-        lotteryPurchasedForDay[currentDay] = dailyAmount;
+        lotteryPurchasedForDay[currentLotteryRound] = dailyAmount;
         
-        emit LotteryTicketPurchased(currentDay, dailyAmount);
+        emit LotteryTicketPurchased(currentLotteryRound, dailyAmount);
+    }
+
+    /// @notice Withdraw winnings from the lottery contract
+    /// @dev Anyone can call this function to withdraw winnings
+    function withdrawWinnings() external {
+        require(lotteryContract != address(0), "Lottery contract not configured");
+        
+        // Call the lottery contract's withdrawWinnings method
+        ILotteryContract(lotteryContract).withdrawWinnings();
+    }
+
+    /// @notice Get the current lottery round number
+    /// @return The current lottery round number
+    function getCurrentLotteryRound() public view returns (uint256) {
+        require(lotteryContract != address(0), "Lottery contract not configured");
+        
+        ILotteryContract lottery = ILotteryContract(lotteryContract);
+        uint256 lastJackpotEndTime = lottery.lastJackpotEndTime();
+        uint256 roundDuration = lottery.roundDurationInSeconds();
+        
+        // If no jackpot has ended yet, we're in round 0
+        if (lastJackpotEndTime == 0) {
+            return 0;
+        }
+        
+        // Calculate current round based on time elapsed since last jackpot end
+        uint256 timeSinceLastJackpot = block.timestamp - lastJackpotEndTime;
+        uint256 currentRound = timeSinceLastJackpot / roundDuration;
+        
+        return currentRound;
+    }
+
+    /// @notice Get the current lottery jackpot amount (LP pool total)
+    /// @return The jackpot amount in USDC
+    function getLotteryJackpot() external view returns (uint256) {
+        require(lotteryContract != address(0), "Lottery contract not configured");
+        return ILotteryContract(lotteryContract).lpPoolTotal();
     }
 
     /// @notice Get the amount of ETH that will be spent on the next lottery ticket purchase
     /// @return The amount in ETH (in wei) that will be spent
     function getDailyPurchaseAmount() external view returns (uint256) {
-        uint256 currentDay = this.day();
-        uint256 remainingDays = LOTTERY_DURATION_DAYS - currentDay;
+        // Get current lottery round
+        uint256 currentRound = this.getCurrentLotteryRound();
         
-        if (remainingDays == 0) {
+        // Calculate remaining rounds (365 days / round duration)
+        uint256 roundDuration = ILotteryContract(lotteryContract).roundDurationInSeconds();
+        uint256 totalRounds = (LOTTERY_DURATION_DAYS * 1 days) / roundDuration;
+        uint256 remainingRounds = totalRounds - currentRound;
+        
+        if (remainingRounds == 0) {
             return 0;
         }
         
         // Get ETH balance of the contract
         uint256 contractETHBalance = address(this).balance;
         
-        // Calculate ETH amount per day (divide total ETH by remaining days)
-        uint256 ethPerDay = contractETHBalance / remainingDays;
+        // Calculate ETH amount per round (divide total ETH by remaining rounds)
+        uint256 ethPerRound = contractETHBalance / remainingRounds;
         
-        return ethPerDay;
+        return ethPerRound;
     }
 
     /// @notice Set the lottery contract address
