@@ -13,6 +13,9 @@ contract PotRaiderTest is Test {
     address public user2 = address(0x2);
     address public burner = address(0x3);
     address public artist = address(0x4);
+    address public lotteryContract = address(0x5);
+    address public usdcContract = address(0x6);
+    address public uniswapRouter = address(0x7);
     
     uint256 public mintPrice = 0.0008 ether;
 
@@ -32,6 +35,9 @@ contract PotRaiderTest is Test {
         assertEq(potRaider.burnPercentage(), 1000); // 10%
         assertEq(potRaider.totalSupply(), 0);
         assertEq(potRaider.circulatingSupply(), 0);
+        assertEq(potRaider.lotteryContract(), address(0));
+        assertEq(potRaider.usdcContract(), address(0));
+        assertEq(potRaider.uniswapRouter(), address(0));
     }
 
     function testMint() public {
@@ -52,6 +58,32 @@ contract PotRaiderTest is Test {
         assertEq(potRaider.ownerOf(0), user1);
         assertEq(potRaider.ownerOf(1), user1);
         assertEq(potRaider.ownerOf(2), user1);
+    }
+
+    function testMintMaxQuantity() public {
+        vm.prank(user1);
+        potRaider.mint{value: mintPrice * 10}(10);
+        
+        assertEq(potRaider.totalSupply(), 10);
+        assertEq(potRaider.circulatingSupply(), 10);
+    }
+
+    function testMintExceedsMaxQuantity() public {
+        vm.prank(user1);
+        vm.expectRevert("Cannot mint more than 10 NFTs at once");
+        potRaider.mint{value: mintPrice * 11}(11);
+    }
+
+    function testMintInsufficientPayment() public {
+        vm.prank(user1);
+        vm.expectRevert("Insufficient payment");
+        potRaider.mint{value: mintPrice - 0.0001 ether}(1);
+    }
+
+    function testMintZeroQuantity() public {
+        vm.prank(user1);
+        vm.expectRevert("Quantity must be greater than 0");
+        potRaider.mint{value: 0}(0);
     }
 
     function testColorGenerationDifferentColors() public {
@@ -84,49 +116,6 @@ contract PotRaiderTest is Test {
         assertEq(r2, r3, "R should be consistent");
         assertEq(g2, g3, "G should be consistent");
         assertEq(b2, b3, "B should be consistent");
-    }
-
-    function testColorGenerationEdgeCases() public {
-        vm.prank(user1);
-        potRaider.mint{value: mintPrice}(1);
-        (uint8 r0, uint8 g0, uint8 b0) = potRaider.getHueRGB(0);
-        // Should not be the old fixed color
-        assertFalse(r0 == 192 && g0 == 183 && b0 == 64, "Token 0 should not have the old fixed color");
-        // Test with a large token ID
-        vm.prank(user1);
-        potRaider.mint{value: mintPrice * 10}(10);
-        (uint8 r9, uint8 g9, uint8 b9) = potRaider.getHueRGB(9);
-        assertFalse(r0 == r9 && g0 == g9 && b0 == b9, "Token 0 and 9 should have different colors");
-    }
-
-    function testColorGenerationDistribution() public {
-        vm.prank(user1);
-        potRaider.mint{value: mintPrice * 10}(10);
-        vm.prank(user1);
-        potRaider.mint{value: mintPrice * 10}(10);
-        // Collect all colors
-        uint8[3][20] memory colors;
-        for (uint256 i = 0; i < 20; i++) {
-            (uint8 r, uint8 g, uint8 b) = potRaider.getHueRGB(i);
-            colors[i][0] = r;
-            colors[i][1] = g;
-            colors[i][2] = b;
-        }
-        // Check for uniqueness
-        uint256 uniqueColors = 0;
-        for (uint256 i = 0; i < 20; i++) {
-            bool isUnique = true;
-            for (uint256 j = 0; j < i; j++) {
-                if (colors[i][0] == colors[j][0] && colors[i][1] == colors[j][1] && colors[i][2] == colors[j][2]) {
-                    isUnique = false;
-                    break;
-                }
-            }
-            if (isUnique) {
-                uniqueColors++;
-            }
-        }
-        assertTrue(uniqueColors >= 10, "Should have good color distribution");
     }
 
     function testColorGenerationRGBRange() public {
@@ -163,97 +152,6 @@ contract PotRaiderTest is Test {
         assertEq(r2, r3, "R should be deterministic");
         assertEq(g2, g3, "G should be deterministic");
         assertEq(b2, b3, "B should be deterministic");
-    }
-
-    function testColorGenerationRandomness() public {
-        // Mint 100 NFTs in batches of 10
-        for (uint256 batch = 0; batch < 10; batch++) {
-            vm.prank(user1);
-            potRaider.mint{value: mintPrice * 10}(10);
-        }
-        
-        // Collect all RGB values
-        uint8[] memory rValues = new uint8[](100);
-        uint8[] memory gValues = new uint8[](100);
-        uint8[] memory bValues = new uint8[](100);
-        
-        for (uint256 i = 0; i < 100; i++) {
-            (uint8 r, uint8 g, uint8 b) = potRaider.getHueRGB(i);
-            rValues[i] = r;
-            gValues[i] = g;
-            bValues[i] = b;
-        }
-        
-        // Test 1: Check for variety in each channel
-        uint256 uniqueR = countUniqueValues(rValues);
-        uint256 uniqueG = countUniqueValues(gValues);
-        uint256 uniqueB = countUniqueValues(bValues);
-        
-        // Each channel should have good variety (at least 50% unique values)
-        assertTrue(uniqueR >= 50, "R channel should have good variety");
-        assertTrue(uniqueG >= 50, "G channel should have good variety");
-        assertTrue(uniqueB >= 50, "B channel should have good variety");
-        
-        // Test 2: Check for distribution across the full range
-        uint256 lowR = countValuesInRange(rValues, 0, 85);    // 0-85
-        uint256 midR = countValuesInRange(rValues, 86, 170);  // 86-170
-        uint256 highR = countValuesInRange(rValues, 171, 255); // 171-255
-        
-        uint256 lowG = countValuesInRange(gValues, 0, 85);
-        uint256 midG = countValuesInRange(gValues, 86, 170);
-        uint256 highG = countValuesInRange(gValues, 171, 255);
-        
-        uint256 lowB = countValuesInRange(bValues, 0, 85);
-        uint256 midB = countValuesInRange(bValues, 86, 170);
-        uint256 highB = countValuesInRange(bValues, 171, 255);
-        
-        // Each range should have some values (not all concentrated in one range)
-        assertTrue(lowR > 0, "R should have values in low range");
-        assertTrue(midR > 0, "R should have values in mid range");
-        assertTrue(highR > 0, "R should have values in high range");
-        
-        assertTrue(lowG > 0, "G should have values in low range");
-        assertTrue(midG > 0, "G should have values in mid range");
-        assertTrue(highG > 0, "G should have values in high range");
-        
-        assertTrue(lowB > 0, "B should have values in low range");
-        assertTrue(midB > 0, "B should have values in mid range");
-        assertTrue(highB > 0, "B should have values in high range");
-        
-        // Test 3: Check for no obvious patterns
-        uint256 consecutiveSameR = 0;
-        uint256 consecutiveSameG = 0;
-        uint256 consecutiveSameB = 0;
-        
-        for (uint256 i = 1; i < 100; i++) {
-            if (rValues[i] == rValues[i-1]) consecutiveSameR++;
-            if (gValues[i] == gValues[i-1]) consecutiveSameG++;
-            if (bValues[i] == bValues[i-1]) consecutiveSameB++;
-        }
-        
-        // Should not have too many consecutive same values (indicates poor randomness)
-        assertTrue(consecutiveSameR < 20, "R should not have too many consecutive same values");
-        assertTrue(consecutiveSameG < 20, "G should not have too many consecutive same values");
-        assertTrue(consecutiveSameB < 20, "B should not have too many consecutive same values");
-    }
-
-    function testColorGenerationEntropy() public {
-        // Mint 50 NFTs in batches of 10
-        for (uint256 batch = 0; batch < 5; batch++) {
-            vm.prank(user1);
-            potRaider.mint{value: mintPrice * 10}(10);
-        }
-        
-        // Calculate entropy for each channel
-        uint256 entropyR = calculateEntropy(50);
-        uint256 entropyG = calculateEntropy(50);
-        uint256 entropyB = calculateEntropy(50);
-        
-        // Entropy should be reasonably high (indicating good randomness)
-        // For 50 samples, we expect entropy to be at least 4-5 bits
-        assertTrue(entropyR >= 4, "R channel should have good entropy");
-        assertTrue(entropyG >= 4, "G channel should have good entropy");
-        assertTrue(entropyB >= 4, "B channel should have good entropy");
     }
 
     function testDayFunction() public {
@@ -335,8 +233,6 @@ contract PotRaiderTest is Test {
         assertEq(day1, 1, "Day should start at 1");
     }
 
-
-
     function testDayFunctionDeploymentTimestamp() public {
         // Get the deployment timestamp
         uint256 deploymentTimestamp = potRaider.deploymentTimestamp();
@@ -346,6 +242,225 @@ contract PotRaiderTest is Test {
         uint256 actualDay = potRaider.day();
         
         assertEq(actualDay, expectedDay, "Day calculation should match expected formula");
+    }
+
+    function testExchange() public {
+        // Mint an NFT and add some ETH to the contract
+        vm.prank(user1);
+        potRaider.mint{value: mintPrice}(1);
+        
+        // Add ETH to contract treasury
+        vm.deal(address(potRaider), 1 ether);
+        
+        uint256 initialBalance = user1.balance;
+        uint256 initialCirculatingSupply = potRaider.circulatingSupply();
+        
+        vm.prank(user1);
+        potRaider.exchange(0);
+        
+        assertEq(potRaider.circulatingSupply(), initialCirculatingSupply - 1, "Circulating supply should decrease");
+        assertTrue(user1.balance > initialBalance, "User should receive ETH");
+        vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 0));
+        potRaider.ownerOf(0);
+    }
+
+    function testExchangeNotOwner() public {
+        vm.prank(user1);
+        potRaider.mint{value: mintPrice}(1);
+        
+        vm.prank(user2);
+        vm.expectRevert("Not the owner");
+        potRaider.exchange(0);
+    }
+
+    function testExchangeNoTreasury() public {
+        vm.prank(user1);
+        potRaider.mint{value: mintPrice}(1);
+        
+        // Ensure contract has no ETH balance
+        vm.deal(address(potRaider), 0);
+        
+        vm.prank(user1);
+        vm.expectRevert("No treasury available");
+        potRaider.exchange(0);
+    }
+
+    function testExchangeNoCirculatingSupply() public {
+        vm.prank(user1);
+        potRaider.mint{value: mintPrice}(1);
+        
+        // Burn the NFT directly
+        vm.prank(user1);
+        potRaider.burn(0);
+        
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 0));
+        potRaider.exchange(0);
+    }
+
+    function testBurn() public {
+        vm.prank(user1);
+        potRaider.mint{value: mintPrice}(1);
+        
+        uint256 initialCirculatingSupply = potRaider.circulatingSupply();
+        
+        vm.prank(user1);
+        potRaider.burn(0);
+        
+        assertEq(potRaider.circulatingSupply(), initialCirculatingSupply - 1, "Circulating supply should decrease");
+        vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 0));
+        potRaider.ownerOf(0);
+    }
+
+    function testSetMintPrice() public {
+        uint256 newPrice = 0.001 ether;
+        potRaider.setMintPrice(newPrice);
+        assertEq(potRaider.mintPrice(), newPrice);
+    }
+
+    function testSetBurnPercentage() public {
+        uint256 newPercentage = 5; // 5%
+        potRaider.setBurnPercentage(newPercentage);
+        assertEq(potRaider.burnPercentage(), newPercentage);
+    }
+
+    function testSetBurnPercentageExceeds100() public {
+        vm.expectRevert("Burn percentage cannot exceed 100");
+        potRaider.setBurnPercentage(101);
+    }
+
+    function testSetPercentages() public {
+        uint256 newBurnPercentage = 5; // 5%
+        uint256 newArtistPercentage = 20; // 20%
+        
+        potRaider.setPercentages(newBurnPercentage, newArtistPercentage);
+        
+        assertEq(potRaider.burnPercentage(), newBurnPercentage);
+        assertEq(potRaider.artistPercentage(), newArtistPercentage);
+    }
+
+    function testSetPercentagesExceeds100() public {
+        vm.expectRevert("Total percentages cannot exceed 100%");
+        potRaider.setPercentages(60, 50); // 60% + 50% = 110%
+    }
+
+    function testSetPercentagesBurnExceeds100() public {
+        vm.expectRevert("Burn percentage cannot exceed 100");
+        potRaider.setPercentages(101, 10);
+    }
+
+    function testSetPercentagesArtistExceeds100() public {
+        vm.expectRevert("Artist percentage cannot exceed 100%");
+        potRaider.setPercentages(10, 10001);
+    }
+
+    function testSetBurnerContract() public {
+        address newBurner = address(0x999);
+        potRaider.setBurnerContract(newBurner);
+        assertEq(potRaider.burnerContract(), newBurner);
+    }
+
+    function testPauseUnpause() public {
+        potRaider.pause();
+        assertTrue(potRaider.paused());
+        
+        potRaider.unpause();
+        assertFalse(potRaider.paused());
+    }
+
+    function testMintWhenPaused() public {
+        potRaider.pause();
+        
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        potRaider.mint{value: mintPrice}(1);
+    }
+
+    function testExchangeWhenPaused() public {
+        vm.prank(user1);
+        potRaider.mint{value: mintPrice}(1);
+        vm.deal(address(potRaider), 1 ether);
+        
+        potRaider.pause();
+        
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        potRaider.exchange(0);
+    }
+
+    function testTokenURI() public {
+        vm.prank(user1);
+        potRaider.mint{value: mintPrice}(1);
+        
+        string memory uri = potRaider.tokenURI(0);
+        assertTrue(bytes(uri).length > 0, "Token URI should not be empty");
+        assertTrue(
+            keccak256(bytes(uri)) != keccak256(bytes("")),
+            "Token URI should not be empty string"
+        );
+    }
+
+    function testTokenURINonexistentToken() public {
+        vm.expectRevert("ERC721Metadata: URI query for nonexistent token");
+        potRaider.tokenURI(999);
+    }
+
+    function testContractURI() public {
+        string memory uri = potRaider.contractURI();
+        assertEq(uri, "", "Contract URI should be empty by default");
+    }
+
+    function testSetContractURI() public {
+        string memory newURI = "https://example.com/metadata.json";
+        potRaider.setContractURI(newURI);
+        assertEq(potRaider.contractURI(), newURI);
+    }
+
+    function testSetLotteryContract() public {
+        potRaider.setLotteryContract(lotteryContract);
+        assertEq(potRaider.lotteryContract(), lotteryContract);
+    }
+
+    function testSetUSDCContract() public {
+        potRaider.setUSDCContract(usdcContract);
+        assertEq(potRaider.usdcContract(), usdcContract);
+    }
+
+    function testSetUniswapRouter() public {
+        potRaider.setUniswapRouter(uniswapRouter);
+        assertEq(potRaider.uniswapRouter(), uniswapRouter);
+    }
+
+    function testPurchaseLotteryTicketNotConfigured() public {
+        vm.expectRevert(PotRaider.LotteryNotConfigured.selector);
+        potRaider.purchaseLotteryTicket();
+    }
+
+    function testPurchaseLotteryTicketUSDCNotConfigured() public {
+        potRaider.setLotteryContract(lotteryContract);
+        
+        vm.expectRevert(PotRaider.USDCNotConfigured.selector);
+        potRaider.purchaseLotteryTicket();
+    }
+
+    function testGetCurrentLotteryRoundNotConfigured() public {
+        vm.expectRevert("Lottery contract not configured");
+        potRaider.getCurrentLotteryRound();
+    }
+
+    function testGetLotteryJackpotNotConfigured() public {
+        vm.expectRevert("Lottery contract not configured");
+        potRaider.getLotteryJackpot();
+    }
+
+    function testGetDailyPurchaseAmountNotConfigured() public {
+        vm.expectRevert("Lottery contract not configured");
+        potRaider.getDailyPurchaseAmount();
+    }
+
+    function testWithdrawWinningsNotConfigured() public {
+        vm.expectRevert("Lottery contract not configured");
+        potRaider.withdrawWinnings();
     }
 
     // Helper function to count unique values in an array

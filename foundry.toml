@@ -5,6 +5,7 @@ libs = ["lib"]
 solc-version = "0.8.25"
 optimizer = true
 optimizer_runs = 420_000
+via_ir = true
 fuzz_max_global_rejects = 420_000
 
 gas_reports = [
