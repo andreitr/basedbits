@@ -45,6 +45,12 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     uint256 public burnPercentage;
     address public burnerContract;
 
+    // Next tokenId to mint
+    uint256 private nextTokenId;
+
+    /// @notice WETH address for Uniswap V3 swaps
+    address public wethAddress;
+
     /// @notice The artist address that receives a portion of mint fees
     address public immutable artist;
 
@@ -108,6 +114,12 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     error NoNFTsInCirculation();
     error NoTreasuryAvailable();
     error ExchangeTransferFailed();
+    error WETHNotConfigured();
+    function _checkWETHConfigured() private view {
+        if (wethAddress == address(0)) {
+            revert WETHNotConfigured();
+        }
+    }
 
     constructor(
         uint256 _mintPrice,
@@ -152,7 +164,8 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         }
 
         for (uint256 i = 0; i < quantity; i++) {
-            _safeMint(msg.sender, totalSupply);
+            _safeMint(msg.sender, nextTokenId);
+            nextTokenId++;
             totalSupply++;
             circulatingSupply++;
         }
@@ -166,23 +179,32 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
             revert NoNFTsInCirculation();
         }
 
-        // Calculate ETH share based on current circulating supply
-        uint256 ethShare = address(this).balance / circulatingSupply;
+        // Check ETH balance before proceeding
+        uint256 contractBalance = address(this).balance;
+        if (contractBalance == 0) {
+            revert NoTreasuryAvailable();
+        }
+        uint256 ethShare = contractBalance / circulatingSupply;
         if (ethShare == 0) {
             revert NoTreasuryAvailable();
         }
 
         // Calculate USDC share (if usdcContract is set)
         uint256 usdcShare = 0;
+        uint256 usdcBalance = 0;
         if (usdcContract != address(0)) {
-            uint256 usdcBalance = IERC20(usdcContract).balanceOf(address(this));
-            usdcShare = usdcBalance / circulatingSupply;
+            usdcBalance = IERC20(usdcContract).balanceOf(address(this));
+            if (usdcBalance == 0) {
+                usdcShare = 0;
+            } else {
+                usdcShare = usdcBalance / circulatingSupply;
+            }
         }
 
         // Burn the NFT first (state update before external calls)
         burn(tokenId);
 
-        // Send USDC share to the owner (if any)
+        // Send USDC share to the owner (if any), but only if balance is sufficient
         if (usdcShare > 0) {
             IERC20(usdcContract).safeTransfer(msg.sender, usdcShare);
         }
@@ -276,6 +298,10 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         ));
     }
 
+    function _clamp(uint256 value) private pure returns (uint8) {
+        return value > 255 ? 255 : uint8(value);
+    }
+
     function _generateHueRGB(uint256 seed) private pure returns (uint8 r, uint8 g, uint8 b) {
         // Use a better seed to ensure more variation
         uint256 hue = (seed * 137) % 360; // Use a prime number multiplier for better distribution
@@ -294,17 +320,17 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         uint256 x = (c * (60 - remainder)) / 60;
         
         if (sextant == 0) {
-            return (uint8(c + m), uint8(x + m), uint8(m));
+            return (_clamp(c + m), _clamp(x + m), _clamp(m));
         } else if (sextant == 1) {
-            return (uint8(x + m), uint8(c + m), uint8(m));
+            return (_clamp(x + m), _clamp(c + m), _clamp(m));
         } else if (sextant == 2) {
-            return (uint8(m), uint8(c + m), uint8(x + m));
+            return (_clamp(m), _clamp(c + m), _clamp(x + m));
         } else if (sextant == 3) {
-            return (uint8(m), uint8(x + m), uint8(c + m));
+            return (_clamp(m), _clamp(x + m), _clamp(c + m));
         } else if (sextant == 4) {
-            return (uint8(x + m), uint8(m), uint8(c + m));
+            return (_clamp(x + m), _clamp(m), _clamp(c + m));
         } else {
-            return (uint8(c + m), uint8(m), uint8(x + m));
+            return (_clamp(c + m), _clamp(m), _clamp(x + m));
         }
     }
 
@@ -441,24 +467,26 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     /// @notice Get the amount of ETH that will be spent on the next lottery ticket purchase
     /// @return The amount in ETH (in wei) that will be spent
     function getDailyPurchaseAmount() external view returns (uint256) {
-        // Get current lottery round
         uint256 currentRound = this.getCurrentLotteryRound();
-        
-        // Calculate remaining rounds (365 days / round duration)
         uint256 roundDuration = ILotteryContract(lotteryContract).roundDurationInSeconds();
         uint256 totalRounds = (LOTTERY_DURATION_DAYS * 1 days) / roundDuration;
-        uint256 remainingRounds = totalRounds - currentRound;
-        
+        uint256 remainingRounds = totalRounds > currentRound ? totalRounds - currentRound : 0;
+
         if (remainingRounds == 0) {
             return 0;
         }
-        
-        // Get ETH balance of the contract
+
         uint256 contractETHBalance = address(this).balance;
-        
-        // Calculate ETH amount per round (divide total ETH by remaining rounds)
         uint256 ethPerRound = contractETHBalance / remainingRounds;
-        
+
+        uint256 estimatedUSDC = _estimateUSDCForETH(ethPerRound);
+        uint256 ticketPriceUSDC = LOTTERY_TICKET_PRICE_USD * (10 ** USDC_DECIMALS);
+
+        // Add a 2% buffer to the USDC check
+        if (estimatedUSDC < (ticketPriceUSDC * 102) / 100) {
+            return 0;
+        }
+
         return ethPerRound;
     }
 
@@ -499,22 +527,22 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         if (usdcContract == address(0)) {
             revert USDCNotConfigured();
         }
-        
+        _checkWETHConfigured();
         // Create swap parameters
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
-            tokenIn: address(0), // Native ETH
+            tokenIn: wethAddress, // Use WETH address instead of address(0)
             tokenOut: usdcContract,
             fee: 500, // 0.05% fee tier
             recipient: address(this),
             deadline: block.timestamp + 300, // 5 minutes
             amountIn: ethAmount,
-            amountOutMinimum: 0, // No slippage protection for now
+            amountOutMinimum: (ethAmount * 95) / 100, // 5% slippage protection
             sqrtPriceLimitX96: 0
         });
-        
+
         // Execute the swap
         usdcAmount = ISwapRouter(uniswapRouter).exactInputSingle{value: ethAmount}(params);
-        
+
         return usdcAmount;
     }
 
@@ -523,12 +551,12 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     /// @return usdcAmount The estimated amount of USDC received
     function _estimateUSDCForETH(uint256 ethAmount) internal view returns (uint256 usdcAmount) {
         _checkQuoterAndUSDC();
-        
+        _checkWETHConfigured();
         // Uniswap V3 Quoter interface (minimal)
         (bool success, bytes memory data) = uniswapQuoter.staticcall(
             abi.encodeWithSignature(
                 "quoteExactInputSingle(address,address,uint24,uint256,uint160)",
-                address(0), // tokenIn (ETH)
+                wethAddress, // tokenIn (WETH)
                 usdcContract, // tokenOut (USDC)
                 500, // 0.05% fee tier
                 ethAmount,
@@ -539,5 +567,11 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
             revert QuoterCallFailed();
         }
         usdcAmount = abi.decode(data, (uint256));
+    }
+
+    /// @notice Set the WETH address for Uniswap swaps
+    /// @param _wethAddress The address of the WETH contract
+    function setWETHAddress(address _wethAddress) external onlyOwner {
+        wethAddress = _wethAddress;
     }
 }
