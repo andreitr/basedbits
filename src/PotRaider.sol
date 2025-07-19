@@ -62,6 +62,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     address public lotteryContract;
     address public usdcContract;
     address public uniswapRouter; // Uniswap V3 Router for ETH→USDC swaps
+    address public uniswapQuoter; // Uniswap V3 Quoter for ETH→USDC estimation
     mapping(uint256 => uint256) public lotteryPurchasedForDay;
 
     event NFTExchanged(
@@ -82,6 +83,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
 
     event LotteryContractUpdated(address indexed newContract);
     event USDCContractUpdated(address indexed newContract);
+    event UniswapQuoterUpdated(address indexed newQuoter);
 
     error InvalidPercentage();
     error TransferFailed();
@@ -91,6 +93,18 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     error InsufficientTreasury();
     error USDCNotConfigured();
     error InsufficientUSDCBalance();
+    error InsufficientUSDCForTicket();
+    error UniswapQuoterNotConfigured();
+    error UniswapRouterNotConfigured();
+    error QuoterCallFailed();
+    error QuantityZero();
+    error InsufficientPayment();
+    error BurnTransferFailed();
+    error ArtistTransferFailed();
+    error NotOwner();
+    error NoNFTsInCirculation();
+    error NoTreasuryAvailable();
+    error ExchangeTransferFailed();
 
     constructor(
         uint256 _mintPrice,
@@ -107,9 +121,12 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     }
 
     function mint(uint256 quantity) external payable whenNotPaused {
-        require(quantity > 0, "Quantity must be greater than 0");
-        require(quantity <= 10, "Cannot mint more than 10 NFTs at once");
-        require(msg.value >= mintPrice * quantity, "Insufficient payment");
+        if (quantity == 0) {
+            revert QuantityZero();
+        }
+        if (msg.value < mintPrice * quantity) {
+            revert InsufficientPayment();
+        }
 
         uint256 burnAmount = (msg.value * burnPercentage) / 10_000;
         uint256 artistAmount = (msg.value * artistPercentage) / 10_000;
@@ -118,13 +135,17 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         // Send burn amount to burner contract
         if (burnAmount > 0) {
             (bool burnSuccess, ) = burnerContract.call{value: burnAmount}("");
-            require(burnSuccess, "Burn transfer failed");
+            if (!burnSuccess) {
+                revert BurnTransferFailed();
+            }
         }
 
         // Send artist amount to artist
         if (artistAmount > 0) {
             (bool artistSuccess, ) = artist.call{value: artistAmount}("");
-            require(artistSuccess, "Artist transfer failed");
+            if (!artistSuccess) {
+                revert ArtistTransferFailed();
+            }
         }
 
         for (uint256 i = 0; i < quantity; i++) {
@@ -135,19 +156,27 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     }
 
     function exchange(uint256 tokenId) external whenNotPaused {
-        require(ownerOf(tokenId) == msg.sender, "Not the owner");
-        require(circulatingSupply > 0, "No NFTs in circulation");
+        if (ownerOf(tokenId) != msg.sender) {
+            revert NotOwner();
+        }
+        if (circulatingSupply == 0) {
+            revert NoNFTsInCirculation();
+        }
 
         // Calculate share based on current circulating supply
         uint256 amount = address(this).balance / circulatingSupply;
-        require(amount > 0, "No treasury available");
+        if (amount == 0) {
+            revert NoTreasuryAvailable();
+        }
 
         // Burn the NFT
         burn(tokenId);
 
         // Send share to the owner
         (bool success, ) = msg.sender.call{value: amount}("");
-        require(success, "Transfer failed");
+        if (!success) {
+            revert ExchangeTransferFailed();
+        }
 
         emit NFTExchanged(tokenId, msg.sender, amount);
     }
@@ -290,18 +319,28 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         return ((block.timestamp - deploymentTimestamp) / 1 days) + 1;
     }
 
-    /// @notice Purchase a lottery ticket for the current lottery round using ETH→USDC swap
-    /// @dev Can only be called once per lottery round, automatically calculates spending amount
-    function purchaseLotteryTicket() external whenNotPaused {
-        // Check if lottery contract is configured
-        if (lotteryContract == address(0)) {
-            revert LotteryNotConfigured();
+    function _checkQuoterAndUSDC() private view {
+        if (uniswapQuoter == address(0)) {
+            revert UniswapQuoterNotConfigured();
         }
-        
-        // Check if USDC contract is configured
         if (usdcContract == address(0)) {
             revert USDCNotConfigured();
         }
+    }
+
+    function _checkLotteryConfigured() private view {
+        if (lotteryContract == address(0)) {
+            revert LotteryNotConfigured();
+        }
+    }
+
+    /// @notice Purchase a lottery ticket for the current lottery round using ETH→USDC swap
+    /// @dev Can only be called once per lottery round, automatically calculates spending amount
+    function purchaseLotteryTicket() external whenNotPaused {
+        _checkLotteryConfigured();
+        
+        // Check if USDC contract and quoter are configured
+        _checkQuoterAndUSDC();
         
         // Get current lottery round based on lastJackpotEndTime and roundDurationInSeconds
         uint256 currentLotteryRound = getCurrentLotteryRound();
@@ -321,6 +360,13 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         // Check if contract has enough ETH balance
         if (address(this).balance < dailyAmount) {
             revert InsufficientTreasury();
+        }
+        
+        // Estimate USDC output using Uniswap V3 Quoter
+        uint256 estimatedUSDC = _estimateUSDCForETH(dailyAmount);
+        uint256 ticketPriceUSDC = LOTTERY_TICKET_PRICE_USD * (10 ** USDC_DECIMALS);
+        if (estimatedUSDC < ticketPriceUSDC) {
+            revert InsufficientUSDCForTicket();
         }
         
         // Swap ETH to USDC using Uniswap V3
@@ -343,7 +389,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     /// @notice Withdraw winnings from the lottery contract
     /// @dev Anyone can call this function to withdraw winnings
     function withdrawWinnings() external {
-        require(lotteryContract != address(0), "Lottery contract not configured");
+        _checkLotteryConfigured();
         
         // Call the lottery contract's withdrawWinnings method
         ILotteryContract(lotteryContract).withdrawWinnings();
@@ -352,7 +398,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     /// @notice Get the current lottery round number
     /// @return The current lottery round number
     function getCurrentLotteryRound() public view returns (uint256) {
-        require(lotteryContract != address(0), "Lottery contract not configured");
+        _checkLotteryConfigured();
         
         ILotteryContract lottery = ILotteryContract(lotteryContract);
         uint256 lastJackpotEndTime = lottery.lastJackpotEndTime();
@@ -373,7 +419,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     /// @notice Get the current lottery jackpot amount (LP pool total)
     /// @return The jackpot amount in USDC
     function getLotteryJackpot() external view returns (uint256) {
-        require(lotteryContract != address(0), "Lottery contract not configured");
+        _checkLotteryConfigured();
         return ILotteryContract(lotteryContract).lpPoolTotal();
     }
 
@@ -421,12 +467,23 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         uniswapRouter = _uniswapRouter;
     }
 
+    /// @notice Set the Uniswap quoter address
+    /// @param _uniswapQuoter The address of the Uniswap V3 quoter
+    function setUniswapQuoter(address _uniswapQuoter) external onlyOwner {
+        uniswapQuoter = _uniswapQuoter;
+        emit UniswapQuoterUpdated(_uniswapQuoter);
+    }
+
     /// @notice Internal function to swap ETH for USDC using Uniswap V3
     /// @param ethAmount The amount of ETH to swap
     /// @return usdcAmount The amount of USDC received
     function _swapETHForUSDC(uint256 ethAmount) internal returns (uint256 usdcAmount) {
-        require(uniswapRouter != address(0), "Uniswap router not configured");
-        require(usdcContract != address(0), "USDC contract not configured");
+        if (uniswapRouter == address(0)) {
+            revert UniswapRouterNotConfigured();
+        }
+        if (usdcContract == address(0)) {
+            revert USDCNotConfigured();
+        }
         
         // Create swap parameters
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
@@ -444,5 +501,28 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         usdcAmount = ISwapRouter(uniswapRouter).exactInputSingle{value: ethAmount}(params);
         
         return usdcAmount;
+    }
+
+    /// @notice Internal function to estimate USDC output for a given ETH amount using Uniswap V3 Quoter
+    /// @param ethAmount The amount of ETH to estimate
+    /// @return usdcAmount The estimated amount of USDC received
+    function _estimateUSDCForETH(uint256 ethAmount) internal view returns (uint256 usdcAmount) {
+        _checkQuoterAndUSDC();
+        
+        // Uniswap V3 Quoter interface (minimal)
+        (bool success, bytes memory data) = uniswapQuoter.staticcall(
+            abi.encodeWithSignature(
+                "quoteExactInputSingle(address,address,uint24,uint256,uint160)",
+                address(0), // tokenIn (ETH)
+                usdcContract, // tokenOut (USDC)
+                500, // 0.05% fee tier
+                ethAmount,
+                0 // sqrtPriceLimitX96
+            )
+        );
+        if (!success) {
+            revert QuoterCallFailed();
+        }
+        usdcAmount = abi.decode(data, (uint256));
     }
 }

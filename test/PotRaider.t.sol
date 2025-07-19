@@ -63,26 +63,27 @@ contract PotRaiderTest is Test {
     function testMintMaxQuantity() public {
         vm.prank(user1);
         potRaider.mint{value: mintPrice * 10}(10);
-        
         assertEq(potRaider.totalSupply(), 10);
         assertEq(potRaider.circulatingSupply(), 10);
     }
 
-    function testMintExceedsMaxQuantity() public {
+    function testMintLargeQuantity() public {
+        uint256 largeQuantity = 100;
         vm.prank(user1);
-        vm.expectRevert("Cannot mint more than 10 NFTs at once");
-        potRaider.mint{value: mintPrice * 11}(11);
+        potRaider.mint{value: mintPrice * largeQuantity}(largeQuantity);
+        assertEq(potRaider.totalSupply(), largeQuantity);
+        assertEq(potRaider.circulatingSupply(), largeQuantity);
     }
 
     function testMintInsufficientPayment() public {
         vm.prank(user1);
-        vm.expectRevert("Insufficient payment");
+        vm.expectRevert(PotRaider.InsufficientPayment.selector);
         potRaider.mint{value: mintPrice - 0.0001 ether}(1);
     }
 
     function testMintZeroQuantity() public {
         vm.prank(user1);
-        vm.expectRevert("Quantity must be greater than 0");
+        vm.expectRevert(PotRaider.QuantityZero.selector);
         potRaider.mint{value: 0}(0);
     }
 
@@ -269,7 +270,7 @@ contract PotRaiderTest is Test {
         potRaider.mint{value: mintPrice}(1);
         
         vm.prank(user2);
-        vm.expectRevert("Not the owner");
+        vm.expectRevert(PotRaider.NotOwner.selector);
         potRaider.exchange(0);
     }
 
@@ -281,7 +282,7 @@ contract PotRaiderTest is Test {
         vm.deal(address(potRaider), 0);
         
         vm.prank(user1);
-        vm.expectRevert("No treasury available");
+        vm.expectRevert(PotRaider.NoTreasuryAvailable.selector);
         potRaider.exchange(0);
     }
 
@@ -439,28 +440,64 @@ contract PotRaiderTest is Test {
     function testPurchaseLotteryTicketUSDCNotConfigured() public {
         potRaider.setLotteryContract(lotteryContract);
         
-        vm.expectRevert(PotRaider.USDCNotConfigured.selector);
+        vm.expectRevert(PotRaider.UniswapQuoterNotConfigured.selector);
         potRaider.purchaseLotteryTicket();
     }
 
     function testGetCurrentLotteryRoundNotConfigured() public {
-        vm.expectRevert("Lottery contract not configured");
+        vm.expectRevert(PotRaider.LotteryNotConfigured.selector);
         potRaider.getCurrentLotteryRound();
     }
 
     function testGetLotteryJackpotNotConfigured() public {
-        vm.expectRevert("Lottery contract not configured");
+        vm.expectRevert(PotRaider.LotteryNotConfigured.selector);
         potRaider.getLotteryJackpot();
     }
 
     function testGetDailyPurchaseAmountNotConfigured() public {
-        vm.expectRevert("Lottery contract not configured");
+        vm.expectRevert(PotRaider.LotteryNotConfigured.selector);
         potRaider.getDailyPurchaseAmount();
     }
 
     function testWithdrawWinningsNotConfigured() public {
-        vm.expectRevert("Lottery contract not configured");
+        vm.expectRevert(PotRaider.LotteryNotConfigured.selector);
         potRaider.withdrawWinnings();
+    }
+
+    function testPurchaseLotteryTicketQuoterCallFailed() public {
+        // Deploy a mock quoter but do not set returnAmount or use an address with no code
+        address badQuoter = address(0xdeadbeef);
+        potRaider.setLotteryContract(lotteryContract);
+        potRaider.setUSDCContract(usdcContract);
+        potRaider.setUniswapRouter(uniswapRouter);
+        potRaider.setUniswapQuoter(badQuoter);
+
+        // Fund the contract with a small amount of ETH
+        vm.deal(address(potRaider), 1 ether);
+
+        // Expect revert (no selector, as staticcall may revert with no data)
+        vm.expectRevert();
+        potRaider.purchaseLotteryTicket();
+    }
+
+    function testPurchaseLotteryTicketInsufficientUSDC() public {
+        // Deploy and configure the mock quoter
+        MockQuoter mockQuoter = new MockQuoter();
+        potRaider.setLotteryContract(lotteryContract);
+        potRaider.setUSDCContract(usdcContract);
+        potRaider.setUniswapRouter(uniswapRouter);
+        potRaider.setUniswapQuoter(address(mockQuoter));
+
+        // Fund the contract with a small amount of ETH
+        vm.deal(address(potRaider), 1 ether);
+
+        // Set the mock quoter to return less than 1 USDC (LOTTERY_TICKET_PRICE_USD * 10^USDC_DECIMALS)
+        uint256 lessThanOneUSDC = (potRaider.LOTTERY_TICKET_PRICE_USD() * (10 ** potRaider.USDC_DECIMALS())) - 1;
+        mockQuoter.setReturnAmount(lessThanOneUSDC);
+
+        // Expect revert (no selector, as staticcall may revert with no data)
+        vm.expectRevert();
+        potRaider.purchaseLotteryTicket();
     }
 
     // Helper function to count unique values in an array
@@ -512,5 +549,16 @@ contract PotRaiderTest is Test {
         
         // Return average unique values (higher = more entropy)
         return (uniqueR + uniqueG + uniqueB) / 3;
+    }
+} 
+
+// Minimal mock for Uniswap V3 Quoter
+contract MockQuoter {
+    uint256 public returnAmount;
+    function setReturnAmount(uint256 _amount) external {
+        returnAmount = _amount;
+    }
+    function quoteExactInputSingle(address, address, uint24, uint256, uint160) external view returns (uint256) {
+        return returnAmount;
     }
 } 
