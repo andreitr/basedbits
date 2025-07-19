@@ -68,7 +68,8 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
     event NFTExchanged(
         uint256 indexed tokenId,
         address indexed owner,
-        uint256 amount
+        uint256 ethAmount,
+        uint256 usdcAmount
     );
 
     event PercentagesUpdated(
@@ -163,22 +164,32 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
             revert NoNFTsInCirculation();
         }
 
-        // Calculate share based on current circulating supply
-        uint256 amount = address(this).balance / circulatingSupply;
-        if (amount == 0) {
+        // Calculate ETH share based on current circulating supply
+        uint256 ethShare = address(this).balance / circulatingSupply;
+        if (ethShare == 0) {
             revert NoTreasuryAvailable();
+        }
+
+        // Calculate USDC share (if usdcContract is set)
+        uint256 usdcShare = 0;
+        if (usdcContract != address(0)) {
+            uint256 usdcBalance = IERC20(usdcContract).balanceOf(address(this));
+            usdcShare = usdcBalance / circulatingSupply;
+            if (usdcShare > 0) {
+                IERC20(usdcContract).safeTransfer(msg.sender, usdcShare);
+            }
         }
 
         // Burn the NFT
         burn(tokenId);
 
-        // Send share to the owner
-        (bool success, ) = msg.sender.call{value: amount}("");
+        // Send ETH share to the owner
+        (bool success, ) = msg.sender.call{value: ethShare}("");
         if (!success) {
             revert ExchangeTransferFailed();
         }
 
-        emit NFTExchanged(tokenId, msg.sender, amount);
+        emit NFTExchanged(tokenId, msg.sender, ethShare, usdcShare);
     }
 
     function setMintPrice(uint256 _mintPrice) external onlyOwner {

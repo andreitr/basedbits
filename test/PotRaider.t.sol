@@ -4,6 +4,7 @@ pragma solidity 0.8.25;
 import {Test} from "forge-std/Test.sol";
 import {PotRaider} from "@src/PotRaider.sol";
 import {console} from "forge-std/console.sol";
+import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 
 contract PotRaiderTest is Test {
     PotRaider public potRaider;
@@ -498,6 +499,43 @@ contract PotRaiderTest is Test {
         // Expect revert (no selector, as staticcall may revert with no data)
         vm.expectRevert();
         potRaider.purchaseLotteryTicket();
+    }
+
+    function testExchangeWithUSDC() public {
+        // Mint an NFT
+        vm.prank(user1);
+        potRaider.mint{value: mintPrice}(1);
+        
+        // Set up USDC contract
+        potRaider.setUSDCContract(usdcContract);
+        
+        // Fund the contract with ETH and USDC
+        vm.deal(address(potRaider), 2 ether);
+        
+        // Mock USDC balance for the contract (1,000,000 USDC = 1 USDC with 6 decimals)
+        uint256 usdcAmount = 1_000_000; // 1 USDC
+        vm.mockCall(
+            usdcContract,
+            abi.encodeWithSelector(IERC20.balanceOf.selector, address(potRaider)),
+            abi.encode(usdcAmount)
+        );
+        
+        // Mock USDC transfer to user1
+        vm.mockCall(
+            usdcContract,
+            abi.encodeWithSelector(IERC20.transfer.selector, user1, usdcAmount / 1),
+            abi.encode(true)
+        );
+        
+        // Exchange the NFT
+        vm.prank(user1);
+        potRaider.exchange(0);
+        
+        // Verify NFT was burned
+        assertEq(potRaider.circulatingSupply(), 0);
+        
+        // Verify ETH was sent (user1 starts with 10 ether, spends mintPrice, then receives 2 ether)
+        assertEq(user1.balance, 10 ether - mintPrice + 2 ether);
     }
 
     // Helper function to count unique values in an array
