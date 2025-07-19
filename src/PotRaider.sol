@@ -9,6 +9,7 @@ import "@openzeppelin/utils/Base64.sol";
 import "@openzeppelin/utils/Strings.sol";
 import "@openzeppelin/token/ERC20/IERC20.sol";
 import "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/utils/ReentrancyGuard.sol";
 
 // Uniswap V3 Router interface for ETH→USDC swaps
 interface ISwapRouter {
@@ -35,7 +36,7 @@ interface ILotteryContract {
     function roundDurationInSeconds() external view returns (uint256);
 }
 
-contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
+contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     uint256 public totalSupply;
     uint256 public circulatingSupply;
@@ -156,7 +157,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         }
     }
 
-    function exchange(uint256 tokenId) external whenNotPaused {
+    function exchange(uint256 tokenId) external whenNotPaused nonReentrant {
         if (ownerOf(tokenId) != msg.sender) {
             revert NotOwner();
         }
@@ -175,13 +176,15 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
         if (usdcContract != address(0)) {
             uint256 usdcBalance = IERC20(usdcContract).balanceOf(address(this));
             usdcShare = usdcBalance / circulatingSupply;
-            if (usdcShare > 0) {
-                IERC20(usdcContract).safeTransfer(msg.sender, usdcShare);
-            }
         }
 
-        // Burn the NFT
+        // Burn the NFT first (state update before external calls)
         burn(tokenId);
+
+        // Send USDC share to the owner (if any)
+        if (usdcShare > 0) {
+            IERC20(usdcContract).safeTransfer(msg.sender, usdcShare);
+        }
 
         // Send ETH share to the owner
         (bool success, ) = msg.sender.call{value: ethShare}("");
@@ -347,7 +350,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
 
     /// @notice Purchase a lottery ticket for the current lottery round using ETH→USDC swap
     /// @dev Can only be called once per lottery round, automatically calculates spending amount
-    function purchaseLotteryTicket() external whenNotPaused {
+    function purchaseLotteryTicket() external whenNotPaused nonReentrant {
         _checkLotteryConfigured();
         
         // Check if USDC contract and quoter are configured
@@ -380,6 +383,9 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
             revert InsufficientUSDCForTicket();
         }
         
+        // Update state first (before external calls)
+        lotteryPurchasedForDay[currentLotteryRound] = dailyAmount;
+        
         // Swap ETH to USDC using Uniswap V3
         uint256 usdcAmount = _swapETHForUSDC(dailyAmount);
         
@@ -390,9 +396,6 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable {
             usdcAmount, // value
             address(this) // recipient (PotRaider contract)
         );
-        
-        // Update state
-        lotteryPurchasedForDay[currentLotteryRound] = dailyAmount;
         
         emit LotteryTicketPurchased(currentLotteryRound, dailyAmount);
     }
