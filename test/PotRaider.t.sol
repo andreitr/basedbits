@@ -321,19 +321,19 @@ contract PotRaiderTest is Test {
     }
 
     function testSetBurnPercentage() public {
-        uint256 newPercentage = 5; // 5%
+        uint256 newPercentage = 500; // 5% (500 basis points)
         potRaider.setBurnPercentage(newPercentage);
         assertEq(potRaider.burnPercentage(), newPercentage);
     }
 
     function testSetBurnPercentageExceeds100() public {
-        vm.expectRevert("Burn percentage cannot exceed 100");
-        potRaider.setBurnPercentage(101);
+        vm.expectRevert("Burn percentage cannot exceed 100%");
+        potRaider.setBurnPercentage(10001);
     }
 
     function testSetPercentages() public {
-        uint256 newBurnPercentage = 5; // 5%
-        uint256 newArtistPercentage = 20; // 20%
+        uint256 newBurnPercentage = 500; // 5% (500 basis points)
+        uint256 newArtistPercentage = 2000; // 20% (2000 basis points)
         
         potRaider.setPercentages(newBurnPercentage, newArtistPercentage);
         
@@ -343,17 +343,17 @@ contract PotRaiderTest is Test {
 
     function testSetPercentagesExceeds100() public {
         vm.expectRevert("Total percentages cannot exceed 100%");
-        potRaider.setPercentages(60, 50); // 60% + 50% = 110%
+        potRaider.setPercentages(6000, 5000); // 60% + 50% = 110%
     }
 
     function testSetPercentagesBurnExceeds100() public {
-        vm.expectRevert("Burn percentage cannot exceed 100");
-        potRaider.setPercentages(101, 10);
+        vm.expectRevert("Burn percentage cannot exceed 100%");
+        potRaider.setPercentages(10001, 1000);
     }
 
     function testSetPercentagesArtistExceeds100() public {
         vm.expectRevert("Artist percentage cannot exceed 100%");
-        potRaider.setPercentages(10, 10001);
+        potRaider.setPercentages(1000, 10001);
     }
 
     function testSetBurnerContract() public {

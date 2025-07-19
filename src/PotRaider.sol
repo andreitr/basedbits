@@ -36,6 +36,7 @@ interface ILotteryContract {
     function roundDurationInSeconds() external view returns (uint256);
 }
 
+
 contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     uint256 public totalSupply;
@@ -200,20 +201,20 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     }
 
     function setBurnPercentage(uint256 _burnPercentage) external onlyOwner {
-        require(_burnPercentage <= 100, "Burn percentage cannot exceed 100");
+        require(_burnPercentage <= 10_000, "Burn percentage cannot exceed 100%");
         burnPercentage = _burnPercentage;
     }
 
     /// @notice Update the burn and artist percentages
-    /// @param _burnPercentage New burn percentage (100 = 100%)
+    /// @param _burnPercentage New burn percentage (10_000 = 100%)
     /// @param _artistPercentage New artist percentage (10_000 = 100%)
     function setPercentages(
         uint256 _burnPercentage,
         uint256 _artistPercentage
     ) external onlyOwner {
-        require(_burnPercentage <= 100, "Burn percentage cannot exceed 100");
+        require(_burnPercentage <= 10_000, "Burn percentage cannot exceed 100%");
         require(_artistPercentage <= 10_000, "Artist percentage cannot exceed 100%");
-        require(_burnPercentage + _artistPercentage <= 100, "Total percentages cannot exceed 100%");
+        require(_burnPercentage + _artistPercentage <= 10_000, "Total percentages cannot exceed 100%");
         
         burnPercentage = uint16(_burnPercentage);
         artistPercentage = uint16(_artistPercentage);
