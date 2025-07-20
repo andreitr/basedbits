@@ -5,6 +5,8 @@ import {Test} from "forge-std/Test.sol";
 import {PotRaider} from "@src/PotRaider.sol";
 import {console} from "forge-std/console.sol";
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
+import {MockLottery} from "@test/mocks/MockLottery.sol";
+import {MockSwapRouter} from "@test/mocks/MockSwapRouter.sol";
 
 contract PotRaiderTest is Test {
     PotRaider public potRaider;
@@ -536,6 +538,43 @@ contract PotRaiderTest is Test {
         
         // Verify ETH was sent (user1 starts with 10 ether, spends mintPrice, then receives 2 ether)
         assertEq(user1.balance, 10 ether - mintPrice + 2 ether);
+    }
+
+    function testPurchaseLotteryTicketSuccess() public {
+        MockQuoter mockQuoter = new MockQuoter();
+        MockSwapRouter mockRouter = new MockSwapRouter();
+        MockLottery mockLottery = new MockLottery(1 days);
+
+        potRaider.setLotteryContract(address(mockLottery));
+        potRaider.setUSDCContract(usdcContract);
+        potRaider.setUniswapRouter(address(mockRouter));
+        potRaider.setUniswapQuoter(address(mockQuoter));
+
+        vm.deal(address(potRaider), 1 ether);
+        uint256 dailyAmount = potRaider.getDailyPurchaseAmount();
+
+        uint256 ticketPrice = potRaider.LOTTERY_TICKET_PRICE_USD() *
+            (10 ** potRaider.USDC_DECIMALS());
+        mockQuoter.setReturnAmount(ticketPrice);
+        mockRouter.setReturnAmount(ticketPrice);
+
+        vm.expectEmit(true, true, false, true);
+        emit PotRaider.LotteryTicketPurchased(0, dailyAmount);
+        potRaider.purchaseLotteryTicket();
+
+        assertEq(mockRouter.receivedETH(), dailyAmount, "Incorrect ETH sent");
+        assertEq(mockLottery.purchaseValue(), ticketPrice, "Incorrect USDC value");
+        assertEq(mockLottery.purchaseRecipient(), address(potRaider));
+        assertEq(potRaider.lotteryPurchasedForDay(0), dailyAmount);
+    }
+
+    function testWithdrawWinningsSuccess() public {
+        MockLottery mockLottery = new MockLottery(1 days);
+        potRaider.setLotteryContract(address(mockLottery));
+
+        potRaider.withdrawWinnings();
+
+        assertTrue(mockLottery.withdrawCalled());
     }
 
     // Helper function to count unique values in an array
