@@ -72,6 +72,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     address public uniswapRouter; // Uniswap V3 Router for ETH→USDC swaps
     address public uniswapQuoter; // Uniswap V3 Quoter for ETH→USDC estimation
     mapping(uint256 => uint256) public lotteryPurchasedForDay;
+    address public lotteryReferrer; // Referrer address for lottery ticket purchases
 
     event NFTExchanged(
         uint256 indexed tokenId,
@@ -93,6 +94,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     event LotteryContractUpdated(address indexed newContract);
     event USDCContractUpdated(address indexed newContract);
     event UniswapQuoterUpdated(address indexed newQuoter);
+    event LotteryReferrerUpdated(address indexed newReferrer);
 
     error InvalidPercentage();
     error TransferFailed();
@@ -133,6 +135,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         artistPercentage = 1000; // 10%
         burnPercentage = 1000; // 10%
         deploymentTimestamp = block.timestamp;
+        lotteryReferrer = 0xDAdA5bAd8cdcB9e323d0606d081E6Dc5D3a577a1; // Default referrer address
     }
 
     function mint(uint256 quantity) external payable whenNotPaused {
@@ -419,7 +422,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         // Purchase lottery tickets using the lottery contract's purchaseTickets method
         // Parameters: (referrer, value, recipient)
         ILotteryContract(lotteryContract).purchaseTickets(
-            0xDAdA5bAd8cdcB9e323d0606d081E6Dc5D3a577a1, // referrer
+            lotteryReferrer, // referrer
             usdcAmount, // value
             address(this) // recipient (PotRaider contract)
         );
@@ -580,5 +583,12 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     function setLotteryParticipationDays(uint256 _lotteryParticipationDays) external onlyOwner {
         require(_lotteryParticipationDays > 0, "Duration must be greater than 0");
         lotteryParticipationDays = _lotteryParticipationDays;
+    }
+
+    /// @notice Set the lottery referrer address
+    /// @param _lotteryReferrer The new lottery referrer address
+    function setLotteryReferrer(address _lotteryReferrer) external onlyOwner {
+        lotteryReferrer = _lotteryReferrer;
+        emit LotteryReferrerUpdated(_lotteryReferrer);
     }
 }
