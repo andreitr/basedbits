@@ -64,7 +64,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     uint256 public immutable deploymentTimestamp;
 
     /// @notice Lottery ticket purchase system variables
-    uint256 public constant LOTTERY_DURATION_DAYS = 365;
+    uint256 public lotteryParticipationDays = 365;
     uint256 public constant LOTTERY_TICKET_PRICE_USD = 1; // $1 per ticket
     uint256 public constant USDC_DECIMALS = 6; // USDC has 6 decimals
     address public lotteryContract;
@@ -469,7 +469,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     function getDailyPurchaseAmount() external view returns (uint256) {
         uint256 currentRound = this.getCurrentLotteryRound();
         uint256 roundDuration = ILotteryContract(lotteryContract).roundDurationInSeconds();
-        uint256 totalRounds = (LOTTERY_DURATION_DAYS * 1 days) / roundDuration;
+        uint256 totalRounds = (lotteryParticipationDays * 1 days) / roundDuration;
         uint256 remainingRounds = totalRounds > currentRound ? totalRounds - currentRound : 0;
 
         if (remainingRounds == 0) {
@@ -573,5 +573,12 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     /// @param _wethAddress The address of the WETH contract
     function setWETHAddress(address _wethAddress) external onlyOwner {
         wethAddress = _wethAddress;
+    }
+
+    /// @notice Set the lottery participation duration in days
+    /// @param _lotteryParticipationDays The new lottery participation duration in days
+    function setLotteryParticipationDays(uint256 _lotteryParticipationDays) external onlyOwner {
+        require(_lotteryParticipationDays > 0, "Duration must be greater than 0");
+        lotteryParticipationDays = _lotteryParticipationDays;
     }
 }

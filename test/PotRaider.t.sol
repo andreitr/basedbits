@@ -588,6 +588,73 @@ contract PotRaiderTest is Test {
         // Return average unique values (higher = more entropy)
         return (uniqueR + uniqueG + uniqueB) / 3;
     }
+
+    // ========== LOTTERY PARTICIPATION DAYS TESTS ==========
+
+    function testLotteryParticipationDaysDefault() public {
+        assertEq(potRaider.lotteryParticipationDays(), 365);
+    }
+
+    function testSetLotteryParticipationDays() public {
+        uint256 newDuration = 180;
+        potRaider.setLotteryParticipationDays(newDuration);
+        assertEq(potRaider.lotteryParticipationDays(), newDuration);
+    }
+
+    function testSetLotteryParticipationDaysOnlyOwner() public {
+        vm.prank(user1);
+        vm.expectRevert();
+        potRaider.setLotteryParticipationDays(180);
+    }
+
+    function testSetLotteryParticipationDaysZero() public {
+        vm.expectRevert("Duration must be greater than 0");
+        potRaider.setLotteryParticipationDays(0);
+    }
+
+    function testSetLotteryParticipationDaysMultipleUpdates() public {
+        // Set to different values
+        potRaider.setLotteryParticipationDays(180);
+        assertEq(potRaider.lotteryParticipationDays(), 180);
+        
+        potRaider.setLotteryParticipationDays(730);
+        assertEq(potRaider.lotteryParticipationDays(), 730);
+        
+        potRaider.setLotteryParticipationDays(365);
+        assertEq(potRaider.lotteryParticipationDays(), 365);
+    }
+
+    function testLotteryParticipationDaysEdgeCases() public {
+        // Test edge cases for the setter function
+        
+        // Test setting to 1 day
+        potRaider.setLotteryParticipationDays(1);
+        assertEq(potRaider.lotteryParticipationDays(), 1);
+        
+        // Test setting to a large number
+        uint256 largeNumber = 1000;
+        potRaider.setLotteryParticipationDays(largeNumber);
+        assertEq(potRaider.lotteryParticipationDays(), largeNumber);
+        
+        // Test setting back to default
+        potRaider.setLotteryParticipationDays(365);
+        assertEq(potRaider.lotteryParticipationDays(), 365);
+    }
+
+    function testLotteryParticipationDaysBasicFunctionality() public {
+        // Test that the setter function works correctly
+        uint256 originalDuration = potRaider.lotteryParticipationDays();
+        assertEq(originalDuration, 365);
+        
+        // Set to a new value
+        uint256 newDuration = 180;
+        potRaider.setLotteryParticipationDays(newDuration);
+        assertEq(potRaider.lotteryParticipationDays(), newDuration);
+        
+        // Set back to original
+        potRaider.setLotteryParticipationDays(originalDuration);
+        assertEq(potRaider.lotteryParticipationDays(), originalDuration);
+    }
 } 
 
 // Minimal mock for Uniswap V3 Quoter
