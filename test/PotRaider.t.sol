@@ -24,6 +24,8 @@ contract PotRaiderTest is Test {
 
     function setUp() public {
         potRaider = new PotRaider(mintPrice, burner, artist);
+        // Configure WETH address used for Uniswap interactions
+        potRaider.setWETHAddress(0x4200000000000000000000000000000000000006);
         vm.deal(user1, 10 ether);
         vm.deal(user2, 10 ether);
     }
@@ -551,19 +553,21 @@ contract PotRaiderTest is Test {
         potRaider.setUniswapQuoter(address(mockQuoter));
 
         vm.deal(address(potRaider), 1 ether);
-        uint256 dailyAmount = potRaider.getDailyPurchaseAmount();
 
-        uint256 ticketPrice = potRaider.LOTTERY_TICKET_PRICE_USD() *
-            (10 ** potRaider.USDC_DECIMALS());
-        mockQuoter.setReturnAmount(ticketPrice);
-        mockRouter.setReturnAmount(ticketPrice);
+        uint256 ticketPrice =
+            potRaider.LOTTERY_TICKET_PRICE_USD() * (10 ** potRaider.USDC_DECIMALS());
+        uint256 expectedUSDC = (ticketPrice * 102) / 100;
+        mockQuoter.setReturnAmount(expectedUSDC);
+        mockRouter.setReturnAmount(expectedUSDC);
+
+        uint256 dailyAmount = potRaider.getDailyPurchaseAmount();
 
         vm.expectEmit(true, true, false, true);
         emit PotRaider.LotteryTicketPurchased(0, dailyAmount);
         potRaider.purchaseLotteryTicket();
 
         assertEq(mockRouter.receivedETH(), dailyAmount, "Incorrect ETH sent");
-        assertEq(mockLottery.purchaseValue(), ticketPrice, "Incorrect USDC value");
+        assertEq(mockLottery.purchaseValue(), expectedUSDC, "Incorrect USDC value");
         assertEq(mockLottery.purchaseRecipient(), address(potRaider));
         assertEq(potRaider.lotteryPurchasedForDay(0), dailyAmount);
     }
