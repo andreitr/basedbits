@@ -127,7 +127,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         uint256 _mintPrice,
         address _burnerContract,
         address _artist
-    ) ERC721("Pot Raider", "POTRAIDER") Ownable(msg.sender) {
+    ) ERC721("Test Raider", "TESTRAIDER") Ownable(msg.sender) {
         
         mintPrice = _mintPrice;
         burnerContract = _burnerContract;
