@@ -600,6 +600,8 @@ contract PotRaiderTest is Test {
         assertEq(mockRouter.receivedETH(), dailyAmount, "Incorrect ETH sent");
         assertEq(mockLottery.purchaseValue(), expectedUSDC, "Incorrect USDC value");
         assertEq(mockLottery.purchaseRecipient(), address(potRaider));
+        (,,,,,,uint256 amountOutMinimum,) = mockRouter.lastParams();
+        assertEq(amountOutMinimum, (expectedUSDC * 95) / 100, "Incorrect slippage amount");
         assertEq(potRaider.lotteryPurchasedForDay(0), dailyAmount);
     }
 
