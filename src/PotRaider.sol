@@ -262,12 +262,6 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         _unpause();
     }
 
-    /// @notice Deposit ETH into the contract treasury
-    function depositETH() external payable whenNotPaused {
-        if (msg.value == 0) {
-            revert QuantityZero();
-        }
-    }
 
     /// @notice Deposit ERC20 tokens into the contract treasury
     /// @param token The token to deposit

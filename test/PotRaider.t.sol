@@ -397,7 +397,8 @@ contract PotRaiderTest is Test {
 
     function testDepositETH() public {
         vm.prank(user1);
-        potRaider.depositETH{value: 1 ether}();
+        (bool success, ) = address(potRaider).call{value: 1 ether}("");
+        assertTrue(success, "ETH transfer failed");
         assertEq(address(potRaider).balance, 1 ether);
     }
 
