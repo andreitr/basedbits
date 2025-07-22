@@ -155,7 +155,6 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
 
         uint256 burnAmount = (msg.value * burnPercentage) / 10_000;
         uint256 artistAmount = (msg.value * artistPercentage) / 10_000;
-        uint256 treasuryAmount = msg.value - burnAmount - artistAmount;
 
         // Send burn amount to burner contract
         if (burnAmount > 0) {
