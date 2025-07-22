@@ -532,6 +532,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         }
         _checkWETHConfigured();
         // Create swap parameters
+        uint256 estimatedUSDC = _estimateUSDCForETH(ethAmount);
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: wethAddress, // Use WETH address instead of address(0)
             tokenOut: usdcContract,
@@ -539,7 +540,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
             recipient: address(this),
             deadline: block.timestamp + 300, // 5 minutes
             amountIn: ethAmount,
-            amountOutMinimum: (ethAmount * 95) / 100, // 5% slippage protection
+            amountOutMinimum: (estimatedUSDC * 95) / 100, // 5% slippage protection
             sqrtPriceLimitX96: 0
         });
 
