@@ -395,7 +395,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         }
         
         // Get the amount to spend for this day (in ETH)
-        uint256 dailyAmount = this.getDailyPurchaseAmount();
+        uint256 dailyAmount = _getDailyPurchaseAmount();
         
         if (dailyAmount == 0) {
             revert InsufficientTreasury();
@@ -470,7 +470,11 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     /// @notice Get the amount of ETH that will be spent on the next lottery ticket purchase
     /// @return The amount in ETH (in wei) that will be spent
     function getDailyPurchaseAmount() external view returns (uint256) {
-        uint256 currentRound = this.getCurrentLotteryRound();
+        return _getDailyPurchaseAmount();
+    }
+
+    function _getDailyPurchaseAmount() private view returns (uint256) {
+        uint256 currentRound = getCurrentLotteryRound();
         uint256 roundDuration = ILotteryContract(lotteryContract).roundDurationInSeconds();
         uint256 totalRounds = (lotteryParticipationDays * 1 days) / roundDuration;
         uint256 remainingRounds = totalRounds > currentRound ? totalRounds - currentRound : 0;
