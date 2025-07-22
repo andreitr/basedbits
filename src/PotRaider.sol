@@ -67,6 +67,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     uint256 public lotteryParticipationDays = 365;
     uint256 public constant LOTTERY_TICKET_PRICE_USD = 1; // $1 per ticket
     uint256 public constant USDC_DECIMALS = 6; // USDC has 6 decimals
+    uint256 public constant MAX_MINT_PER_CALL = 50; // Max NFTs mintable per call
     address public lotteryContract;
     address public usdcContract;
     address public uniswapRouter; // Uniswap V3 Router for ETH→USDC swaps
@@ -117,6 +118,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     error NoTreasuryAvailable();
     error ExchangeTransferFailed();
     error WETHNotConfigured();
+    error MaxMintPerCallExceeded();
     function _checkWETHConfigured() private view {
         if (wethAddress == address(0)) {
             revert WETHNotConfigured();
@@ -144,6 +146,9 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     function mint(uint256 quantity) external payable whenNotPaused {
         if (quantity == 0) {
             revert QuantityZero();
+        }
+        if (quantity > MAX_MINT_PER_CALL) {
+            revert MaxMintPerCallExceeded();
         }
         if (msg.value < mintPrice * quantity) {
             revert InsufficientPayment();
