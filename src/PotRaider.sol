@@ -67,6 +67,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     uint256 public lotteryParticipationDays = 365;
     uint256 public constant LOTTERY_TICKET_PRICE_USD = 1; // $1 per ticket
     uint256 public constant USDC_DECIMALS = 6; // USDC has 6 decimals
+    uint256 public constant MAX_MINT_PER_CALL = 50; // Max NFTs mintable per call
     address public lotteryContract;
     address public usdcContract;
     address public uniswapRouter; // Uniswap V3 Router for ETH→USDC swaps
@@ -117,6 +118,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     error NoTreasuryAvailable();
     error ExchangeTransferFailed();
     error WETHNotConfigured();
+    error MaxMintPerCallExceeded();
     function _checkWETHConfigured() private view {
         if (wethAddress == address(0)) {
             revert WETHNotConfigured();
@@ -144,6 +146,9 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     function mint(uint256 quantity) external payable whenNotPaused {
         if (quantity == 0) {
             revert QuantityZero();
+        }
+        if (quantity > MAX_MINT_PER_CALL) {
+            revert MaxMintPerCallExceeded();
         }
         if (msg.value < mintPrice * quantity) {
             revert InsufficientPayment();
@@ -428,7 +433,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         }
         
         // Get the amount to spend for this day (in ETH)
-        uint256 dailyAmount = this.getDailyPurchaseAmount();
+        uint256 dailyAmount = _getDailyPurchaseAmount();
         
         if (dailyAmount == 0) {
             revert InsufficientTreasury();
@@ -503,7 +508,11 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     /// @notice Get the amount of ETH that will be spent on the next lottery ticket purchase
     /// @return The amount in ETH (in wei) that will be spent
     function getDailyPurchaseAmount() external view returns (uint256) {
-        uint256 currentRound = this.getCurrentLotteryRound();
+        return _getDailyPurchaseAmount();
+    }
+
+    function _getDailyPurchaseAmount() private view returns (uint256) {
+        uint256 currentRound = getCurrentLotteryRound();
         uint256 roundDuration = ILotteryContract(lotteryContract).roundDurationInSeconds();
         uint256 totalRounds = (lotteryParticipationDays * 1 days) / roundDuration;
         uint256 remainingRounds = totalRounds > currentRound ? totalRounds - currentRound : 0;
@@ -565,6 +574,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         }
         _checkWETHConfigured();
         // Create swap parameters
+        uint256 estimatedUSDC = _estimateUSDCForETH(ethAmount);
         ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
             tokenIn: wethAddress, // Use WETH address instead of address(0)
             tokenOut: usdcContract,
@@ -572,7 +582,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
             recipient: address(this),
             deadline: block.timestamp + 300, // 5 minutes
             amountIn: ethAmount,
-            amountOutMinimum: (ethAmount * 95) / 100, // 5% slippage protection
+            amountOutMinimum: (estimatedUSDC * 95) / 100, // 5% slippage protection
             sqrtPriceLimitX96: 0
         });
 

@@ -67,18 +67,18 @@ contract PotRaiderTest is Test {
     }
 
     function testMintMaxQuantity() public {
+        uint256 maxQuantity = potRaider.MAX_MINT_PER_CALL();
         vm.prank(user1);
-        potRaider.mint{value: mintPrice * 10}(10);
-        assertEq(potRaider.totalSupply(), 10);
-        assertEq(potRaider.circulatingSupply(), 10);
+        potRaider.mint{value: mintPrice * maxQuantity}(maxQuantity);
+        assertEq(potRaider.totalSupply(), maxQuantity);
+        assertEq(potRaider.circulatingSupply(), maxQuantity);
     }
 
     function testMintLargeQuantity() public {
-        uint256 largeQuantity = 100;
+        uint256 largeQuantity = potRaider.MAX_MINT_PER_CALL() + 1;
         vm.prank(user1);
+        vm.expectRevert(PotRaider.MaxMintPerCallExceeded.selector);
         potRaider.mint{value: mintPrice * largeQuantity}(largeQuantity);
-        assertEq(potRaider.totalSupply(), largeQuantity);
-        assertEq(potRaider.circulatingSupply(), largeQuantity);
     }
 
     function testMintInsufficientPayment() public {
@@ -600,6 +600,8 @@ contract PotRaiderTest is Test {
         assertEq(mockRouter.receivedETH(), dailyAmount, "Incorrect ETH sent");
         assertEq(mockLottery.purchaseValue(), expectedUSDC, "Incorrect USDC value");
         assertEq(mockLottery.purchaseRecipient(), address(potRaider));
+        (,,,,,,uint256 amountOutMinimum,) = mockRouter.lastParams();
+        assertEq(amountOutMinimum, (expectedUSDC * 95) / 100, "Incorrect slippage amount");
         assertEq(potRaider.lotteryPurchasedForDay(0), dailyAmount);
     }
 
