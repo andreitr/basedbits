@@ -138,6 +138,9 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         lotteryReferrer = 0xDAdA5bAd8cdcB9e323d0606d081E6Dc5D3a577a1; // Default referrer address
     }
 
+    /// @notice Allow contract to receive plain ETH transfers
+    receive() external payable {}
+
     function mint(uint256 quantity) external payable whenNotPaused {
         if (quantity == 0) {
             revert QuantityZero();
@@ -257,6 +260,38 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
 
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    /// @notice Deposit ETH into the contract treasury
+    function depositETH() external payable whenNotPaused {
+        if (msg.value == 0) {
+            revert QuantityZero();
+        }
+    }
+
+    /// @notice Deposit ERC20 tokens into the contract treasury
+    /// @param token The token to deposit
+    /// @param amount The amount of tokens to deposit
+    function depositERC20(address token, uint256 amount) external whenNotPaused nonReentrant {
+        if (amount == 0) {
+            revert QuantityZero();
+        }
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    /// @notice Emergency withdraw of ETH or ERC20 tokens
+    /// @param token Address of the token to withdraw, or address(0) for ETH
+    function emergencyWithdraw(address token) external onlyOwner nonReentrant {
+        if (token == address(0)) {
+            uint256 bal = address(this).balance;
+            (bool success, ) = owner().call{value: bal}("");
+            if (!success) {
+                revert TransferFailed();
+            }
+        } else {
+            uint256 bal = IERC20(token).balanceOf(address(this));
+            IERC20(token).safeTransfer(owner(), bal);
+        }
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {

@@ -7,6 +7,7 @@ import {console} from "forge-std/console.sol";
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {MockLottery} from "@test/mocks/MockLottery.sol";
 import {MockSwapRouter} from "@test/mocks/MockSwapRouter.sol";
+import {MockERC20} from "@test/mocks/MockERC20.sol";
 
 contract PotRaiderTest is Test {
     PotRaider public potRaider;
@@ -386,12 +387,41 @@ contract PotRaiderTest is Test {
         vm.prank(user1);
         potRaider.mint{value: mintPrice}(1);
         vm.deal(address(potRaider), 1 ether);
-        
+
         potRaider.pause();
-        
+
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
         potRaider.exchange(0);
+    }
+
+    function testDepositETH() public {
+        vm.prank(user1);
+        potRaider.depositETH{value: 1 ether}();
+        assertEq(address(potRaider).balance, 1 ether);
+    }
+
+    function testDepositERC20AndEmergencyWithdraw() public {
+        MockERC20 token = new MockERC20("Mock", "MCK");
+        token.mint(user1, 1000);
+        vm.prank(user1);
+        token.approve(address(potRaider), 500);
+        vm.prank(user1);
+        potRaider.depositERC20(address(token), 500);
+        assertEq(token.balanceOf(address(potRaider)), 500);
+
+        potRaider.emergencyWithdraw(address(token));
+        assertEq(token.balanceOf(address(this)), 500);
+        assertEq(token.balanceOf(address(potRaider)), 0);
+    }
+
+    function testEmergencyWithdrawETH() public {
+        potRaider.transferOwnership(user1);
+        vm.deal(address(potRaider), 2 ether);
+        uint256 before = user1.balance;
+        vm.prank(user1);
+        potRaider.emergencyWithdraw(address(0));
+        assertEq(user1.balance, before + 2 ether);
     }
 
     function testTokenURI() public {
