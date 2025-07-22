@@ -129,7 +129,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         uint256 _mintPrice,
         address _burnerContract,
         address _artist
-    ) ERC721("Test Raider", "TESTRAIDER") Ownable(msg.sender) {
+    ) ERC721("Pot Raider", "POTRAIDER") Ownable(msg.sender) {
         
         mintPrice = _mintPrice;
         burnerContract = _burnerContract;
@@ -137,7 +137,6 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         artistPercentage = 1000; // 10%
         burnPercentage = 1000; // 10%
         deploymentTimestamp = block.timestamp;
-        lotteryReferrer = 0xDAdA5bAd8cdcB9e323d0606d081E6Dc5D3a577a1; // Default referrer address
     }
 
     /// @notice Allow contract to receive plain ETH transfers

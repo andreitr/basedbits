@@ -16,7 +16,7 @@ contract PotRaiderDeploy is Script {
         vm.startBroadcast();
 
         potRaider = new PotRaider(
-            0.0008 ether,           // mintPrice
+            0.0013 ether,
             burner,                 // burnerContract
             artist                  // artist
         );
@@ -26,6 +26,9 @@ contract PotRaiderDeploy is Script {
 
         // Set the Uniswap router address
         potRaider.setUniswapRouter(uniswapRouter);
+
+        // Set the lottery referrer address
+        potRaider.setLotteryReferrer(0xDAdA5bAd8cdcB9e323d0606d081E6Dc5D3a577a1);
 
         vm.stopBroadcast();
     }
