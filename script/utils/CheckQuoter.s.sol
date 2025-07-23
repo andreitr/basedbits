@@ -19,10 +19,8 @@ interface IQuoter {
 contract CheckQuoter is Script {
     function run() external {
         // Set the PotRaider address via the POT_RAIDER env variable
-        address payable potRaiderAddress = payable(vm.envAddress("POT_RAIDER"));
+        address payable potRaiderAddress = payable(0x522e8E038f701FD33eB77cB76A8648a05954d9Dd);
         uint256 amountIn = vm.envOr("AMOUNT_IN", uint256(1 ether));
-
-        vm.startBroadcast();
 
         PotRaider potRaider = PotRaider(potRaiderAddress);
         address quoter = potRaider.uniswapQuoter();
@@ -35,7 +33,5 @@ contract CheckQuoter is Script {
             console.log("Quoter reverted with:");
             console.logBytes(err);
         }
-
-        vm.stopBroadcast();
     }
 }
