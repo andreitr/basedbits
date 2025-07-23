@@ -27,9 +27,6 @@ contract PotRaiderDeploy is Script {
         // Set the Uniswap router address
         potRaider.setUniswapRouter(uniswapRouter);
 
-        // Set the creator and burn percentages (10% each)
-        potRaider.setPercentages(1000, 1000);
-
         // Set the lottery referrer address
         potRaider.setLotteryReferrer(0xDAdA5bAd8cdcB9e323d0606d081E6Dc5D3a577a1);
 
