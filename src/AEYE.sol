@@ -96,7 +96,6 @@ contract AEYE is
 
     error MustPayMintPrice();
     error MetadataNotSet();
-    error WithdrawFailed();
     error InvalidPercentage();
     error TransferFailed();
     error NoRewardsToClaim();
