@@ -22,8 +22,6 @@ contract CheckQuoter is Script {
         address payable potRaiderAddress = payable(vm.envAddress("POT_RAIDER"));
         uint256 amountIn = vm.envOr("AMOUNT_IN", uint256(1 ether));
 
-        vm.startBroadcast();
-
         PotRaider potRaider = PotRaider(potRaiderAddress);
         address quoter = potRaider.uniswapQuoter();
         address tokenIn = potRaider.wethAddress();
@@ -35,7 +33,5 @@ contract CheckQuoter is Script {
             console.log("Quoter reverted with:");
             console.logBytes(err);
         }
-
-        vm.stopBroadcast();
     }
 }
