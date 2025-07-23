@@ -8,10 +8,11 @@ import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {MockLottery} from "@test/mocks/MockLottery.sol";
 import {MockSwapRouter} from "@test/mocks/MockSwapRouter.sol";
 import {MockERC20} from "@test/mocks/MockERC20.sol";
+import {ReentrantMint} from "@test/mocks/ReentrantMint.sol";
 
 contract PotRaiderTest is Test {
     PotRaider public potRaider;
-    
+
     address public owner = address(this);
     address public user1 = address(0x1);
     address public user2 = address(0x2);
@@ -20,7 +21,7 @@ contract PotRaiderTest is Test {
     address public lotteryContract = address(0x5);
     address public usdcContract = address(0x6);
     address public uniswapRouter = address(0x7);
-    
+
     uint256 public mintPrice = 0.0008 ether;
 
     function setUp() public {
@@ -49,7 +50,7 @@ contract PotRaiderTest is Test {
     function testMint() public {
         vm.prank(user1);
         potRaider.mint{value: mintPrice}(1);
-        
+
         assertEq(potRaider.totalSupply(), 1);
         assertEq(potRaider.circulatingSupply(), 1);
         assertEq(potRaider.ownerOf(0), user1);
@@ -58,7 +59,7 @@ contract PotRaiderTest is Test {
     function testMintMultiple() public {
         vm.prank(user1);
         potRaider.mint{value: mintPrice * 3}(3);
-        
+
         assertEq(potRaider.totalSupply(), 3);
         assertEq(potRaider.circulatingSupply(), 3);
         assertEq(potRaider.ownerOf(0), user1);
@@ -93,16 +94,24 @@ contract PotRaiderTest is Test {
         potRaider.mint{value: 0}(0);
     }
 
+    function testMintReentrancy() public {
+        ReentrantMint attacker = new ReentrantMint(potRaider);
+        potRaider.setBurnerContract(address(attacker));
+        vm.deal(address(attacker), 1 ether);
+        vm.expectRevert(PotRaider.BurnTransferFailed.selector);
+        attacker.attack{value: mintPrice}();
+    }
+
     function testColorGenerationDifferentColors() public {
         vm.prank(user1);
         potRaider.mint{value: mintPrice * 10}(10);
-        
+
         (uint8 r0, uint8 g0, uint8 b0) = potRaider.getHueRGB(0);
         (uint8 r1, uint8 g1, uint8 b1) = potRaider.getHueRGB(1);
         (uint8 r2, uint8 g2, uint8 b2) = potRaider.getHueRGB(2);
         (uint8 r5, uint8 g5, uint8 b5) = potRaider.getHueRGB(5);
         (uint8 r9, uint8 g9, uint8 b9) = potRaider.getHueRGB(9);
-        
+
         // Check that different token IDs produce different colors
         assertFalse(r0 == r1 && g0 == g1 && b0 == b1, "Token 0 and 1 should have different colors");
         assertFalse(r1 == r2 && g1 == g2 && b1 == b2, "Token 1 and 2 should have different colors");
@@ -128,15 +137,15 @@ contract PotRaiderTest is Test {
     function testColorGenerationRGBRange() public {
         vm.prank(user1);
         potRaider.mint{value: mintPrice * 5}(5);
-        
+
         for (uint256 i = 0; i < 5; i++) {
             (uint8 r, uint8 g, uint8 b) = potRaider.getHueRGB(i);
-            
+
             // RGB values should be within valid range (0-255)
             assertTrue(r >= 0 && r <= 255, "R value should be in valid range");
             assertTrue(g >= 0 && g <= 255, "G value should be in valid range");
             assertTrue(b >= 0 && b <= 255, "B value should be in valid range");
-            
+
             // Colors should not be pure black or white (which would indicate issues)
             assertFalse(r == 0 && g == 0 && b == 0, "Color should not be pure black");
             assertFalse(r == 255 && g == 255 && b == 255, "Color should not be pure white");
@@ -146,12 +155,12 @@ contract PotRaiderTest is Test {
     function testColorGenerationDeterministic() public {
         vm.prank(user1);
         potRaider.mint{value: mintPrice}(1);
-        
+
         // Get colors multiple times for the same token ID
         (uint8 r1, uint8 g1, uint8 b1) = potRaider.getHueRGB(0);
         (uint8 r2, uint8 g2, uint8 b2) = potRaider.getHueRGB(0);
         (uint8 r3, uint8 g3, uint8 b3) = potRaider.getHueRGB(0);
-        
+
         // All calls should return the same color
         assertEq(r1, r2, "R should be deterministic");
         assertEq(g1, g2, "G should be deterministic");
@@ -171,7 +180,7 @@ contract PotRaiderTest is Test {
         // Advance time by 1 day
         vm.warp(deploymentTimestamp + 1 days);
         assertEq(potRaider.day(), 2, "Day should be 2 after 1 day");
-        
+
         // Advance time by another day (total 2 days from deployment)
         vm.warp(deploymentTimestamp + 2 days);
         assertEq(potRaider.day(), 3, "Day should be 3 after 2 days");
@@ -182,11 +191,11 @@ contract PotRaiderTest is Test {
         // Advance time by 12 hours (half a day)
         vm.warp(deploymentTimestamp + 12 hours);
         assertEq(potRaider.day(), 1, "Day should still be 1 after 12 hours");
-        
+
         // Advance time by 23 hours and 59 minutes (total 23:59 from deployment)
         vm.warp(deploymentTimestamp + 23 hours + 59 minutes);
         assertEq(potRaider.day(), 1, "Day should still be 1 after 23 hours 59 minutes");
-        
+
         // Advance time by 1 more minute to complete the day (24 hours)
         vm.warp(deploymentTimestamp + 24 hours);
         assertEq(potRaider.day(), 2, "Day should be 2 after exactly 24 hours");
@@ -196,7 +205,7 @@ contract PotRaiderTest is Test {
         // Advance time by 7 days
         vm.warp(block.timestamp + 7 days);
         assertEq(potRaider.day(), 8, "Day should be 8 after 7 days");
-        
+
         // Advance time by 30 days
         vm.warp(block.timestamp + 30 days);
         assertEq(potRaider.day(), 38, "Day should be 38 after 30 more days");
@@ -206,13 +215,13 @@ contract PotRaiderTest is Test {
         // Test with very small time increments
         vm.warp(block.timestamp + 1 seconds);
         assertEq(potRaider.day(), 1, "Day should be 1 after 1 second");
-        
+
         vm.warp(block.timestamp + 1 minutes);
         assertEq(potRaider.day(), 1, "Day should be 1 after 1 minute");
-        
+
         vm.warp(block.timestamp + 1 hours);
         assertEq(potRaider.day(), 1, "Day should be 1 after 1 hour");
-        
+
         // Test with exactly 24 hours
         vm.warp(block.timestamp + 24 hours);
         assertEq(potRaider.day(), 2, "Day should be 2 after exactly 24 hours");
@@ -223,7 +232,7 @@ contract PotRaiderTest is Test {
         // Test with a large time gap (1 year)
         vm.warp(deploymentTimestamp + 365 days);
         assertEq(potRaider.day(), 366, "Day should be 366 after 1 year");
-        
+
         // Test with multiple years (total 2 years from deployment)
         vm.warp(deploymentTimestamp + 2 * 365 days);
         assertEq(potRaider.day(), 731, "Day should be 731 after 2 years");
@@ -234,7 +243,7 @@ contract PotRaiderTest is Test {
         uint256 day1 = potRaider.day();
         uint256 day2 = potRaider.day();
         uint256 day3 = potRaider.day();
-        
+
         assertEq(day1, day2, "Day should be consistent");
         assertEq(day2, day3, "Day should be consistent");
         assertEq(day1, 1, "Day should start at 1");
@@ -243,11 +252,11 @@ contract PotRaiderTest is Test {
     function testDayFunctionDeploymentTimestamp() public {
         // Get the deployment timestamp
         uint256 deploymentTimestamp = potRaider.deploymentTimestamp();
-        
+
         // Verify that the day calculation matches our expectation
         uint256 expectedDay = ((block.timestamp - deploymentTimestamp) / 1 days) + 1;
         uint256 actualDay = potRaider.day();
-        
+
         assertEq(actualDay, expectedDay, "Day calculation should match expected formula");
     }
 
@@ -255,16 +264,16 @@ contract PotRaiderTest is Test {
         // Mint an NFT and add some ETH to the contract
         vm.prank(user1);
         potRaider.mint{value: mintPrice}(1);
-        
+
         // Add ETH to contract treasury
         vm.deal(address(potRaider), 1 ether);
-        
+
         uint256 initialBalance = user1.balance;
         uint256 initialCirculatingSupply = potRaider.circulatingSupply();
-        
+
         vm.prank(user1);
         potRaider.exchange(0);
-        
+
         assertEq(potRaider.circulatingSupply(), initialCirculatingSupply - 1, "Circulating supply should decrease");
         assertTrue(user1.balance > initialBalance, "User should receive ETH");
         vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 0));
@@ -274,7 +283,7 @@ contract PotRaiderTest is Test {
     function testExchangeNotOwner() public {
         vm.prank(user1);
         potRaider.mint{value: mintPrice}(1);
-        
+
         vm.prank(user2);
         vm.expectRevert(PotRaider.NotOwner.selector);
         potRaider.exchange(0);
@@ -283,10 +292,10 @@ contract PotRaiderTest is Test {
     function testExchangeNoTreasury() public {
         vm.prank(user1);
         potRaider.mint{value: mintPrice}(1);
-        
+
         // Ensure contract has no ETH balance
         vm.deal(address(potRaider), 0);
-        
+
         vm.prank(user1);
         vm.expectRevert(PotRaider.NoTreasuryAvailable.selector);
         potRaider.exchange(0);
@@ -295,11 +304,11 @@ contract PotRaiderTest is Test {
     function testExchangeNoCirculatingSupply() public {
         vm.prank(user1);
         potRaider.mint{value: mintPrice}(1);
-        
+
         // Burn the NFT directly
         vm.prank(user1);
         potRaider.burn(0);
-        
+
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 0));
         potRaider.exchange(0);
@@ -308,12 +317,12 @@ contract PotRaiderTest is Test {
     function testBurn() public {
         vm.prank(user1);
         potRaider.mint{value: mintPrice}(1);
-        
+
         uint256 initialCirculatingSupply = potRaider.circulatingSupply();
-        
+
         vm.prank(user1);
         potRaider.burn(0);
-        
+
         assertEq(potRaider.circulatingSupply(), initialCirculatingSupply - 1, "Circulating supply should decrease");
         vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 0));
         potRaider.ownerOf(0);
@@ -339,9 +348,9 @@ contract PotRaiderTest is Test {
     function testSetPercentages() public {
         uint256 newBurnPercentage = 500; // 5% (500 basis points)
         uint256 newArtistPercentage = 2000; // 20% (2000 basis points)
-        
+
         potRaider.setPercentages(newBurnPercentage, newArtistPercentage);
-        
+
         assertEq(potRaider.burnPercentage(), newBurnPercentage);
         assertEq(potRaider.artistPercentage(), newArtistPercentage);
     }
@@ -370,14 +379,14 @@ contract PotRaiderTest is Test {
     function testPauseUnpause() public {
         potRaider.pause();
         assertTrue(potRaider.paused());
-        
+
         potRaider.unpause();
         assertFalse(potRaider.paused());
     }
 
     function testMintWhenPaused() public {
         potRaider.pause();
-        
+
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
         potRaider.mint{value: mintPrice}(1);
@@ -397,7 +406,7 @@ contract PotRaiderTest is Test {
 
     function testDepositETH() public {
         vm.prank(user1);
-        (bool success, ) = address(potRaider).call{value: 1 ether}("");
+        (bool success,) = address(potRaider).call{value: 1 ether}("");
         assertTrue(success, "ETH transfer failed");
         assertEq(address(potRaider).balance, 1 ether);
     }
@@ -428,13 +437,10 @@ contract PotRaiderTest is Test {
     function testTokenURI() public {
         vm.prank(user1);
         potRaider.mint{value: mintPrice}(1);
-        
+
         string memory uri = potRaider.tokenURI(0);
         assertTrue(bytes(uri).length > 0, "Token URI should not be empty");
-        assertTrue(
-            keccak256(bytes(uri)) != keccak256(bytes("")),
-            "Token URI should not be empty string"
-        );
+        assertTrue(keccak256(bytes(uri)) != keccak256(bytes("")), "Token URI should not be empty string");
     }
 
     function testTokenURINonexistentToken() public {
@@ -475,7 +481,7 @@ contract PotRaiderTest is Test {
 
     function testPurchaseLotteryTicketUSDCNotConfigured() public {
         potRaider.setLotteryContract(lotteryContract);
-        
+
         vm.expectRevert(PotRaider.UniswapQuoterNotConfigured.selector);
         potRaider.purchaseLotteryTicket();
     }
@@ -540,35 +546,31 @@ contract PotRaiderTest is Test {
         // Mint an NFT
         vm.prank(user1);
         potRaider.mint{value: mintPrice}(1);
-        
+
         // Set up USDC contract
         potRaider.setUSDCContract(usdcContract);
-        
+
         // Fund the contract with ETH and USDC
         vm.deal(address(potRaider), 2 ether);
-        
+
         // Mock USDC balance for the contract (1,000,000 USDC = 1 USDC with 6 decimals)
         uint256 usdcAmount = 1_000_000; // 1 USDC
         vm.mockCall(
-            usdcContract,
-            abi.encodeWithSelector(IERC20.balanceOf.selector, address(potRaider)),
-            abi.encode(usdcAmount)
+            usdcContract, abi.encodeWithSelector(IERC20.balanceOf.selector, address(potRaider)), abi.encode(usdcAmount)
         );
-        
+
         // Mock USDC transfer to user1
         vm.mockCall(
-            usdcContract,
-            abi.encodeWithSelector(IERC20.transfer.selector, user1, usdcAmount / 1),
-            abi.encode(true)
+            usdcContract, abi.encodeWithSelector(IERC20.transfer.selector, user1, usdcAmount / 1), abi.encode(true)
         );
-        
+
         // Exchange the NFT
         vm.prank(user1);
         potRaider.exchange(0);
-        
+
         // Verify NFT was burned
         assertEq(potRaider.circulatingSupply(), 0);
-        
+
         // Verify ETH was sent (user1 starts with 10 ether, spends mintPrice, then receives 2 ether)
         assertEq(user1.balance, 10 ether - mintPrice + 2 ether);
     }
@@ -585,8 +587,7 @@ contract PotRaiderTest is Test {
 
         vm.deal(address(potRaider), 1 ether);
 
-        uint256 ticketPrice =
-            potRaider.LOTTERY_TICKET_PRICE_USD() * (10 ** potRaider.USDC_DECIMALS());
+        uint256 ticketPrice = potRaider.LOTTERY_TICKET_PRICE_USD() * (10 ** potRaider.USDC_DECIMALS());
         uint256 expectedUSDC = (ticketPrice * 102) / 100;
         mockQuoter.setReturnAmount(expectedUSDC);
         mockRouter.setReturnAmount(expectedUSDC);
@@ -600,7 +601,7 @@ contract PotRaiderTest is Test {
         assertEq(mockRouter.receivedETH(), dailyAmount, "Incorrect ETH sent");
         assertEq(mockLottery.purchaseValue(), expectedUSDC, "Incorrect USDC value");
         assertEq(mockLottery.purchaseRecipient(), address(potRaider));
-        (,,,,,,uint256 amountOutMinimum,) = mockRouter.lastParams();
+        (,,,,,, uint256 amountOutMinimum,) = mockRouter.lastParams();
         assertEq(amountOutMinimum, (expectedUSDC * 95) / 100, "Incorrect slippage amount");
         assertEq(potRaider.lotteryPurchasedForDay(0), dailyAmount);
     }
@@ -648,19 +649,19 @@ contract PotRaiderTest is Test {
         uint8[] memory rValues = new uint8[](sampleSize);
         uint8[] memory gValues = new uint8[](sampleSize);
         uint8[] memory bValues = new uint8[](sampleSize);
-        
+
         for (uint256 i = 0; i < sampleSize; i++) {
             (uint8 r, uint8 g, uint8 b) = potRaider.getHueRGB(i);
             rValues[i] = r;
             gValues[i] = g;
             bValues[i] = b;
         }
-        
+
         // Calculate unique values as a proxy for entropy
         uint256 uniqueR = countUniqueValues(rValues);
         uint256 uniqueG = countUniqueValues(gValues);
         uint256 uniqueB = countUniqueValues(bValues);
-        
+
         // Return average unique values (higher = more entropy)
         return (uniqueR + uniqueG + uniqueB) / 3;
     }
@@ -692,26 +693,26 @@ contract PotRaiderTest is Test {
         // Set to different values
         potRaider.setLotteryParticipationDays(180);
         assertEq(potRaider.lotteryParticipationDays(), 180);
-        
+
         potRaider.setLotteryParticipationDays(730);
         assertEq(potRaider.lotteryParticipationDays(), 730);
-        
+
         potRaider.setLotteryParticipationDays(365);
         assertEq(potRaider.lotteryParticipationDays(), 365);
     }
 
     function testLotteryParticipationDaysEdgeCases() public {
         // Test edge cases for the setter function
-        
+
         // Test setting to 1 day
         potRaider.setLotteryParticipationDays(1);
         assertEq(potRaider.lotteryParticipationDays(), 1);
-        
+
         // Test setting to a large number
         uint256 largeNumber = 1000;
         potRaider.setLotteryParticipationDays(largeNumber);
         assertEq(potRaider.lotteryParticipationDays(), largeNumber);
-        
+
         // Test setting back to default
         potRaider.setLotteryParticipationDays(365);
         assertEq(potRaider.lotteryParticipationDays(), 365);
@@ -721,25 +722,27 @@ contract PotRaiderTest is Test {
         // Test that the setter function works correctly
         uint256 originalDuration = potRaider.lotteryParticipationDays();
         assertEq(originalDuration, 365);
-        
+
         // Set to a new value
         uint256 newDuration = 180;
         potRaider.setLotteryParticipationDays(newDuration);
         assertEq(potRaider.lotteryParticipationDays(), newDuration);
-        
+
         // Set back to original
         potRaider.setLotteryParticipationDays(originalDuration);
         assertEq(potRaider.lotteryParticipationDays(), originalDuration);
     }
-} 
+}
 
 // Minimal mock for Uniswap V3 Quoter
 contract MockQuoter {
     uint256 public returnAmount;
+
     function setReturnAmount(uint256 _amount) external {
         returnAmount = _amount;
     }
+
     function quoteExactInputSingle(address, address, uint24, uint256, uint160) external view returns (uint256) {
         return returnAmount;
     }
-} 
+}
