@@ -476,14 +476,14 @@ contract PotRaiderTest is Test {
 
     function testPurchaseLotteryTicketNotConfigured() public {
         vm.expectRevert(PotRaider.LotteryNotConfigured.selector);
-        potRaider.purchaseLotteryTicket();
+        potRaider.purchaseLottery();
     }
 
     function testPurchaseLotteryTicketUSDCNotConfigured() public {
         potRaider.setLotteryContract(lotteryContract);
 
         vm.expectRevert(PotRaider.UniswapQuoterNotConfigured.selector);
-        potRaider.purchaseLotteryTicket();
+        potRaider.purchaseLottery();
     }
 
     function testGetCurrentLotteryRoundNotConfigured() public {
@@ -519,7 +519,7 @@ contract PotRaiderTest is Test {
 
         // Expect revert (no selector, as staticcall may revert with no data)
         vm.expectRevert();
-        potRaider.purchaseLotteryTicket();
+        potRaider.purchaseLottery();
     }
 
     function testPurchaseLotteryTicketInsufficientUSDC() public {
@@ -539,7 +539,7 @@ contract PotRaiderTest is Test {
 
         // Expect revert (no selector, as staticcall may revert with no data)
         vm.expectRevert();
-        potRaider.purchaseLotteryTicket();
+        potRaider.purchaseLottery();
     }
 
     function testExchangeWithUSDC() public {
@@ -575,6 +575,33 @@ contract PotRaiderTest is Test {
         assertEq(user1.balance, 10 ether - mintPrice + 2 ether);
     }
 
+    function testGetRedeemValue() public {
+        vm.prank(user1);
+        potRaider.mint{value: mintPrice}(1);
+
+        potRaider.setUSDCContract(usdcContract);
+        vm.deal(address(potRaider), 2 ether);
+
+        uint256 usdcAmount = 1_000_000;
+        vm.mockCall(
+            usdcContract,
+            abi.encodeWithSelector(IERC20.balanceOf.selector, address(potRaider)),
+            abi.encode(usdcAmount)
+        );
+
+        uint256[2] memory values = potRaider.getRedeemValue(0);
+        assertEq(values[0], 2 ether);
+        assertEq(values[1], usdcAmount);
+    }
+
+    function testGetRedeemValueNoTreasury() public {
+        vm.prank(user1);
+        potRaider.mint{value: mintPrice}(1);
+        vm.deal(address(potRaider), 0);
+        vm.expectRevert(PotRaider.NoTreasuryAvailable.selector);
+        potRaider.getRedeemValue(0);
+    }
+
     function testPurchaseLotteryTicketSuccess() public {
         MockQuoter mockQuoter = new MockQuoter();
         MockSwapRouter mockRouter = new MockSwapRouter();
@@ -596,7 +623,7 @@ contract PotRaiderTest is Test {
 
         vm.expectEmit(true, true, false, true);
         emit PotRaider.LotteryTicketPurchased(0, dailyAmount);
-        potRaider.purchaseLotteryTicket();
+        potRaider.purchaseLottery();
 
         assertEq(mockRouter.receivedETH(), dailyAmount, "Incorrect ETH sent");
         assertEq(mockLottery.purchaseValue(), expectedUSDC, "Incorrect USDC value");
