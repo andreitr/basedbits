@@ -400,6 +400,22 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         circulatingSupply--;
     }
 
+    /// @notice Returns the ETH and USDC amounts redeemable per NFT
+    /// @return ethShare Amount of ETH redeemable
+    /// @return usdcShare Amount of USDC redeemable
+    function getRedeemValue() public view returns (uint256 ethShare, uint256 usdcShare) {
+        if (circulatingSupply == 0) {
+            return (0, 0);
+        }
+
+        ethShare = address(this).balance / circulatingSupply;
+
+        if (usdcContract != address(0)) {
+            uint256 usdcBalance = IERC20(usdcContract).balanceOf(address(this));
+            usdcShare = usdcBalance / circulatingSupply;
+        }
+    }
+
     /// @notice Returns the RGB color for a given tokenId
     function getHueRGB(uint256 tokenId) external view returns (uint8 r, uint8 g, uint8 b) {
         return _generateHueRGB(tokenId);
