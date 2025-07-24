@@ -215,6 +215,35 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         emit NFTExchanged(tokenId, msg.sender, ethShare, usdcShare);
     }
 
+    /// @notice View function to calculate the redeem value of an NFT
+    /// @return amounts An array containing [ETH share, USDC share]
+    function getRedeemValue(uint256 tokenId) external view returns (uint256[2] memory amounts) {
+        require(_ownerOf(tokenId) != address(0), "ERC721NonexistentToken");
+        if (circulatingSupply == 0) {
+            revert NoNFTsInCirculation();
+        }
+
+        uint256 contractBalance = address(this).balance;
+        if (contractBalance == 0) {
+            revert NoTreasuryAvailable();
+        }
+        uint256 ethShare = contractBalance / circulatingSupply;
+        if (ethShare == 0) {
+            revert NoTreasuryAvailable();
+        }
+
+        uint256 usdcShare = 0;
+        if (usdcContract != address(0)) {
+            uint256 usdcBalance = IERC20(usdcContract).balanceOf(address(this));
+            if (usdcBalance > 0) {
+                usdcShare = usdcBalance / circulatingSupply;
+            }
+        }
+
+        amounts[0] = ethShare;
+        amounts[1] = usdcShare;
+    }
+
     function setMintPrice(uint256 _mintPrice) external onlyOwner {
         mintPrice = _mintPrice;
     }
@@ -398,7 +427,7 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
 
     /// @notice Purchase a lottery ticket for the current lottery round using ETH→USDC swap
     /// @dev Can only be called once per lottery round, automatically calculates spending amount
-    function purchaseLotteryTicket() external whenNotPaused nonReentrant {
+    function purchaseLottery() external whenNotPaused nonReentrant {
         _checkLotteryConfigured();
 
         // Check if USDC contract and quoter are configured
