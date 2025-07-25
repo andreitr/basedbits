@@ -164,9 +164,10 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
     function setCheckInStreak(address user, uint16 streak) public {
         vm.startPrank(user);
 
+        uint256 timestamp = vm.getBlockTimestamp();
         for (uint256 i; i < streak; i++) {
             checkIn.checkIn();
-            vm.warp(block.timestamp + 1.01 days);
+            vm.warp(timestamp += 1.01 days);
         }
 
         (, uint16 userStreak, uint16 userCount) = checkIn.checkIns(user);

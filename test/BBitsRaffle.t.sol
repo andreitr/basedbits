@@ -262,9 +262,10 @@ contract BBitsRaffleTest is BBitsTestUtils, IBBitsRaffle {
     }
 
     function testNewFreeEntrySuccessConditions() public prank(owner) {
-        vm.warp(block.timestamp + 1.01 days);
+        uint256 timestamp = vm.getBlockTimestamp();
+        vm.warp(timestamp += 1.01 days);
         checkIn.checkIn();
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
         setRaffleStatus(RaffleStatus.InRaffle);
         checkIn.checkIn();
 

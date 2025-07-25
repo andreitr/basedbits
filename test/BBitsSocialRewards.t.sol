@@ -201,7 +201,7 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
         socialRewards.depositBBITS(2048e18);
         socialRewards.startNextRound();
 
-        uint256 startTime = block.timestamp;
+        uint256 startTime = vm.getBlockTimestamp();
 
         (
             uint256 startedAt,
@@ -220,7 +220,7 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
         assert(socialRewards.status() == RewardsStatus.InRound);
         assertEq(bbits.balanceOf(address(socialRewards)), 2048e18);
 
-        vm.warp(block.timestamp + 100 days);
+        vm.warp(startTime + 100 days);
 
         vm.expectEmit(true, true, true, true);
         emit End(1, 0, 0);
@@ -228,7 +228,7 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
 
         (startedAt, settledAt, userReward, adminReward, entriesCount, rewardedCount) = socialRewards.round(1);
         assertEq(startedAt, startTime);
-        assertEq(settledAt, block.timestamp);
+        assertEq(settledAt, vm.getBlockTimestamp());
         assertEq(userReward, 0);
         assertEq(adminReward, 0);
         assertEq(entriesCount, 0);
@@ -241,7 +241,7 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
         socialRewards.depositBBITS(2048e18);
         socialRewards.startNextRound();
 
-        uint256 startTime = block.timestamp;
+        uint256 startTime = vm.getBlockTimestamp();
 
         vm.stopPrank();
         vm.startPrank(user0);
@@ -261,7 +261,7 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
         vm.stopPrank();
         vm.startPrank(owner);
 
-        vm.warp(block.timestamp + 100 days);
+        vm.warp(startTime + 100 days);
 
         vm.stopPrank();
         vm.startPrank(user2);
@@ -284,7 +284,7 @@ contract BBitsSocialRewardsTest is BBitsTestUtils, IBBitsSocialRewards {
 
         (startedAt, settledAt, userReward, adminReward,, rewardedCount) = socialRewards.round(1);
         assertEq(startedAt, startTime);
-        assertEq(settledAt, block.timestamp);
+        assertEq(settledAt, vm.getBlockTimestamp());
         assertEq(userReward, predictedUserRewards);
         assertEq(adminReward, predictedAdminRewards);
         assertEq(rewardedCount, 1);

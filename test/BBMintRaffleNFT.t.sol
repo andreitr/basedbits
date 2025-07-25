@@ -60,9 +60,10 @@ contract BBMintRaffleNFTTest is BBitsTestUtils, IBBMintRaffleNFT {
         /// Cap
         uint256 cap = mintRaffle.cap();
         uint256 supply = mintRaffle.currentMint();
+        uint256 timestamp = vm.getBlockTimestamp();
         while (supply < cap) {
             mintRaffle.mint{value: 0.001 ether}();
-            vm.warp(block.timestamp + 1.01 days);
+            vm.warp(timestamp += 1.01 days);
             supply = mintRaffle.currentMint();
         }
 

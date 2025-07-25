@@ -48,11 +48,12 @@ contract BBitsCheckInTest is BBitsTestUtils {
         vm.prank(user0);
         checkIn.checkIn();
 
-        vm.warp(block.timestamp + 2.01 days);
+        uint256 timestamp = vm.getBlockTimestamp();
+        vm.warp(timestamp += 2.01 days);
         vm.prank(user0);
         checkIn.checkIn();
 
-        vm.warp(block.timestamp + 2.01 days);
+        vm.warp(timestamp += 2.01 days);
         vm.prank(user0);
         checkIn.checkIn();
 
@@ -65,11 +66,12 @@ contract BBitsCheckInTest is BBitsTestUtils {
         vm.prank(user0);
         checkIn.checkIn();
 
-        vm.warp(block.timestamp + 1.01 days);
+        uint256 timestamp = vm.getBlockTimestamp();
+        vm.warp(timestamp += 1.01 days);
         vm.prank(user0);
         checkIn.checkIn();
 
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
         vm.prank(user0);
         checkIn.checkIn();
 
