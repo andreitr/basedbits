@@ -20,16 +20,8 @@ contract AEYETest is Test {
 
     event TokenCreated(uint256 indexed tokenId, string metadata);
     event Start(uint256 indexed tokenId);
-    event CommunityRewardsClaimed(
-        uint256 indexed tokenId,
-        address indexed user,
-        uint256 amount
-    );
-    event PercentagesUpdated(
-        uint256 burnPercentage,
-        uint256 artistPercentage,
-        uint256 communityPercentage
-    );
+    event CommunityRewardsClaimed(uint256 indexed tokenId, address indexed user, uint256 amount);
+    event PercentagesUpdated(uint256 burnPercentage, uint256 artistPercentage, uint256 communityPercentage);
 
     function setUp() public {
         owner = makeAddr("owner");
@@ -284,7 +276,7 @@ contract AEYETest is Test {
         users[1] = user2;
         users[2] = user3;
 
-        for (uint i = 0; i < users.length; i++) {
+        for (uint256 i = 0; i < users.length; i++) {
             vm.deal(users[i], 1 ether);
             vm.startPrank(users[i]);
             aeye.mint{value: 0.0008 ether}();
@@ -297,7 +289,7 @@ contract AEYETest is Test {
         vm.stopPrank();
 
         // Check that all users received rewards
-        for (uint i = 0; i < users.length; i++) {
+        for (uint256 i = 0; i < users.length; i++) {
             assertTrue(aeye.unclaimedRewards(users[i]) > 0);
         }
     }
@@ -333,10 +325,7 @@ contract AEYETest is Test {
         // Check rewards - user2 should have more rewards due to higher community percentage
         uint256 user1Rewards = aeye.unclaimedRewards(user1);
         uint256 user2Rewards = aeye.unclaimedRewards(user2);
-        assertTrue(
-            user2Rewards >= user1Rewards,
-            "User2 should have at least as many rewards as user1"
-        );
+        assertTrue(user2Rewards >= user1Rewards, "User2 should have at least as many rewards as user1");
     }
 
     function test_RewardAccrualWithNoMinters() public {
@@ -384,7 +373,7 @@ contract AEYETest is Test {
         assertEq(aeye.weightOf(user1), 12);
 
         // Test max streak cap at 10
-        for (uint i = 0; i < 8; i++) {
+        for (uint256 i = 0; i < 8; i++) {
             vm.startPrank(owner);
             aeye.createToken(string(abi.encodePacked("test-metadata", i + 3)));
             vm.stopPrank();
@@ -481,7 +470,7 @@ contract AEYETest is Test {
         assertEq(aeye.weightOf(user1), 12);
 
         // Test weight cap at streak = 10
-        for (uint i = 0; i < 8; i++) {
+        for (uint256 i = 0; i < 8; i++) {
             vm.startPrank(owner);
             aeye.createToken(string(abi.encodePacked("test-metadata", i + 3)));
             vm.stopPrank();

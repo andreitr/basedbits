@@ -82,7 +82,7 @@ contract BBitsCheckInTest is BBitsTestUtils {
         vm.startPrank(user0);
         checkIn.checkIn();
 
-        vm.expectRevert('At least 24 hours must have passed since the last check-in or this is the first check-in');
+        vm.expectRevert("At least 24 hours must have passed since the last check-in or this is the first check-in");
         checkIn.checkIn();
         vm.stopPrank();
     }
@@ -91,7 +91,7 @@ contract BBitsCheckInTest is BBitsTestUtils {
         assertFalse(checkIn.isEligible(user2), "User2 should not have enough NFTs");
 
         vm.prank(user2);
-        vm.expectRevert('Must have at least one NFT from an allowed collection to check in');
+        vm.expectRevert("Must have at least one NFT from an allowed collection to check in");
         checkIn.checkIn();
     }
 
@@ -109,7 +109,7 @@ contract BBitsCheckInTest is BBitsTestUtils {
         checkIn.ban(user0);
 
         vm.prank(user0);
-        vm.expectRevert('This address is banned from posting');
+        vm.expectRevert("This address is banned from posting");
         checkIn.checkIn();
     }
 
@@ -180,7 +180,7 @@ contract BBitsCheckInTest is BBitsTestUtils {
         assertTrue(checkIn.collections(address(basedBits)), "Initial collection should exist");
 
         // Try to add the existing collection and catch the revert
-        vm.expectRevert('Collection already exists');
+        vm.expectRevert("Collection already exists");
         checkIn.addCollection(address(basedBits));
     }
 

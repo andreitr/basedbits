@@ -5,7 +5,6 @@ import "forge-std/Script.sol";
 import {PotRaider} from "@src/PotRaider.sol";
 
 contract PotRaiderDeploy is Script {
-        
     PotRaider public potRaider;
     address public burner = 0x1595409cbAEf3dD2485107fb1e328fA0fA505c10;
     address public artist = 0x1d671d1B191323A38490972D58354971E5c1cd2A;
@@ -17,8 +16,8 @@ contract PotRaiderDeploy is Script {
 
         potRaider = new PotRaider(
             0.0013 ether,
-            burner,                 // burnerContract
-            artist                  // artist
+            burner, // burnerContract
+            artist // artist
         );
 
         // Set the USDC contract address
@@ -32,4 +31,4 @@ contract PotRaiderDeploy is Script {
 
         vm.stopBroadcast();
     }
-} 
+}

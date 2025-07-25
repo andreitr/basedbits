@@ -64,14 +64,14 @@ contract BBitsSocialTest is BBitsTestUtils {
     function testPostMessageNotEnoughStreaks() public {
         setCheckInStreak(user0, 3);
         vm.prank(user0);
-        vm.expectRevert('Not enough streaks to post');
+        vm.expectRevert("Not enough streaks to post");
         social.post("This should fail");
     }
 
     function testPostMessageTooManyCharacters() public {
         setCheckInStreak(user0, 22);
         vm.prank(user0);
-        vm.expectRevert('Message exceeds character limit');
+        vm.expectRevert("Message exceeds character limit");
         social.post(
             "Today, I stumbled upon an old journal. Reading my past thoughts feels like meeting an old friend. Memories flood back, reminding me of who I am."
         );
@@ -81,7 +81,7 @@ contract BBitsSocialTest is BBitsTestUtils {
         setCheckInStreak(user0, 22);
         setCheckInBan(user0);
         vm.prank(user0);
-        vm.expectRevert('Account is banned from Based Bits');
+        vm.expectRevert("Account is banned from Based Bits");
         social.post("Test message");
     }
 
