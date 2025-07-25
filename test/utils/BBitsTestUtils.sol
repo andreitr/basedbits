@@ -23,6 +23,7 @@ import {BBitsSocialRewards} from "@src/BBitsSocialRewards.sol";
 import {BBitsBurnerNFT} from "@src/BBitsBurnerNFT.sol";
 import {Punkalot} from "@src/Punkalot.sol";
 import {BaseRace} from "@src/BaseRace.sol";
+import {PotRaider, IBaseJackpot} from "@src/PotRaider.sol";
 
 // Minters
 import {BBitsBadge7Day} from "@src/minters/BBitsBadge7Day.sol";
@@ -47,6 +48,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
     BBitsBurnerNFT public burnerNFT;
     Punkalot public punksALot;
     BaseRace public baseRace;
+    PotRaider public potRaider;
 
     BBitsBadge7Day public badge7DayMinter;
     BBitsBadgeFirstClick public badgeFirstClickMinter;
@@ -55,6 +57,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
     IERC721 public basedBits;
     IERC721 public bearPunks;
     IERC20 public WETH;
+    IERC20 public USDC;
 
     address public owner;
     address public user0;

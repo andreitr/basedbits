@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {ISwapRouter} from "@src/PotRaider.sol";
+import {IV3Router} from "@src/interfaces/uniswap/IV3Router.sol";
 
-contract MockSwapRouter is ISwapRouter {
+contract MockSwapRouter is IV3Router {
     uint256 public returnAmount;
     uint256 public receivedETH;
     ExactInputSingleParams public lastParams;
@@ -20,6 +20,10 @@ contract MockSwapRouter is ISwapRouter {
     {
         receivedETH = msg.value;
         lastParams = params;
+        return returnAmount;
+    }
+
+    function exactOutputSingle(ExactOutputSingleParams calldata params) external payable returns (uint256 amountIn) {
         return returnAmount;
     }
 }
