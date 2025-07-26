@@ -7,3 +7,6 @@
 [submodule "lib/Doubly-Linked-List"]
 	path = lib/Doubly-Linked-List
 	url = https://github.com/0xCooki/Doubly-Linked-List
+[submodule "lib/v3-periphery"]
+	path = lib/v3-periphery
+	url = https://github.com/Uniswap/v3-periphery

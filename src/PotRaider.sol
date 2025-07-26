@@ -374,10 +374,12 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
 
         ethShare = address(this).balance / circulatingSupply;
 
-        if (usdcContract != address(0)) {
-            uint256 usdcBalance = IERC20(usdcContract).balanceOf(address(this));
+        if (address(usdc) != address(0)) {
+            uint256 usdcBalance = IERC20(usdc).balanceOf(address(this));
             usdcShare = usdcBalance / circulatingSupply;
         }
+        
+        return (ethShare, usdcShare);
     }
 
     /// @notice Returns the RGB color for a given tokenId
