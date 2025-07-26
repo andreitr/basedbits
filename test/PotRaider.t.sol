@@ -345,6 +345,28 @@ contract PotRaiderTest is Test {
         potRaider.setBurnPercentage(10001);
     }
 
+    function testSetArtistPercentage() public {
+        uint256 newPercentage = 1500; // 15%
+        potRaider.setArtistPercentage(newPercentage);
+        assertEq(potRaider.artistPercentage(), newPercentage);
+    }
+
+    function testSetArtistPercentageOnlyOwner() public {
+        vm.prank(user1);
+        vm.expectRevert();
+        potRaider.setArtistPercentage(1500);
+    }
+
+    function testSetArtistPercentageExceeds100() public {
+        vm.expectRevert("Artist percentage cannot exceed 100%");
+        potRaider.setArtistPercentage(10001);
+    }
+
+    function testSetArtistPercentageTotalExceeds100() public {
+        vm.expectRevert("Total percentages cannot exceed 100%");
+        potRaider.setArtistPercentage(9001);
+    }
+
     function testSetPercentages() public {
         uint256 newBurnPercentage = 500; // 5% (500 basis points)
         uint256 newArtistPercentage = 2000; // 20% (2000 basis points)
@@ -584,9 +606,7 @@ contract PotRaiderTest is Test {
 
         uint256 usdcAmount = 1_000_000;
         vm.mockCall(
-            usdcContract,
-            abi.encodeWithSelector(IERC20.balanceOf.selector, address(potRaider)),
-            abi.encode(usdcAmount)
+            usdcContract, abi.encodeWithSelector(IERC20.balanceOf.selector, address(potRaider)), abi.encode(usdcAmount)
         );
 
         uint256[2] memory values = potRaider.getRedeemValue(0);
