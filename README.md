@@ -8,3 +8,4 @@ Built using [Foundry](https://book.getfoundry.sh/)
 - `forge test --gas-report`
 - `forge coverage`
 - `forge coverage --report lcov`
+- `forge script script/utils/CheckQuoter.s.sol --rpc-url <BASE_RPC_URL>`

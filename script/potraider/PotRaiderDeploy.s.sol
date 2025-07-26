@@ -33,7 +33,6 @@ contract PotRaiderDeploy is Script {
             uniV3Quoter,
             lotteryContract
         );
-
         vm.stopBroadcast();
     }
 }

@@ -90,7 +90,6 @@ contract AEYE is ERC1155Supply, Ownable, Pausable, AccessControl, ReentrancyGuar
 
     error MustPayMintPrice();
     error MetadataNotSet();
-    error WithdrawFailed();
     error InvalidPercentage();
     error TransferFailed();
     error NoRewardsToClaim();

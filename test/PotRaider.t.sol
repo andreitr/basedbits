@@ -4,6 +4,7 @@ pragma solidity 0.8.25;
 import {BBitsTestUtils, BBitsBurner, IERC20, console} from "@test/utils/BBitsTestUtils.sol";
 import {PotRaider, IPotRaider, IV3Router, IV3Quoter, IBaseJackpot} from "@src/PotRaider.sol";
 import {MockERC20} from "@test/mocks/MockERC20.sol";
+import {ReentrantMint} from "@test/mocks/ReentrantMint.sol";
 
 /// @dev forge test --match-contract PotRaiderTest -vvv
 contract PotRaiderTest is BBitsTestUtils {
@@ -195,7 +196,6 @@ contract PotRaiderTest is BBitsTestUtils {
         potRaider.mint{value: mintPrice}(1);
 
         uint256 initialCirculatingSupply = potRaider.circulatingSupply();
-
         potRaider.burn(0);
 
         assertEq(potRaider.circulatingSupply(), initialCirculatingSupply - 1, "Circulating supply should decrease");
