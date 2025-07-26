@@ -253,6 +253,15 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         burnPercentage = _burnPercentage;
     }
 
+    /// @notice Set the artist percentage for mint fees
+    /// @param _artistPercentage New artist percentage (10_000 = 100%)
+    function setArtistPercentage(uint256 _artistPercentage) external onlyOwner {
+        require(_artistPercentage <= 10_000, "Artist percentage cannot exceed 100%");
+        require(_artistPercentage + burnPercentage <= 10_000, "Total percentages cannot exceed 100%");
+        artistPercentage = uint16(_artistPercentage);
+        emit PercentagesUpdated(burnPercentage, _artistPercentage);
+    }
+
     /// @notice Update the burn and artist percentages
     /// @param _burnPercentage New burn percentage (10_000 = 100%)
     /// @param _artistPercentage New artist percentage (10_000 = 100%)
