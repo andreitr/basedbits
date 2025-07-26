@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {ILotteryContract} from "@src/PotRaider.sol";
+import {IBaseJackpot} from "@src/interfaces/baseJackpot/IBaseJackpot.sol";
 
-contract MockLottery is ILotteryContract {
+contract MockLottery is IBaseJackpot {
     uint256 public override lpPoolTotal;
     uint256 public override lastJackpotEndTime;
     uint256 public override roundDurationInSeconds;
@@ -26,4 +26,12 @@ contract MockLottery is ILotteryContract {
     function withdrawWinnings() external override {
         withdrawCalled = true;
     }
+
+    function withdrawReferralFees() external override {}
+
+    function usersInfo(address _user)
+        external
+        override
+        returns (uint256 ticketsPurchasedTotalBps, uint256 winningsClaimable, bool active)
+    {}
 }

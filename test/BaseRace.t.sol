@@ -295,24 +295,25 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         }
 
         /// Lap still active
-        vm.warp(block.timestamp + 1.01 days);
+        uint256 timestamp = vm.getBlockTimestamp();
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap();
 
         vm.expectRevert(LapStillActive.selector);
         baseRace.startNextLap();
 
         /// Progress through all laps to test final lap condition
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap(); // Lap 2
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap(); // Lap 3
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap(); // Lap 4
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap(); // Lap 5
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap(); // Lap 6 (final)
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
 
         vm.expectRevert(IsFinalLap.selector);
         baseRace.startNextLap();
@@ -368,7 +369,8 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         }
 
         /// Lap 1
-        vm.warp(block.timestamp + 1.01 days);
+        uint256 timestamp = vm.getBlockTimestamp();
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap();
 
         (uint256 entries,,, uint256 lapTotal, uint256 lapCount,,) = baseRace.getRace(1);
@@ -381,28 +383,28 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         assertEq(positions.length, 7);
 
         /// Lap 2
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap();
         (,, eliminations, positions) = baseRace.getLap(1, 2);
         assertEq(eliminations, 1);
         assertEq(positions.length, 6);
 
         /// Lap 3
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap();
         (,, eliminations, positions) = baseRace.getLap(1, 3);
         assertEq(eliminations, 1);
         assertEq(positions.length, 5);
 
         /// Lap 4
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap();
         (,, eliminations, positions) = baseRace.getLap(1, 4);
         assertEq(eliminations, 1);
         assertEq(positions.length, 4);
 
         /// Lap 5
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap();
         (,, eliminations, positions) = baseRace.getLap(1, 5);
         assertEq(eliminations, 2);
@@ -541,14 +543,15 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         baseRace.finishGame();
 
         /// Final lap not reached (only on lap 1)
-        vm.warp(block.timestamp + 1.01 days);
+        uint256 timestamp = vm.getBlockTimestamp();
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap();
 
         vm.expectRevert(FinalLapNotReached.selector);
         baseRace.finishGame();
 
         /// Start final lap but try to finish too early
-        vm.warp(block.timestamp + 1.01 days);
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap(); // Start lap 2 (final lap)
 
         /// Lap still active (try to finish before lap time is up)
@@ -564,9 +567,10 @@ contract BaseRaceTest is BBitsTestUtils, IBaseRace {
         baseRace.mint{value: 0.001 ether}();
 
         // Start and complete the only lap needed
-        vm.warp(block.timestamp + 1.01 days);
+        uint256 timestamp = vm.getBlockTimestamp();
+        vm.warp(timestamp += 1.01 days);
         baseRace.startNextLap(); // Start lap 1 (final lap)
-        vm.warp(block.timestamp + 1.01 days); // Wait for lap time to complete
+        vm.warp(timestamp += 1.01 days); // Wait for lap time to complete
 
         uint256 mintFee = baseRace.mintFee();
         uint256 winnerBalanceBefore = admin.balance;

@@ -13,13 +13,7 @@ import {IERC165} from "@openzeppelin/utils/introspection/IERC165.sol";
 /// @notice This contract allows users to mint daily NFTs with unique artwork.
 /// @dev    The contract operates on admin-initiated cycles, where admins can create new tokens with custom SVG and metadata.
 ///         The Owner retains admin rights over pausability and the mintPrice.
-contract AEYE is
-    ERC1155Supply,
-    Ownable,
-    Pausable,
-    AccessControl,
-    ReentrancyGuard
-{
+contract AEYE is ERC1155Supply, Ownable, Pausable, AccessControl, ReentrancyGuard {
     /// @notice The price to mint an NFT.
     uint256 public mintPrice;
 
@@ -64,9 +58,13 @@ contract AEYE is
 
     /// @notice Override supportsInterface to resolve conflicts between ERC1155 and AccessControl
     /// @param interfaceId The interface identifier to check
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view virtual override(ERC1155, AccessControl) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC1155, AccessControl)
+        returns (bool)
+    {
         return super.supportsInterface(interfaceId);
     }
 
@@ -86,10 +84,7 @@ contract AEYE is
     /// @param _svg The SVG content for the token
     /// @param _metadata The metadata for the token
     /// @dev This function increments currentMint and creates a new token
-    function createToken(
-        string memory _svg,
-        string memory _metadata
-    ) external onlyRole(ADMIN_ROLE) {
+    function createToken(string memory _svg, string memory _metadata) external onlyRole(ADMIN_ROLE) {
         // End the current mint cycle if not the first token
         if (currentMint > 0) {
             emit End(currentMint);
@@ -99,11 +94,7 @@ contract AEYE is
         ++currentMint;
 
         // Create the new token
-        tokenMetadata[currentMint] = TokenMetadata({
-            svg: _svg,
-            metadata: _metadata,
-            createdAt: block.timestamp
-        });
+        tokenMetadata[currentMint] = TokenMetadata({svg: _svg, metadata: _metadata, createdAt: block.timestamp});
 
         emit TokenCreated(currentMint, _svg, _metadata);
         emit Start(currentMint);
@@ -118,7 +109,7 @@ contract AEYE is
     /// @notice Allows the owner to withdraw accumulated ETH
     function withdraw() external onlyOwner {
         uint256 amount = address(this).balance;
-        (bool success, ) = msg.sender.call{value: amount}("");
+        (bool success,) = msg.sender.call{value: amount}("");
         if (!success) revert WithdrawFailed();
         emit Withdrawn(msg.sender, amount);
     }
@@ -135,9 +126,7 @@ contract AEYE is
 
     /// @notice This view function returns the art for any given token Id.
     /// @param  _tokenId The token Id of the NFT.
-    function uri(
-        uint256 _tokenId
-    ) public view override returns (string memory) {
+    function uri(uint256 _tokenId) public view override returns (string memory) {
         return tokenMetadata[_tokenId].metadata;
     }
 

@@ -1,274 +1,206 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import "@openzeppelin/token/ERC721/ERC721.sol";
-import "@openzeppelin/token/ERC721/extensions/ERC721Burnable.sol";
-import "@openzeppelin/access/Ownable.sol";
-import "@openzeppelin/utils/Pausable.sol";
-import "@openzeppelin/utils/Base64.sol";
-import "@openzeppelin/utils/Strings.sol";
-import "@openzeppelin/token/ERC20/IERC20.sol";
-import "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/utils/ReentrancyGuard.sol";
+import {ERC721Burnable, ERC721} from "@openzeppelin/token/ERC721/extensions/ERC721Burnable.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/access/Ownable.sol";
+import {Pausable} from "@openzeppelin/utils/Pausable.sol";
+import {Base64} from "@openzeppelin/utils/Base64.sol";
+import {Strings} from "@openzeppelin/utils/Strings.sol";
+import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
+import {BBitsBurner} from "src/BBitsBurner.sol";
+import {IV3Router} from "@src/interfaces/uniswap/IV3Router.sol";
+import {IV3Quoter} from "@src/interfaces/uniswap/IV3Quoter.sol";
+import {IBaseJackpot} from "@src/interfaces/baseJackpot/IBaseJackpot.sol";
+import {IPotRaider} from "@src/interfaces/IPotRaider.sol";
 
-// Uniswap V3 Router interface for ETH→USDC swaps
-interface ISwapRouter {
-    struct ExactInputSingleParams {
-        address tokenIn;
-        address tokenOut;
-        uint24 fee;
-        address recipient;
-        uint256 deadline;
-        uint256 amountIn;
-        uint256 amountOutMinimum;
-        uint160 sqrtPriceLimitX96;
-    }
-
-    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
-}
-
-// Lottery contract interface
-interface ILotteryContract {
-    function purchaseTickets(address referrer, uint256 value, address recipient) external;
-    function withdrawWinnings() external;
-    function lpPoolTotal() external view returns (uint256);
-    function lastJackpotEndTime() external view returns (uint256);
-    function roundDurationInSeconds() external view returns (uint256);
-}
-
-contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard {
+contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
-
-    uint256 public totalSupply;
-    uint256 public circulatingSupply;
-    uint256 public mintPrice;
-    uint256 public burnPercentage;
-    address public burnerContract;
-
-    // Next tokenId to mint
-    uint256 private nextTokenId;
-
-    /// @notice WETH address for Uniswap V3 swaps
-    address public wethAddress;
 
     /// @notice The artist address that receives a portion of mint fees
     address public immutable artist;
 
-    /// @dev    10_000 = 100%
+    IERC20 public immutable weth;
+
+    IERC20 public immutable usdc;
+
+    BBitsBurner public immutable bbitsBurner;
+
+    /// @notice Uniswap V3 Router for ETH→USDC swaps
+    IV3Router public immutable uniswapRouter;
+
+    /// @notice Uniswap V3 Quoter for ETH→USDC estimation
+    IV3Quoter public immutable uniswapQuoter;
+
+    IBaseJackpot public immutable lottery;
+
+    uint256 public immutable lotteryTicketPriceUSD;
+
+    uint256 public immutable maxMint;
+
+    uint256 public totalSupply;
+
+    uint256 public circulatingSupply;
+
+    uint256 public mintPrice;
+
+    /// @dev 10_000 = 100%
+    uint256 public burnPercentage;
+
+    /// @dev 10_000 = 100%
     uint16 public artistPercentage;
 
     /// @notice OpenSea-style contract-level metadata URI
-    string public contractMetadataURI;
+    string public contractURI;
 
-    /// @notice Timestamp when the contract was deployed
-    uint256 public immutable deploymentTimestamp;
+    /// @notice Referrer address for lottery ticket purchases
+    address public lotteryReferrer;
 
     /// @notice Lottery ticket purchase system variables
-    uint256 public lotteryParticipationDays = 365;
-    uint256 public constant LOTTERY_TICKET_PRICE_USD = 1; // $1 per ticket
-    uint256 public constant USDC_DECIMALS = 6; // USDC has 6 decimals
-    uint256 public constant MAX_MINT_PER_CALL = 50; // Max NFTs mintable per call
-    address public lotteryContract;
-    address public usdcContract;
-    address public uniswapRouter; // Uniswap V3 Router for ETH→USDC swaps
-    address public uniswapQuoter; // Uniswap V3 Quoter for ETH→USDC estimation
+    uint256 public lotteryParticipationDays;
+
+    /// @dev Internal counter to track number of lotteries entered.
+    uint256 public currentLotteryRound;
+
     mapping(uint256 => uint256) public lotteryPurchasedForDay;
-    address public lotteryReferrer; // Referrer address for lottery ticket purchases
 
-    event NFTExchanged(uint256 indexed tokenId, address indexed owner, uint256 ethAmount, uint256 usdcAmount);
-
-    event PercentagesUpdated(uint256 burnPercentage, uint256 artistPercentage);
-
-    event LotteryTicketPurchased(uint256 indexed day, uint256 amount);
-
-    event LotteryContractUpdated(address indexed newContract);
-    event USDCContractUpdated(address indexed newContract);
-    event UniswapQuoterUpdated(address indexed newQuoter);
-    event LotteryReferrerUpdated(address indexed newReferrer);
-
-    error InvalidPercentage();
-    error TransferFailed();
-    error LotteryNotConfigured();
-    error LotteryAlreadyPurchased();
-    error LotteryPeriodEnded();
-    error InsufficientTreasury();
-    error USDCNotConfigured();
-    error InsufficientUSDCBalance();
-    error InsufficientUSDCForTicket();
-    error UniswapQuoterNotConfigured();
-    error UniswapRouterNotConfigured();
-    error QuoterCallFailed();
-    error QuantityZero();
-    error InsufficientPayment();
-    error BurnTransferFailed();
-    error ArtistTransferFailed();
-    error NotOwner();
-    error NoNFTsInCirculation();
-    error NoTreasuryAvailable();
-    error ExchangeTransferFailed();
-    error WETHNotConfigured();
-    error MaxMintPerCallExceeded();
-
-    function _checkWETHConfigured() private view {
-        if (wethAddress == address(0)) {
-            revert WETHNotConfigured();
-        }
-    }
-
-    constructor(uint256 _mintPrice, address _burnerContract, address _artist)
-        ERC721("Pot Raider", "POTRAIDER")
-        Ownable(msg.sender)
-    {
+    constructor(
+        address _owner,
+        uint256 _mintPrice,
+        address _artist,
+        BBitsBurner _bbitsBurner,
+        IERC20 _weth,
+        IERC20 _usdc,
+        IV3Router _router,
+        IV3Quoter _quoter,
+        IBaseJackpot _lottery
+    ) ERC721("Pot Raider", "POTRAIDER") Ownable(_owner) {
         mintPrice = _mintPrice;
-        burnerContract = _burnerContract;
         artist = _artist;
+        bbitsBurner = _bbitsBurner;
+        weth = _weth;
+        usdc = _usdc;
+        uniswapRouter = _router;
+        uniswapQuoter = _quoter;
+        lottery = _lottery;
+
         artistPercentage = 1000; // 10%
         burnPercentage = 1000; // 10%
-        deploymentTimestamp = block.timestamp;
+        lotteryTicketPriceUSD = 1e6; // $1 per ticket
+        maxMint = 50;
+        lotteryParticipationDays = 365;
+
+        usdc.approve(address(lottery), type(uint256).max);
     }
 
-    /// @notice Allow contract to receive plain ETH transfers
+    /// EXTERNAL ///
+
     receive() external payable {}
 
     function mint(uint256 quantity) external payable whenNotPaused nonReentrant {
-        if (quantity == 0) {
-            revert QuantityZero();
-        }
-        if (quantity > MAX_MINT_PER_CALL) {
-            revert MaxMintPerCallExceeded();
-        }
-        if (msg.value < mintPrice * quantity) {
-            revert InsufficientPayment();
-        }
+        if (quantity == 0) revert QuantityZero();
+        if (quantity > maxMint) revert MaxMintPerCallExceeded();
+        if (msg.value < mintPrice * quantity) revert InsufficientPayment();
 
         uint256 burnAmount = (msg.value * burnPercentage) / 10_000;
         uint256 artistAmount = (msg.value * artistPercentage) / 10_000;
 
         // Send burn amount to burner contract
-        if (burnAmount > 0) {
-            (bool burnSuccess,) = burnerContract.call{value: burnAmount}("");
-            if (!burnSuccess) {
-                revert BurnTransferFailed();
-            }
-        }
+        if (burnAmount > 0) bbitsBurner.burn{value: burnAmount}(0);
 
         // Send artist amount to artist
         if (artistAmount > 0) {
             (bool artistSuccess,) = artist.call{value: artistAmount}("");
-            if (!artistSuccess) {
-                revert ArtistTransferFailed();
-            }
+            if (!artistSuccess) revert TransferFailed();
         }
 
         for (uint256 i = 0; i < quantity; i++) {
-            _safeMint(msg.sender, nextTokenId);
-            nextTokenId++;
+            _mint(msg.sender, totalSupply);
             totalSupply++;
             circulatingSupply++;
         }
     }
 
     function exchange(uint256 tokenId) external whenNotPaused nonReentrant {
-        if (ownerOf(tokenId) != msg.sender) {
-            revert NotOwner();
-        }
-        if (circulatingSupply == 0) {
-            revert NoNFTsInCirculation();
-        }
+        if (ownerOf(tokenId) != msg.sender) revert NotOwner();
 
-        // Check ETH balance before proceeding
-        uint256 contractBalance = address(this).balance;
-        if (contractBalance == 0) {
-            revert NoTreasuryAvailable();
-        }
-        uint256 ethShare = contractBalance / circulatingSupply;
-        if (ethShare == 0) {
-            revert NoTreasuryAvailable();
-        }
-
-        // Calculate USDC share (if usdcContract is set)
-        uint256 usdcShare = 0;
-        uint256 usdcBalance = 0;
-        if (usdcContract != address(0)) {
-            usdcBalance = IERC20(usdcContract).balanceOf(address(this));
-            if (usdcBalance == 0) {
-                usdcShare = 0;
-            } else {
-                usdcShare = usdcBalance / circulatingSupply;
-            }
-        }
+        // Calculate shares
+        uint256 ethShare = address(this).balance / circulatingSupply;
+        uint256 usdcShare = usdc.balanceOf(address(this)) / circulatingSupply;
+        if (ethShare == 0 && usdcShare == 0) revert NoTreasuryAvailable();
 
         // Burn the NFT first (state update before external calls)
         burn(tokenId);
 
         // Send USDC share to the owner (if any), but only if balance is sufficient
-        if (usdcShare > 0) {
-            IERC20(usdcContract).safeTransfer(msg.sender, usdcShare);
-        }
+        if (usdcShare > 0) usdc.safeTransfer(msg.sender, usdcShare);
 
         // Send ETH share to the owner
         (bool success,) = msg.sender.call{value: ethShare}("");
-        if (!success) {
-            revert ExchangeTransferFailed();
-        }
+        if (!success) revert TransferFailed();
 
         emit NFTExchanged(tokenId, msg.sender, ethShare, usdcShare);
     }
 
-    /// @notice View function to calculate the redeem value of an NFT
-    /// @return amounts An array containing [ETH share, USDC share]
-    function getRedeemValue(uint256 tokenId) external view returns (uint256[2] memory amounts) {
-        require(_ownerOf(tokenId) != address(0), "ERC721NonexistentToken");
-        if (circulatingSupply == 0) {
-            revert NoNFTsInCirculation();
-        }
-
-        uint256 contractBalance = address(this).balance;
-        if (contractBalance == 0) {
-            revert NoTreasuryAvailable();
-        }
-        uint256 ethShare = contractBalance / circulatingSupply;
-        if (ethShare == 0) {
-            revert NoTreasuryAvailable();
-        }
-
-        uint256 usdcShare = 0;
-        if (usdcContract != address(0)) {
-            uint256 usdcBalance = IERC20(usdcContract).balanceOf(address(this));
-            if (usdcBalance > 0) {
-                usdcShare = usdcBalance / circulatingSupply;
-            }
-        }
-
-        amounts[0] = ethShare;
-        amounts[1] = usdcShare;
+    /// @notice Burns a token and updates circulating supply
+    function burn(uint256 tokenId) public override {
+        super.burn(tokenId);
+        circulatingSupply--;
     }
 
-    function setMintPrice(uint256 _mintPrice) external onlyOwner {
-        mintPrice = _mintPrice;
+    /// @notice Purchase a lottery ticket for the current lottery round using ETH→USDC swap
+    /// @dev Can only be called once per lottery round, automatically calculates spending amount
+    function purchaseLotteryTicket() external whenNotPaused nonReentrant {
+        // Check if lottery ticket was already purchased for this round
+        (,, bool active) = lottery.usersInfo(address(this));
+        if (active) revert LotteryAlreadyPurchased();
+
+        // Get the amount to spend for this day (in ETH)
+        uint256 dailyAmount = getDailyPurchaseAmount();
+        if (dailyAmount == 0) revert InsufficientTreasury();
+
+        // Estimate USDC output using Uniswap V3 Quoter
+        uint256 estimatedUSDC = _estimateUSDCForETH(dailyAmount);
+        if (estimatedUSDC < lotteryTicketPriceUSD) revert InsufficientUSDCForTicket();
+
+        // Update ETH amount spent on daily lottery tickets
+        lotteryPurchasedForDay[currentLotteryRound] = dailyAmount;
+
+        // Swap ETH to USDC using Uniswap V3
+        uint256 usdcAmount = _swapETHForUSDC(dailyAmount);
+
+        // Purchase lottery tickets using the lottery contract's purchaseTickets method
+        lottery.purchaseTickets(lotteryReferrer, usdcAmount, address(this));
+
+        // Update lottery counter
+        currentLotteryRound++;
+        emit LotteryTicketPurchased(currentLotteryRound, dailyAmount);
     }
 
-    function setBurnPercentage(uint256 _burnPercentage) external onlyOwner {
-        require(_burnPercentage <= 10_000, "Burn percentage cannot exceed 100%");
-        burnPercentage = _burnPercentage;
+    /// @notice Withdraw winnings from the lottery contract
+    /// @dev Anyone can call this function
+    function withdrawWinnings() external whenNotPaused nonReentrant {
+        lottery.withdrawWinnings();
     }
 
-    /// @notice Update the burn and artist percentages
-    /// @param _burnPercentage New burn percentage (10_000 = 100%)
-    /// @param _artistPercentage New artist percentage (10_000 = 100%)
-    function setPercentages(uint256 _burnPercentage, uint256 _artistPercentage) external onlyOwner {
-        require(_burnPercentage <= 10_000, "Burn percentage cannot exceed 100%");
-        require(_artistPercentage <= 10_000, "Artist percentage cannot exceed 100%");
-        require(_burnPercentage + _artistPercentage <= 10_000, "Total percentages cannot exceed 100%");
-
-        burnPercentage = uint16(_burnPercentage);
-        artistPercentage = uint16(_artistPercentage);
-
-        emit PercentagesUpdated(_burnPercentage, _artistPercentage);
+    /// @notice Withdraw referral fees from the lottery contract
+    /// @dev Anyone can call this function
+    function withdrawReferralFees() external whenNotPaused nonReentrant {
+        lottery.withdrawReferralFees();
     }
 
-    function setBurnerContract(address _burnerContract) external onlyOwner {
-        burnerContract = _burnerContract;
+    /// SETTINGS ///
+
+    /// @notice Emergency withdraw of ETH or ERC20 tokens
+    /// @param token Address of the token to withdraw, or address(0) for ETH
+    function emergencyWithdraw(address token) external onlyOwner nonReentrant {
+        if (token == address(0)) {
+            (bool success,) = owner().call{value: address(this).balance}("");
+            if (!success) revert TransferFailed();
+        } else {
+            uint256 bal = IERC20(token).balanceOf(address(this));
+            IERC20(token).safeTransfer(owner(), bal);
+        }
     }
 
     function pause() external onlyOwner {
@@ -279,37 +211,78 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         _unpause();
     }
 
-    /// @notice Deposit ERC20 tokens into the contract treasury
-    /// @param token The token to deposit
-    /// @param amount The amount of tokens to deposit
-    function depositERC20(address token, uint256 amount) external whenNotPaused nonReentrant {
-        if (amount == 0) {
-            revert QuantityZero();
-        }
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+    /// @notice Sets the contract-level metadata URI (e.g., OpenSea contract metadata)
+    /// @dev Not emitting event given potential size of string
+    function setContractURI(string calldata _uri) external onlyOwner {
+        contractURI = _uri;
     }
 
-    /// @notice Emergency withdraw of ETH or ERC20 tokens
-    /// @param token Address of the token to withdraw, or address(0) for ETH
-    function emergencyWithdraw(address token) external onlyOwner nonReentrant {
-        if (token == address(0)) {
-            uint256 bal = address(this).balance;
-            (bool success,) = owner().call{value: bal}("");
-            if (!success) {
-                revert TransferFailed();
-            }
-        } else {
-            uint256 bal = IERC20(token).balanceOf(address(this));
-            IERC20(token).safeTransfer(owner(), bal);
-        }
+    /// @notice Set the lottery participation duration in days
+    /// @param _lotteryParticipationDays The new lottery participation duration in days
+    function setLotteryParticipationDays(uint256 _lotteryParticipationDays) external onlyOwner {
+        if (_lotteryParticipationDays == 0) revert QuantityZero();
+        lotteryParticipationDays = _lotteryParticipationDays;
+        emit LotteryParticipationDaysUpdated(_lotteryParticipationDays);
     }
 
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        require(_ownerOf(tokenId) != address(0), "ERC721Metadata: URI query for nonexistent token");
-        return _generateTokenURI(tokenId);
+    /// @notice Set the lottery referrer address
+    /// @param _lotteryReferrer The new lottery referrer address
+    function setLotteryReferrer(address _lotteryReferrer) external onlyOwner {
+        lotteryReferrer = _lotteryReferrer;
+        emit LotteryReferrerUpdated(_lotteryReferrer);
     }
 
-    function _generateTokenURI(uint256 tokenId) internal view returns (string memory) {
+    function setMintPrice(uint256 _mintPrice) external onlyOwner {
+        mintPrice = _mintPrice;
+        emit MintPriceUpdated(_mintPrice);
+    }
+
+    /// @notice Update the burn and artist percentages
+    /// @param _burnPercentage New burn percentage (10_000 = 100%)
+    /// @param _artistPercentage New artist percentage (10_000 = 100%)
+    function setPercentages(uint16 _burnPercentage, uint16 _artistPercentage) external onlyOwner {
+        if (_burnPercentage > 10_000) revert InvalidPercentage();
+        if (_artistPercentage > 10_000) revert InvalidPercentage();
+        if (_burnPercentage + _artistPercentage > 10_000) revert InvalidPercentage();
+        burnPercentage = _burnPercentage;
+        artistPercentage = _artistPercentage;
+        emit PercentagesUpdated(_burnPercentage, _artistPercentage);
+    }
+
+    /// INTERNAL ///
+
+    /// @notice Internal function to swap ETH for USDC using Uniswap V3
+    /// @param ethAmount The amount of ETH to swap
+    /// @return usdcAmount The amount of USDC received
+    function _swapETHForUSDC(uint256 ethAmount) internal returns (uint256 usdcAmount) {
+        uint256 estimatedUSDCAmount = _estimateUSDCForETH(ethAmount);
+        IV3Router.ExactInputSingleParams memory params = IV3Router.ExactInputSingleParams({
+            tokenIn: address(weth),
+            tokenOut: address(usdc),
+            fee: 500,
+            recipient: address(this),
+            amountIn: ethAmount,
+            amountOutMinimum: (estimatedUSDCAmount * 95) / 100,
+            sqrtPriceLimitX96: 0
+        });
+        usdcAmount = uniswapRouter.exactInputSingle{value: ethAmount}(params);
+    }
+
+    /// @notice Internal function to estimate USDC output for a given ETH amount using Uniswap V3 Quoter
+    /// @param ethAmount The amount of ETH to estimate
+    /// @return estimatedUSDCAmount The estimated amount of USDC received
+    function _estimateUSDCForETH(uint256 ethAmount) internal returns (uint256 estimatedUSDCAmount) {
+        IV3Quoter.QuoteExactInputSingleParams memory params = IV3Quoter.QuoteExactInputSingleParams({
+            tokenIn: address(weth),
+            tokenOut: address(usdc),
+            amountIn: ethAmount,
+            fee: 500,
+            sqrtPriceLimitX96: 0
+        });
+        (estimatedUSDCAmount,,,) = uniswapQuoter.quoteExactInputSingle(params);
+    }
+
+    function _generateTokenURI(uint256 tokenId) internal pure returns (string memory) {
         string memory svg = _generateSVG(tokenId);
         string memory json = Base64.encode(
             bytes(
@@ -348,11 +321,11 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         // ));
     }
 
-    function _clamp(uint256 value) private pure returns (uint8) {
+    function _clamp(uint256 value) internal pure returns (uint8) {
         return value > 255 ? 255 : uint8(value);
     }
 
-    function _generateHueRGB(uint256 seed) private pure returns (uint8 r, uint8 g, uint8 b) {
+    function _generateHueRGB(uint256 seed) internal pure returns (uint8 r, uint8 g, uint8 b) {
         // Use a better seed to ensure more variation
         uint256 hue = (seed * 137) % 360; // Use a prime number multiplier for better distribution
         uint256 saturation = 80 + (seed % 20); // 80-100% saturation
@@ -384,20 +357,11 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
         }
     }
 
-    /// @notice Returns the contract-level metadata URI for marketplaces
-    function contractURI() external view returns (string memory) {
-        return contractMetadataURI;
-    }
+    /// VIEW ///
 
-    /// @notice Sets the contract-level metadata URI (e.g., OpenSea contract metadata)
-    function setContractURI(string calldata _uri) external onlyOwner {
-        contractMetadataURI = _uri;
-    }
-
-    /// @notice Burns a token and updates circulating supply
-    function burn(uint256 tokenId) public override {
-        super.burn(tokenId);
-        circulatingSupply--;
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        _requireOwned(tokenId);
+        return _generateTokenURI(tokenId);
     }
 
     /// @notice Returns the ETH and USDC amounts redeemable per NFT
@@ -417,246 +381,22 @@ contract PotRaider is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard
     }
 
     /// @notice Returns the RGB color for a given tokenId
-    function getHueRGB(uint256 tokenId) external view returns (uint8 r, uint8 g, uint8 b) {
-        return _generateHueRGB(tokenId);
-    }
-
-    /// @notice Returns the current day since deployment (1-indexed)
-    function day() external view returns (uint256) {
-        return ((block.timestamp - deploymentTimestamp) / 1 days) + 1;
-    }
-
-    function _checkQuoterAndUSDC() private view {
-        if (uniswapQuoter == address(0)) {
-            revert UniswapQuoterNotConfigured();
-        }
-        if (usdcContract == address(0)) {
-            revert USDCNotConfigured();
-        }
-    }
-
-    function _checkLotteryConfigured() private view {
-        if (lotteryContract == address(0)) {
-            revert LotteryNotConfigured();
-        }
-    }
-
-    /// @notice Purchase a lottery ticket for the current lottery round using ETH→USDC swap
-    /// @dev Can only be called once per lottery round, automatically calculates spending amount
-    function purchaseLottery() external whenNotPaused nonReentrant {
-        _checkLotteryConfigured();
-
-        // Check if USDC contract and quoter are configured
-        _checkQuoterAndUSDC();
-
-        // Get current lottery round based on lastJackpotEndTime and roundDurationInSeconds
-        uint256 currentLotteryRound = getCurrentLotteryRound();
-
-        // Check if lottery ticket was already purchased for this round
-        if (lotteryPurchasedForDay[currentLotteryRound] > 0) {
-            revert LotteryAlreadyPurchased();
-        }
-
-        // Get the amount to spend for this day (in ETH)
-        uint256 dailyAmount = _getDailyPurchaseAmount();
-
-        if (dailyAmount == 0) {
-            revert InsufficientTreasury();
-        }
-
-        // Check if contract has enough ETH balance
-        if (address(this).balance < dailyAmount) {
-            revert InsufficientTreasury();
-        }
-
-        // Estimate USDC output using Uniswap V3 Quoter
-        uint256 estimatedUSDC = _estimateUSDCForETH(dailyAmount);
-        uint256 ticketPriceUSDC = LOTTERY_TICKET_PRICE_USD * (10 ** USDC_DECIMALS);
-        if (estimatedUSDC < ticketPriceUSDC) {
-            revert InsufficientUSDCForTicket();
-        }
-
-        // Update state first (before external calls)
-        lotteryPurchasedForDay[currentLotteryRound] = dailyAmount;
-
-        // Swap ETH to USDC using Uniswap V3
-        uint256 usdcAmount = _swapETHForUSDC(dailyAmount);
-
-        // Purchase lottery tickets using the lottery contract's purchaseTickets method
-        // Parameters: (referrer, value, recipient)
-        ILotteryContract(lotteryContract).purchaseTickets(
-            lotteryReferrer, // referrer
-            usdcAmount, // value
-            address(this) // recipient (PotRaider contract)
-        );
-
-        emit LotteryTicketPurchased(currentLotteryRound, dailyAmount);
-    }
-
-    /// @notice Withdraw winnings from the lottery contract
-    /// @dev Anyone can call this function to withdraw winnings
-    function withdrawWinnings() external {
-        _checkLotteryConfigured();
-
-        // Call the lottery contract's withdrawWinnings method
-        ILotteryContract(lotteryContract).withdrawWinnings();
-    }
-
-    /// @notice Get the current lottery round number
-    /// @return The current lottery round number
-    function getCurrentLotteryRound() public view returns (uint256) {
-        _checkLotteryConfigured();
-
-        ILotteryContract lottery = ILotteryContract(lotteryContract);
-        uint256 lastJackpotEndTime = lottery.lastJackpotEndTime();
-        uint256 roundDuration = lottery.roundDurationInSeconds();
-
-        // If no jackpot has ended yet, we're in round 0
-        if (lastJackpotEndTime == 0) {
-            return 0;
-        }
-
-        // Calculate current round based on time elapsed since last jackpot end
-        uint256 timeSinceLastJackpot = block.timestamp - lastJackpotEndTime;
-        uint256 currentRound = timeSinceLastJackpot / roundDuration;
-
-        return currentRound;
-    }
-
-    /// @notice Get the current lottery jackpot amount (LP pool total)
-    /// @return The jackpot amount in USDC
-    function getLotteryJackpot() external view returns (uint256) {
-        _checkLotteryConfigured();
-        return ILotteryContract(lotteryContract).lpPoolTotal();
+    function getHueRGB(uint256 tokenId) external pure returns (uint8 r, uint8 g, uint8 b) {
+        (r, g, b) = _generateHueRGB(tokenId);
     }
 
     /// @notice Get the amount of ETH that will be spent on the next lottery ticket purchase
-    /// @return The amount in ETH (in wei) that will be spent
-    function getDailyPurchaseAmount() external view returns (uint256) {
-        return _getDailyPurchaseAmount();
-    }
-
-    function _getDailyPurchaseAmount() private view returns (uint256) {
-        uint256 currentRound = getCurrentLotteryRound();
-        uint256 roundDuration = ILotteryContract(lotteryContract).roundDurationInSeconds();
-        uint256 totalRounds = (lotteryParticipationDays * 1 days) / roundDuration;
-        uint256 remainingRounds = totalRounds > currentRound ? totalRounds - currentRound : 0;
-
-        if (remainingRounds == 0) {
-            return 0;
-        }
-
+    /// @return ethPerRound The amount in ETH (in wei) that will be spent
+    function getDailyPurchaseAmount() public view returns (uint256 ethPerRound) {
+        uint256 remainingRounds = lotteryParticipationDays - currentLotteryRound;
         uint256 contractETHBalance = address(this).balance;
-        uint256 ethPerRound = contractETHBalance / remainingRounds;
-
-        uint256 estimatedUSDC = _estimateUSDCForETH(ethPerRound);
-        uint256 ticketPriceUSDC = LOTTERY_TICKET_PRICE_USD * (10 ** USDC_DECIMALS);
-
-        // Add a 2% buffer to the USDC check
-        if (estimatedUSDC < (ticketPriceUSDC * 102) / 100) {
-            return 0;
-        }
-
-        return ethPerRound;
+        if (remainingRounds == 0 || contractETHBalance == 0) return 0;
+        ethPerRound = contractETHBalance / remainingRounds;
     }
 
-    /// @notice Set the lottery contract address
-    /// @param _lotteryContract The address of the lottery contract
-    function setLotteryContract(address _lotteryContract) external onlyOwner {
-        lotteryContract = _lotteryContract;
-        emit LotteryContractUpdated(_lotteryContract);
-    }
-
-    /// @notice Set the USDC contract address
-    /// @param _usdcContract The address of the USDC contract
-    function setUSDCContract(address _usdcContract) external onlyOwner {
-        usdcContract = _usdcContract;
-        emit USDCContractUpdated(_usdcContract);
-    }
-
-    /// @notice Set the Uniswap router address
-    /// @param _uniswapRouter The address of the Uniswap V3 router
-    function setUniswapRouter(address _uniswapRouter) external onlyOwner {
-        uniswapRouter = _uniswapRouter;
-    }
-
-    /// @notice Set the Uniswap quoter address
-    /// @param _uniswapQuoter The address of the Uniswap V3 quoter
-    function setUniswapQuoter(address _uniswapQuoter) external onlyOwner {
-        uniswapQuoter = _uniswapQuoter;
-        emit UniswapQuoterUpdated(_uniswapQuoter);
-    }
-
-    /// @notice Internal function to swap ETH for USDC using Uniswap V3
-    /// @param ethAmount The amount of ETH to swap
-    /// @return usdcAmount The amount of USDC received
-    function _swapETHForUSDC(uint256 ethAmount) internal returns (uint256 usdcAmount) {
-        if (uniswapRouter == address(0)) {
-            revert UniswapRouterNotConfigured();
-        }
-        if (usdcContract == address(0)) {
-            revert USDCNotConfigured();
-        }
-        _checkWETHConfigured();
-        // Create swap parameters
-        uint256 estimatedUSDC = _estimateUSDCForETH(ethAmount);
-        ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
-            tokenIn: wethAddress, // Use WETH address instead of address(0)
-            tokenOut: usdcContract,
-            fee: 500, // 0.05% fee tier
-            recipient: address(this),
-            deadline: block.timestamp + 300, // 5 minutes
-            amountIn: ethAmount,
-            amountOutMinimum: (estimatedUSDC * 95) / 100, // 5% slippage protection
-            sqrtPriceLimitX96: 0
-        });
-
-        // Execute the swap
-        usdcAmount = ISwapRouter(uniswapRouter).exactInputSingle{value: ethAmount}(params);
-
-        return usdcAmount;
-    }
-
-    /// @notice Internal function to estimate USDC output for a given ETH amount using Uniswap V3 Quoter
-    /// @param ethAmount The amount of ETH to estimate
-    /// @return usdcAmount The estimated amount of USDC received
-    function _estimateUSDCForETH(uint256 ethAmount) internal view returns (uint256 usdcAmount) {
-        _checkQuoterAndUSDC();
-        _checkWETHConfigured();
-        // Uniswap V3 Quoter interface (minimal)
-        (bool success, bytes memory data) = uniswapQuoter.staticcall(
-            abi.encodeWithSignature(
-                "quoteExactInputSingle(address,address,uint24,uint256,uint160)",
-                wethAddress, // tokenIn (WETH)
-                usdcContract, // tokenOut (USDC)
-                500, // 0.05% fee tier
-                ethAmount,
-                0 // sqrtPriceLimitX96
-            )
-        );
-        if (!success) {
-            revert QuoterCallFailed();
-        }
-        usdcAmount = abi.decode(data, (uint256));
-    }
-
-    /// @notice Set the WETH address for Uniswap swaps
-    /// @param _wethAddress The address of the WETH contract
-    function setWETHAddress(address _wethAddress) external onlyOwner {
-        wethAddress = _wethAddress;
-    }
-
-    /// @notice Set the lottery participation duration in days
-    /// @param _lotteryParticipationDays The new lottery participation duration in days
-    function setLotteryParticipationDays(uint256 _lotteryParticipationDays) external onlyOwner {
-        require(_lotteryParticipationDays > 0, "Duration must be greater than 0");
-        lotteryParticipationDays = _lotteryParticipationDays;
-    }
-
-    /// @notice Set the lottery referrer address
-    /// @param _lotteryReferrer The new lottery referrer address
-    function setLotteryReferrer(address _lotteryReferrer) external onlyOwner {
-        lotteryReferrer = _lotteryReferrer;
-        emit LotteryReferrerUpdated(_lotteryReferrer);
+    /// @notice Get the current lottery jackpot amount (LP pool total)
+    /// @return jackPot The jackpot amount in USDC
+    function getLotteryJackpot() external view returns (uint256 jackPot) {
+        jackPot = lottery.lpPoolTotal();
     }
 }

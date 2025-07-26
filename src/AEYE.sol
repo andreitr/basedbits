@@ -17,13 +17,7 @@ interface Burner {
 /// @notice This contract allows users to mint daily NFTs with unique artwork.
 /// @dev    The contract operates on admin-initiated cycles, where admins can create new tokens with custom SVG and metadata.
 ///         The Owner retains admin rights over pausability and the mintPrice.
-contract AEYE is
-    ERC1155Supply,
-    Ownable,
-    Pausable,
-    AccessControl,
-    ReentrancyGuard
-{
+contract AEYE is ERC1155Supply, Ownable, Pausable, AccessControl, ReentrancyGuard {
     /// @notice The price to mint an NFT.
     uint256 public mintPrice;
 
@@ -102,23 +96,11 @@ contract AEYE is
 
     event TokenCreated(uint256 indexed tokenId, string metadata);
     event MetadataUpdated(uint256 indexed tokenId, string newMetadata);
-    event PercentagesUpdated(
-        uint256 burnPercentage,
-        uint256 artistPercentage,
-        uint256 communityPercentage
-    );
-    event CommunityRewardsClaimed(
-        uint256 indexed tokenId,
-        address indexed user,
-        uint256 amount
-    );
+    event PercentagesUpdated(uint256 burnPercentage, uint256 artistPercentage, uint256 communityPercentage);
+    event CommunityRewardsClaimed(uint256 indexed tokenId, address indexed user, uint256 amount);
 
     /// @dev Begins paused to allow owner to add art.
-    constructor(
-        address _owner,
-        address _artist,
-        address _burner
-    ) ERC1155("") Ownable(_owner) {
+    constructor(address _owner, address _artist, address _burner) ERC1155("") Ownable(_owner) {
         mintPrice = 0.0008 ether;
         artist = _artist;
         burner = Burner(_burner);
@@ -133,9 +115,13 @@ contract AEYE is
         _pause();
     }
 
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view virtual override(ERC1155, AccessControl) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC1155, AccessControl)
+        returns (bool)
+    {
         return super.supportsInterface(interfaceId);
     }
 
@@ -153,10 +139,7 @@ contract AEYE is
         uint256 burnAmount = (msg.value * burnPercentage) / 10_000;
         uint256 artistAmount = (msg.value * artistPercentage) / 10_000;
         uint256 communityAmount = (msg.value * communityPercentage) / 10_000;
-        uint256 ownerAmount = msg.value -
-            burnAmount -
-            artistAmount -
-            communityAmount;
+        uint256 ownerAmount = msg.value - burnAmount - artistAmount - communityAmount;
 
         // Send to burner
         if (burnAmount > 0) {
@@ -165,7 +148,7 @@ contract AEYE is
 
         // Send to artist
         if (artistAmount > 0) {
-            (bool success, ) = artist.call{value: artistAmount}("");
+            (bool success,) = artist.call{value: artistAmount}("");
             if (!success) revert TransferFailed();
         }
 
@@ -176,7 +159,7 @@ contract AEYE is
 
         // Send remaining to owner
         if (ownerAmount > 0) {
-            (bool success, ) = owner().call{value: ownerAmount}("");
+            (bool success,) = owner().call{value: ownerAmount}("");
             if (!success) revert TransferFailed();
         }
     }
@@ -213,19 +196,21 @@ contract AEYE is
         uint256 end = currentMint;
         uint256 payout;
 
-        for (uint256 tokenId = start; tokenId <= end; ) {
+        for (uint256 tokenId = start; tokenId <= end;) {
             uint256 w = weightSnapshot[tokenId][msg.sender];
             if (w > 0) {
                 payout += (accRewardPerShare[tokenId] * w) / PRECISION;
                 delete weightSnapshot[tokenId][msg.sender];
             }
-            unchecked { tokenId++; }
+            unchecked {
+                tokenId++;
+            }
         }
 
         lastClaimedToken[msg.sender] = end;
         if (payout == 0) revert NoRewardsToClaim();
 
-        (bool success, ) = msg.sender.call{value: payout}("");
+        (bool success,) = msg.sender.call{value: payout}("");
         if (!success) revert TransferFailed();
 
         emit CommunityRewardsClaimed(currentMint, msg.sender, payout);
@@ -236,9 +221,7 @@ contract AEYE is
     /// @notice Create a new token with custom metadata
     /// @param _metadata The metadata for the token
     /// @dev This function increments currentMint and creates a new token
-    function createToken(
-        string memory _metadata
-    ) external onlyRole(ADMIN_ROLE) {
+    function createToken(string memory _metadata) external onlyRole(ADMIN_ROLE) {
         // Distribute previous cycle's rewards using stored totals (no loops)
         uint256 totalRewards = tokenCommunityRewards[currentMint];
         uint256 totalWeight = totalWeightPerCycle[currentMint];
@@ -261,14 +244,10 @@ contract AEYE is
         ++currentMint;
 
         // Create the new token
-        tokenMetadata[currentMint] = TokenMetadata({
-            metadata: _metadata,
-            createdAt: block.timestamp
-        });
+        tokenMetadata[currentMint] = TokenMetadata({metadata: _metadata, createdAt: block.timestamp});
 
         emit TokenCreated(currentMint, _metadata);
     }
-
 
     function setPaused(bool _setPaused) external onlyOwner {
         _setPaused ? _pause() : _unpause();
@@ -282,30 +261,23 @@ contract AEYE is
     /// @param _burnPercentage New burn percentage (10_000 = 100%)
     /// @param _artistPercentage New artist percentage (10_000 = 100%)
     /// @param _communityPercentage New community percentage (10_000 = 100%)
-    function setPercentages(
-        uint256 _burnPercentage,
-        uint256 _artistPercentage,
-        uint256 _communityPercentage
-    ) external onlyOwner {
-        if (_burnPercentage + _artistPercentage + _communityPercentage > 10_000)
+    function setPercentages(uint256 _burnPercentage, uint256 _artistPercentage, uint256 _communityPercentage)
+        external
+        onlyOwner
+    {
+        if (_burnPercentage + _artistPercentage + _communityPercentage > 10_000) {
             revert InvalidPercentage();
+        }
         burnPercentage = uint16(_burnPercentage);
         artistPercentage = uint16(_artistPercentage);
         communityPercentage = uint16(_communityPercentage);
-        emit PercentagesUpdated(
-            _burnPercentage,
-            _artistPercentage,
-            _communityPercentage
-        );
+        emit PercentagesUpdated(_burnPercentage, _artistPercentage, _communityPercentage);
     }
 
     /// @notice Allows the owner to update the metadata URI for an existing token
     /// @param _tokenId The token ID to update
     /// @param _newMetadata The new metadata URI
-    function updateTokenMetadata(
-        uint256 _tokenId,
-        string memory _newMetadata
-    ) external onlyOwner {
+    function updateTokenMetadata(uint256 _tokenId, string memory _newMetadata) external onlyOwner {
         if (!hasMetadata(_tokenId)) revert MetadataNotSet();
         tokenMetadata[_tokenId].metadata = _newMetadata;
         emit MetadataUpdated(_tokenId, _newMetadata);
@@ -315,9 +287,7 @@ contract AEYE is
 
     /// @notice This view function returns the art for any given token Id.
     /// @param  _tokenId The token Id of the NFT.
-    function uri(
-        uint256 _tokenId
-    ) public view override returns (string memory) {
+    function uri(uint256 _tokenId) public view override returns (string memory) {
         return tokenMetadata[_tokenId].metadata;
     }
 
@@ -327,13 +297,12 @@ contract AEYE is
         return bytes(tokenMetadata[_tokenId].metadata).length > 0;
     }
 
-/// @dev Helper to return a user's weight for reward distribution
+    /// @dev Helper to return a user's weight for reward distribution
     function weightOf(address user) public view returns (uint256) {
         // Streak weight: 1 + (streak * 0.1), max 2x multiplier
         uint256 streak = mintingStreak[user];
         return 10 + (streak > 10 ? 10 : streak);
     }
-
 
     /// @notice Returns the total pending community rewards for a user
     /// @param user The address of the minter

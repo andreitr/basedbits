@@ -214,7 +214,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
     }
 
     /// INTERNAL ///
-    
+
     /// Function to determine the number of laps (max 6) based on entries
     function _calcLaps(uint256 numEntries) internal pure returns (uint256) {
         if (numEntries <= 2) {
@@ -240,7 +240,7 @@ contract BaseRace is ERC721, AccessControl, ReentrancyGuard, BaseRaceArt {
         uint256 finalLapPlayers = _calcFinalLapPlayers(numEntries);
         uint256 totalEliminations = numEntries - finalLapPlayers;
 
-        // Ensure eliminations per lap are distributed evenly 
+        // Ensure eliminations per lap are distributed evenly
         uint256 baseEliminations = totalEliminations / totalLaps; // Ceil division
 
         // Ensure every lap has at least 1 elimination and stops at final lap
