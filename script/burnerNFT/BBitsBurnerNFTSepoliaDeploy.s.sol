@@ -68,4 +68,16 @@ contract MockUniV3Quoter is IV3Quoter {
         initializedTicksCrossed = 0;
         gasEstimate = 0;
     }
+
+    function quoteExactInputSingle(QuoteExactInputSingleParams memory params)
+        external
+        pure
+        returns (uint256 amountOut, uint160 sqrtPriceX96After, uint32 initializedTicksCrossed, uint256 gasEstimate)
+    {
+        params;
+        amountOut = 1e15;
+        sqrtPriceX96After = 0;
+        initializedTicksCrossed = 0;
+        gasEstimate = 0;
+    }
 }

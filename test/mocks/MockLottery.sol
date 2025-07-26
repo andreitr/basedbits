@@ -26,4 +26,12 @@ contract MockLottery is IBaseJackpot {
     function withdrawWinnings() external override {
         withdrawCalled = true;
     }
+
+    function withdrawReferralFees() external override {}
+
+    function usersInfo(address _user)
+        external
+        override
+        returns (uint256 ticketsPurchasedTotalBps, uint256 winningsClaimable, bool active)
+    {}
 }
