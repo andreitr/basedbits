@@ -36,6 +36,10 @@ interface ILotteryContract {
     function roundDurationInSeconds() external view returns (uint256);
 }
 
+interface Burner {
+    function burn(uint256 _minAmountBurned) external payable;
+}
+
 contract PotRaiderTest is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -100,7 +104,6 @@ contract PotRaiderTest is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyG
     error QuoterCallFailed();
     error QuantityZero();
     error InsufficientPayment();
-    error BurnTransferFailed();
     error ArtistTransferFailed();
     error NotOwner();
     error NoNFTsInCirculation();
@@ -146,10 +149,7 @@ contract PotRaiderTest is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyG
 
         // Send burn amount to burner contract
         if (burnAmount > 0) {
-            (bool burnSuccess,) = burnerContract.call{value: burnAmount}("");
-            if (!burnSuccess) {
-                revert BurnTransferFailed();
-            }
+            Burner(burnerContract).burn{value: burnAmount}(0);
         }
 
         // Send artist amount to artist

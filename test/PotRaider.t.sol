@@ -9,6 +9,8 @@ import {MockLottery} from "@test/mocks/MockLottery.sol";
 import {MockSwapRouter} from "@test/mocks/MockSwapRouter.sol";
 import {MockERC20} from "@test/mocks/MockERC20.sol";
 import {ReentrantMint} from "@test/mocks/ReentrantMint.sol";
+import {MockBurner} from "@test/mocks/MockBurner.sol";
+import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 
 contract PotRaiderTest is Test {
     PotRaider public potRaider;
@@ -16,7 +18,7 @@ contract PotRaiderTest is Test {
     address public owner = address(this);
     address public user1 = address(0x1);
     address public user2 = address(0x2);
-    address public burner = address(0x3);
+    MockBurner public burner;
     address public artist = address(0x4);
     address public lotteryContract = address(0x5);
     address public usdcContract = address(0x6);
@@ -25,7 +27,8 @@ contract PotRaiderTest is Test {
     uint256 public mintPrice = 0.0008 ether;
 
     function setUp() public {
-        potRaider = new PotRaider(mintPrice, burner, artist);
+        burner = new MockBurner();
+        potRaider = new PotRaider(mintPrice, address(burner), artist);
         // Configure WETH address used for Uniswap interactions
         potRaider.setWETHAddress(0x4200000000000000000000000000000000000006);
         vm.deal(user1, 10 ether);
@@ -36,7 +39,7 @@ contract PotRaiderTest is Test {
         assertEq(potRaider.name(), "Pot Raider");
         assertEq(potRaider.symbol(), "POTRAIDER");
         assertEq(potRaider.mintPrice(), mintPrice);
-        assertEq(potRaider.burnerContract(), burner);
+        assertEq(potRaider.burnerContract(), address(burner));
         assertEq(potRaider.artist(), artist);
         assertEq(potRaider.artistPercentage(), 1000); // 10%
         assertEq(potRaider.burnPercentage(), 1000); // 10%
@@ -98,7 +101,7 @@ contract PotRaiderTest is Test {
         ReentrantMint attacker = new ReentrantMint(potRaider);
         potRaider.setBurnerContract(address(attacker));
         vm.deal(address(attacker), 1 ether);
-        vm.expectRevert(PotRaider.BurnTransferFailed.selector);
+        vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
         attacker.attack{value: mintPrice}();
     }
 
