@@ -399,6 +399,14 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     /// @notice Get the current lottery jackpot amount (LP pool total)
     /// @return jackPot The jackpot amount in USDC
     function getLotteryJackpot() external view returns (uint256 jackPot) {
-        jackPot = lottery.lpPoolTotal();
+        lottery.lpPoolTotal();
+    }
+
+     function getLotterylastJackpotEndTime() external view returns (uint256 endTime) {
+        endTime = lottery.lastJackpotEndTime();
+    }
+    
+     function getLotteryroundDurationInSeconds() external view returns (uint256 duration) {
+        duration = lottery.roundDurationInSeconds();
     }
 }
