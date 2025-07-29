@@ -159,9 +159,6 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         uint256 dailyAmount = getDailyPurchaseAmount();
         if (dailyAmount == 0) revert InsufficientTreasury();
 
-        // Estimate USDC output using Uniswap V3 Quoter
-        uint256 estimatedUSDC = _estimateUSDCForETH(dailyAmount);
-        if (estimatedUSDC < lotteryTicketPriceUSD) revert InsufficientUSDCForTicket();
 
         // Update ETH amount spent on daily lottery tickets
         lotteryPurchasedForDay[currentLotteryRound] = dailyAmount;
