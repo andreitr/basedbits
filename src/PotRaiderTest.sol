@@ -440,13 +440,6 @@ contract PotRaiderTest is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyG
             revert InsufficientTreasury();
         }
 
-        // Estimate USDC output using Uniswap V3 Quoter
-        uint256 estimatedUSDC = _estimateUSDCForETH(dailyAmount);
-        uint256 ticketPriceUSDC = LOTTERY_TICKET_PRICE_USD * (10 ** USDC_DECIMALS);
-        if (estimatedUSDC < ticketPriceUSDC) {
-            revert InsufficientUSDCForTicket();
-        }
-
         // Update state first (before external calls)
         lotteryPurchasedForDay[currentLotteryRound] = dailyAmount;
 
