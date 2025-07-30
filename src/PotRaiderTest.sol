@@ -72,7 +72,12 @@ contract PotRaiderTest is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyG
     address public usdcContract;
     address public uniswapRouter; // Uniswap V3 Router for ETH→USDC swaps
     address public uniswapQuoter; // Uniswap V3 Quoter for ETH→USDC estimation
-    mapping(uint256 => uint256) public lotteryPurchasedForDay;
+    struct LotteryPurchase {
+        uint256 usdcAmount;
+        uint256 timestamp;
+    }
+
+    mapping(uint256 => LotteryPurchase) public lotteryPurchasedForDay;
     address public lotteryReferrer; // Referrer address for lottery ticket purchases
 
     event NFTExchanged(uint256 indexed tokenId, address indexed owner, uint256 ethAmount, uint256 usdcAmount);
@@ -424,7 +429,7 @@ contract PotRaiderTest is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyG
         uint256 currentLotteryRound = getCurrentLotteryRound();
 
         // Check if lottery ticket was already purchased for this round
-        if (lotteryPurchasedForDay[currentLotteryRound] > 0) {
+        if (lotteryPurchasedForDay[currentLotteryRound].usdcAmount > 0) {
             revert LotteryAlreadyPurchased();
         }
 
@@ -440,11 +445,14 @@ contract PotRaiderTest is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyG
             revert InsufficientTreasury();
         }
 
-        // Update state first (before external calls)
-        lotteryPurchasedForDay[currentLotteryRound] = dailyAmount;
-
         // Swap ETH to USDC using Uniswap V3
         uint256 usdcAmount = _swapETHForUSDC(dailyAmount);
+
+        // Record purchase information in USDC and timestamp
+        lotteryPurchasedForDay[currentLotteryRound] = LotteryPurchase({
+            usdcAmount: usdcAmount,
+            timestamp: block.timestamp
+        });
 
         // Purchase lottery tickets using the lottery contract's purchaseTickets method
         // Parameters: (referrer, value, recipient)
