@@ -11,7 +11,6 @@ contract PotRaiderTest is BBitsTestUtils {
     IV3Router public uniV3Router;
     IV3Quoter public uniV3Quoter;
     IBaseJackpot public lottery;
-    address public artist = address(0x420);
     uint256 public mintPrice = 0.0013 ether;
 
     function setUp() public override {
@@ -31,13 +30,12 @@ contract PotRaiderTest is BBitsTestUtils {
         uniV3Quoter = IV3Quoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
         lottery = IBaseJackpot(0xbEDd4F2beBE9E3E636161E644759f3cbe3d51B95);
 
-        potRaider = new PotRaider(owner, mintPrice, artist, burner, WETH, USDC, uniV3Router, uniV3Quoter, lottery);
+        potRaider = new PotRaider(owner, mintPrice, burner, WETH, USDC, uniV3Router, uniV3Quoter, lottery);
     }
 
     function testConstructor() public {
         assertEq(potRaider.name(), "Pot Raider");
         assertEq(potRaider.symbol(), "POTRAIDER");
-        assertEq(potRaider.artist(), artist);
         assertEq(address(potRaider.bbitsBurner()), address(burner));
         assertEq(address(potRaider.weth()), address(WETH));
         assertEq(address(potRaider.usdc()), address(USDC));
@@ -49,8 +47,7 @@ contract PotRaiderTest is BBitsTestUtils {
         assertEq(potRaider.totalSupply(), 0);
         assertEq(potRaider.circulatingSupply(), 0);
         assertEq(potRaider.mintPrice(), mintPrice);
-        assertEq(potRaider.burnPercentage(), 1000);
-        assertEq(potRaider.artistPercentage(), 1000);
+        assertEq(potRaider.burnPercentage(), 2000);
         assertEq(potRaider.lotteryParticipationDays(), 365);
         assertEq(potRaider.currentLotteryDay(), 0);
     }
@@ -211,23 +208,17 @@ contract PotRaiderTest is BBitsTestUtils {
         assertEq(potRaider.mintPrice(), newPrice);
     }
 
-    function testSetPercentages() public prank(owner) {
+    function testSetBurnPercentage() public prank(owner) {
         uint16 newBurnPercentage = 500; // 5% (500 basis points)
-        uint16 newArtistPercentage = 2000; // 20% (2000 basis points)
 
-        potRaider.setPercentages(newBurnPercentage, newArtistPercentage);
+        potRaider.setBurnPercentage(newBurnPercentage);
 
         assertEq(potRaider.burnPercentage(), newBurnPercentage);
-        assertEq(potRaider.artistPercentage(), newArtistPercentage);
     }
 
-    function testSetPercentagesExceeds100() public prank(owner) {
+    function testSetBurnPercentageExceeds100() public prank(owner) {
         vm.expectRevert(IPotRaider.InvalidPercentage.selector);
-        potRaider.setPercentages(6000, 5000); // 60% + 50% = 110%
-        vm.expectRevert(IPotRaider.InvalidPercentage.selector);
-        potRaider.setPercentages(10001, 1000);
-        vm.expectRevert(IPotRaider.InvalidPercentage.selector);
-        potRaider.setPercentages(1000, 10001);
+        potRaider.setBurnPercentage(10001);
     }
 
     function testSetLotteryParticipationDays() public prank(owner) {
