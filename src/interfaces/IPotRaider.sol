@@ -19,4 +19,6 @@ interface IPotRaider {
     error LotteryAlreadyPurchased();
     error InsufficientUSDCForTicket();
     error InsufficientTreasury();
+
+    function lotteryReferrer() external view returns (address);
 }
