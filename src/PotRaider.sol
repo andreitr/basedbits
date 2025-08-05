@@ -59,8 +59,8 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     /// @notice Lottery ticket purchase system variables
     uint256 public lotteryParticipationDays;
 
-    /// @dev Internal counter to track number of lotteries entered.
-    uint256 public currentLotteryRound;
+    /// @dev Internal counter to track number of lottery days entered
+    uint256 public currentLotteryDay;
 
     struct LotteryPurchase {
         uint256 usdcAmount;
@@ -169,7 +169,7 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         uint256 usdcAmount = _swapETHForUSDC(dailyAmount);
 
         // Record lottery purchase information in USDC and timestamp
-        lotteryPurchasedForDay[currentLotteryRound] = LotteryPurchase({
+        lotteryPurchasedForDay[currentLotteryDay] = LotteryPurchase({
             usdcAmount: usdcAmount,
             timestamp: block.timestamp
         });
@@ -178,8 +178,8 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         lottery.purchaseTickets(lotteryReferrer, usdcAmount, address(this));
 
         // Update lottery counter
-        currentLotteryRound++;
-        emit LotteryTicketPurchased(currentLotteryRound, dailyAmount);
+        currentLotteryDay++;
+        emit LotteryTicketPurchased(currentLotteryDay, dailyAmount);
     }
 
     /// @notice Withdraw winnings from the lottery contract
@@ -393,12 +393,12 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     }
 
     /// @notice Get the amount of ETH that will be spent on the next lottery ticket purchase
-    /// @return ethPerRound The amount in ETH (in wei) that will be spent
-    function getDailyPurchaseAmount() public view returns (uint256 ethPerRound) {
-        uint256 remainingRounds = lotteryParticipationDays - currentLotteryRound;
+    /// @return ethPerDay The amount in ETH (in wei) that will be spent
+    function getDailyPurchaseAmount() public view returns (uint256 ethPerDay) {
+        uint256 remainingDays = lotteryParticipationDays - currentLotteryDay;
         uint256 contractETHBalance = address(this).balance;
-        if (remainingRounds == 0 || contractETHBalance == 0) return 0;
-        ethPerRound = contractETHBalance / remainingRounds;
+        if (remainingDays == 0 || contractETHBalance == 0) return 0;
+        ethPerDay = contractETHBalance / remainingDays;
     }
 
     /// @notice Get the current lottery jackpot amount (LP pool total)

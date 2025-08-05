@@ -52,7 +52,7 @@ contract PotRaiderTest is BBitsTestUtils {
         assertEq(potRaider.burnPercentage(), 1000);
         assertEq(potRaider.artistPercentage(), 1000);
         assertEq(potRaider.lotteryParticipationDays(), 365);
-        assertEq(potRaider.currentLotteryRound(), 0);
+        assertEq(potRaider.currentLotteryDay(), 0);
     }
 
     function testMintMultiple() public prank(user1) {
