@@ -367,9 +367,14 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     /// @notice Get the amount of ETH that will be spent on the next lottery ticket purchase
     /// @return ethPerDay The amount in ETH (in wei) that will be spent
     function getDailyPurchaseAmount() public view returns (uint256 ethPerDay) {
-        uint256 remainingDays = lotteryParticipationDays - currentLotteryDay;
         uint256 contractETHBalance = address(this).balance;
-        if (remainingDays == 0 || contractETHBalance == 0) return 0;
+
+        // Avoid underflow if currentLotteryDay exceeds lotteryParticipationDays
+        if (currentLotteryDay >= lotteryParticipationDays || contractETHBalance == 0) {
+            return 0;
+        }
+
+        uint256 remainingDays = lotteryParticipationDays - currentLotteryDay;
         ethPerDay = contractETHBalance / remainingDays;
     }
 
