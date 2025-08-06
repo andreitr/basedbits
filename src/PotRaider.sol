@@ -291,7 +291,7 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     }
 
     function _generateSVG(uint256 tokenId) internal pure returns (string memory) {
-        (uint8 r, uint8 g, uint8 b) = _generateHueRGB(tokenId);
+        (uint8 r, uint8 g, uint8 b) = getHueRGB(tokenId);
 
         string memory backgroundColor = string(
             abi.encodePacked("rgb(", Strings.toString(r), ",", Strings.toString(g), ",", Strings.toString(b), ")")
@@ -307,7 +307,7 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         return value > 255 ? 255 : uint8(value);
     }
 
-    function _generateHueRGB(uint256 seed) internal pure returns (uint8 r, uint8 g, uint8 b) {
+    function getHueRGB(uint256 seed) internal pure returns (uint8 r, uint8 g, uint8 b) {
         // Use a better seed to ensure more variation
         uint256 hue = (seed * 137) % 360; // Use a prime number multiplier for better distribution
         uint256 saturation = 80 + (seed % 20); // 80-100% saturation
@@ -362,11 +362,6 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         }
 
         return (ethShare, usdcShare);
-    }
-
-    /// @notice Returns the RGB color for a given tokenId
-    function getHueRGB(uint256 tokenId) external pure returns (uint8 r, uint8 g, uint8 b) {
-        (r, g, b) = _generateHueRGB(tokenId);
     }
 
     /// @notice Get the amount of ETH that will be spent on the next lottery ticket purchase
