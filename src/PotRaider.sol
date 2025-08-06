@@ -49,7 +49,7 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     string public contractURI;
 
     /// @notice Referrer address for lottery ticket purchases
-    address public lotteryReferrer;
+    address public lotteryReferrer = 0x1d671d1B191323A38490972D58354971E5c1cd2A;
 
     /// @notice Lottery ticket purchase system variables
     uint256 public lotteryParticipationDays;
@@ -148,7 +148,6 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         // Get the amount to spend for this day (in ETH)
         uint256 dailyAmount = getDailyPurchaseAmount();
         if (dailyAmount == 0) revert InsufficientTreasury();
-
 
         // Swap ETH to USDC using Uniswap V3
         uint256 usdcAmount = _swapETHForUSDC(dailyAmount);
@@ -361,7 +360,7 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
             uint256 usdcBalance = IERC20(usdc).balanceOf(address(this));
             usdcShare = usdcBalance / circulatingSupply;
         }
-        
+
         return (ethShare, usdcShare);
     }
 
@@ -386,12 +385,14 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     }
     /// @notice Get the last lottery jackpot end time
     /// @return endTime The last lottery jackpot end time
-     function getLotterylastJackpotEndTime() external view returns (uint256 endTime) {
+
+    function getLotterylastJackpotEndTime() external view returns (uint256 endTime) {
         endTime = lottery.lastJackpotEndTime();
     }
     /// @notice Get the lottery round duration in seconds
     /// @return duration The lottery round duration in seconds
-     function getLotteryroundDurationInSeconds() external view returns (uint256 duration) {
+
+    function getLotteryroundDurationInSeconds() external view returns (uint256 duration) {
         duration = lottery.roundDurationInSeconds();
     }
 }
