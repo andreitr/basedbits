@@ -6,6 +6,24 @@ import {PotRaider, IPotRaider, IV3Router, IV3Quoter, IBaseJackpot} from "@src/Po
 import {MockERC20} from "@test/mocks/MockERC20.sol";
 import {ReentrantMint} from "@test/mocks/ReentrantMint.sol";
 
+contract PotRaiderHarness is PotRaider {
+    constructor(
+        address owner,
+        uint256 mintPrice,
+        address artist,
+        BBitsBurner burner,
+        IERC20 weth,
+        IERC20 usdc,
+        IV3Router uniswapRouter,
+        IV3Quoter uniswapQuoter,
+        IBaseJackpot lottery
+    ) PotRaider(owner, mintPrice, artist, burner, weth, usdc, uniswapRouter, uniswapQuoter, lottery) {}
+
+    function expose_getHueRGB(uint256 tokenId) external pure returns (uint8 r, uint8 g, uint8 b) {
+        return getHueRGB(tokenId);
+    }
+}
+
 /// @dev forge test --match-contract PotRaiderTest -vvv
 contract PotRaiderTest is BBitsTestUtils {
     IV3Router public uniV3Router;
@@ -31,7 +49,8 @@ contract PotRaiderTest is BBitsTestUtils {
         uniV3Quoter = IV3Quoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
         lottery = IBaseJackpot(0xbEDd4F2beBE9E3E636161E644759f3cbe3d51B95);
 
-        potRaider = new PotRaider(owner, mintPrice, artist, burner, WETH, USDC, uniV3Router, uniV3Quoter, lottery);
+        potRaider =
+            new PotRaiderHarness(owner, mintPrice, artist, burner, WETH, USDC, uniV3Router, uniV3Quoter, lottery);
     }
 
     function testConstructor() public {
@@ -83,11 +102,11 @@ contract PotRaiderTest is BBitsTestUtils {
         vm.prank(user1);
         potRaider.mint{value: mintPrice * 10}(10);
 
-        (uint8 r0, uint8 g0, uint8 b0) = potRaider.getHueRGB(0);
-        (uint8 r1, uint8 g1, uint8 b1) = potRaider.getHueRGB(1);
-        (uint8 r2, uint8 g2, uint8 b2) = potRaider.getHueRGB(2);
-        (uint8 r5, uint8 g5, uint8 b5) = potRaider.getHueRGB(5);
-        (uint8 r9, uint8 g9, uint8 b9) = potRaider.getHueRGB(9);
+        (uint8 r0, uint8 g0, uint8 b0) = PotRaiderHarness(payable(address(potRaider))).expose_getHueRGB(0);
+        (uint8 r1, uint8 g1, uint8 b1) = PotRaiderHarness(payable(address(potRaider))).expose_getHueRGB(1);
+        (uint8 r2, uint8 g2, uint8 b2) = PotRaiderHarness(payable(address(potRaider))).expose_getHueRGB(2);
+        (uint8 r5, uint8 g5, uint8 b5) = PotRaiderHarness(payable(address(potRaider))).expose_getHueRGB(5);
+        (uint8 r9, uint8 g9, uint8 b9) = PotRaiderHarness(payable(address(potRaider))).expose_getHueRGB(9);
 
         // Check that different token IDs produce different colors
         assertFalse(r0 == r1 && g0 == g1 && b0 == b1, "Token 0 and 1 should have different colors");
@@ -100,9 +119,9 @@ contract PotRaiderTest is BBitsTestUtils {
     function testColorGenerationConsistency() public {
         vm.prank(user1);
         potRaider.mint{value: mintPrice}(1);
-        (uint8 r1, uint8 g1, uint8 b1) = potRaider.getHueRGB(0);
-        (uint8 r2, uint8 g2, uint8 b2) = potRaider.getHueRGB(0);
-        (uint8 r3, uint8 g3, uint8 b3) = potRaider.getHueRGB(0);
+        (uint8 r1, uint8 g1, uint8 b1) = PotRaiderHarness(payable(address(potRaider))).expose_getHueRGB(0);
+        (uint8 r2, uint8 g2, uint8 b2) = PotRaiderHarness(payable(address(potRaider))).expose_getHueRGB(0);
+        (uint8 r3, uint8 g3, uint8 b3) = PotRaiderHarness(payable(address(potRaider))).expose_getHueRGB(0);
         assertEq(r1, r2, "R should be consistent");
         assertEq(g1, g2, "G should be consistent");
         assertEq(b1, b2, "B should be consistent");
@@ -116,7 +135,7 @@ contract PotRaiderTest is BBitsTestUtils {
         potRaider.mint{value: mintPrice * 5}(5);
 
         for (uint256 i = 0; i < 5; i++) {
-            (uint8 r, uint8 g, uint8 b) = potRaider.getHueRGB(i);
+            (uint8 r, uint8 g, uint8 b) = PotRaiderHarness(payable(address(potRaider))).expose_getHueRGB(i);
 
             // RGB values should be within valid range (0-255)
             assertTrue(r >= 0 && r <= 255, "R value should be in valid range");
@@ -134,9 +153,9 @@ contract PotRaiderTest is BBitsTestUtils {
         potRaider.mint{value: mintPrice}(1);
 
         // Get colors multiple times for the same token ID
-        (uint8 r1, uint8 g1, uint8 b1) = potRaider.getHueRGB(0);
-        (uint8 r2, uint8 g2, uint8 b2) = potRaider.getHueRGB(0);
-        (uint8 r3, uint8 g3, uint8 b3) = potRaider.getHueRGB(0);
+        (uint8 r1, uint8 g1, uint8 b1) = PotRaiderHarness(payable(address(potRaider))).expose_getHueRGB(0);
+        (uint8 r2, uint8 g2, uint8 b2) = PotRaiderHarness(payable(address(potRaider))).expose_getHueRGB(0);
+        (uint8 r3, uint8 g3, uint8 b3) = PotRaiderHarness(payable(address(potRaider))).expose_getHueRGB(0);
 
         // All calls should return the same color
         assertEq(r1, r2, "R should be deterministic");
