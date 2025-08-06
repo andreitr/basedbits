@@ -17,9 +17,6 @@ import {IPotRaider} from "@src/interfaces/IPotRaider.sol";
 contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    /// @notice The artist address that receives a portion of mint fees
-    address public immutable artist;
-
     IERC20 public immutable weth;
 
     IERC20 public immutable usdc;
@@ -47,8 +44,6 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     /// @dev 10_000 = 100%
     uint256 public burnPercentage;
 
-    /// @dev 10_000 = 100%
-    uint16 public artistPercentage;
 
     /// @notice OpenSea-style contract-level metadata URI
     string public contractURI;
@@ -59,8 +54,8 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     /// @notice Lottery ticket purchase system variables
     uint256 public lotteryParticipationDays;
 
-    /// @dev Internal counter to track number of lotteries entered.
-    uint256 public currentLotteryRound;
+    /// @dev Internal counter to track number of lottery days entered
+    uint256 public currentLotteryDay;
 
     struct LotteryPurchase {
         uint256 tickets;
@@ -72,7 +67,6 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     constructor(
         address _owner,
         uint256 _mintPrice,
-        address _artist,
         BBitsBurner _bbitsBurner,
         IERC20 _weth,
         IERC20 _usdc,
@@ -81,7 +75,6 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         IBaseJackpot _lottery
     ) ERC721("Pot Raider", "POTRAIDER") Ownable(_owner) {
         mintPrice = _mintPrice;
-        artist = _artist;
         bbitsBurner = _bbitsBurner;
         weth = _weth;
         usdc = _usdc;
@@ -89,8 +82,7 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         uniswapQuoter = _quoter;
         lottery = _lottery;
 
-        artistPercentage = 1000; // 10%
-        burnPercentage = 1000; // 10%
+        burnPercentage = 2000; // 20%
         lotteryTicketPriceUSD = 1e6; // $1 per ticket
         maxMint = 50;
         lotteryParticipationDays = 365;
@@ -108,16 +100,9 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         if (msg.value < mintPrice * quantity) revert InsufficientPayment();
 
         uint256 burnAmount = (msg.value * burnPercentage) / 10_000;
-        uint256 artistAmount = (msg.value * artistPercentage) / 10_000;
 
         // Send burn amount to burner contract
         if (burnAmount > 0) bbitsBurner.burn{value: burnAmount}(0);
-
-        // Send artist amount to artist
-        if (artistAmount > 0) {
-            (bool artistSuccess,) = artist.call{value: artistAmount}("");
-            if (!artistSuccess) revert TransferFailed();
-        }
 
         for (uint256 i = 0; i < quantity; i++) {
             _mint(msg.sender, totalSupply);
@@ -173,7 +158,7 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         if (tickets == 0) revert InsufficientUSDCForTicket();
 
         // Record lottery purchase information in tickets and timestamp
-        lotteryPurchaseHistory[currentLotteryRound] = LotteryPurchase({
+        lotteryPurchaseHistory[currentLotteryDay] = LotteryPurchase({
             tickets: tickets,
             timestamp: block.timestamp
         });
@@ -183,8 +168,8 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         lottery.purchaseTickets(lotteryReferrer, spendAmount, address(this));
 
         // Update lottery counter
-        currentLotteryRound++;
-        emit LotteryTicketPurchased(currentLotteryRound, dailyAmount);
+        currentLotteryDay++;
+        emit LotteryTicketPurchased(currentLotteryDay, dailyAmount);
     }
 
     /// @notice Withdraw winnings from the lottery contract
@@ -247,16 +232,12 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         emit MintPriceUpdated(_mintPrice);
     }
 
-    /// @notice Update the burn and artist percentages
+    /// @notice Update the burn percentage
     /// @param _burnPercentage New burn percentage (10_000 = 100%)
-    /// @param _artistPercentage New artist percentage (10_000 = 100%)
-    function setPercentages(uint16 _burnPercentage, uint16 _artistPercentage) external onlyOwner {
+    function setBurnPercentage(uint16 _burnPercentage) external onlyOwner {
         if (_burnPercentage > 10_000) revert InvalidPercentage();
-        if (_artistPercentage > 10_000) revert InvalidPercentage();
-        if (_burnPercentage + _artistPercentage > 10_000) revert InvalidPercentage();
         burnPercentage = _burnPercentage;
-        artistPercentage = _artistPercentage;
-        emit PercentagesUpdated(_burnPercentage, _artistPercentage);
+        emit BurnPercentageUpdated(_burnPercentage);
     }
 
     /// INTERNAL ///
@@ -398,12 +379,12 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     }
 
     /// @notice Get the amount of ETH that will be spent on the next lottery ticket purchase
-    /// @return ethPerRound The amount in ETH (in wei) that will be spent
-    function getDailyPurchaseAmount() public view returns (uint256 ethPerRound) {
-        uint256 remainingRounds = lotteryParticipationDays - currentLotteryRound;
+    /// @return ethPerDay The amount in ETH (in wei) that will be spent
+    function getDailyPurchaseAmount() public view returns (uint256 ethPerDay) {
+        uint256 remainingDays = lotteryParticipationDays - currentLotteryDay;
         uint256 contractETHBalance = address(this).balance;
-        if (remainingRounds == 0 || contractETHBalance == 0) return 0;
-        ethPerRound = contractETHBalance / remainingRounds;
+        if (remainingDays == 0 || contractETHBalance == 0) return 0;
+        ethPerDay = contractETHBalance / remainingDays;
     }
 
     /// @notice Get the current lottery jackpot amount (LP pool total)

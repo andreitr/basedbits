@@ -25,7 +25,6 @@ contract PotRaiderDeploy is Script {
         potRaider = new PotRaider(
             msg.sender,
             0.0013 ether,
-            0x1d671d1B191323A38490972D58354971E5c1cd2A,
             burner,
             WETH,
             USDC,
