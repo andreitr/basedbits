@@ -73,11 +73,11 @@ contract PotRaiderTest is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyG
     address public uniswapRouter; // Uniswap V3 Router for ETH→USDC swaps
     address public uniswapQuoter; // Uniswap V3 Quoter for ETH→USDC estimation
     struct LotteryPurchase {
-        uint256 usdcAmount;
+        uint256 tickets;
         uint256 timestamp;
     }
 
-    mapping(uint256 => LotteryPurchase) public lotteryPurchasedForDay;
+    mapping(uint256 => LotteryPurchase) public lotteryPurchaseHistory;
     address public lotteryReferrer; // Referrer address for lottery ticket purchases
 
     event NFTExchanged(uint256 indexed tokenId, address indexed owner, uint256 ethAmount, uint256 usdcAmount);
@@ -429,7 +429,7 @@ contract PotRaiderTest is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyG
         uint256 currentLotteryRound = getCurrentLotteryRound();
 
         // Check if lottery ticket was already purchased for this round
-        if (lotteryPurchasedForDay[currentLotteryRound].usdcAmount > 0) {
+        if (lotteryPurchaseHistory[currentLotteryRound].tickets > 0) {
             revert LotteryAlreadyPurchased();
         }
 
@@ -448,17 +448,25 @@ contract PotRaiderTest is ERC721, ERC721Burnable, Ownable, Pausable, ReentrancyG
         // Swap ETH to USDC using Uniswap V3
         uint256 usdcAmount = _swapETHForUSDC(dailyAmount);
 
-        // Record purchase information in USDC and timestamp
-        lotteryPurchasedForDay[currentLotteryRound] = LotteryPurchase({
-            usdcAmount: usdcAmount,
+        // Calculate number of whole tickets purchased
+        uint256 ticketPrice = LOTTERY_TICKET_PRICE_USD * 10 ** USDC_DECIMALS;
+        uint256 tickets = usdcAmount / ticketPrice;
+        if (tickets == 0) {
+            revert InsufficientUSDCForTicket();
+        }
+
+        // Record purchase information in tickets and timestamp
+        lotteryPurchaseHistory[currentLotteryRound] = LotteryPurchase({
+            tickets: tickets,
             timestamp: block.timestamp
         });
 
-        // Purchase lottery tickets using the lottery contract's purchaseTickets method
+        // Purchase only the number of full tickets
+        uint256 spendAmount = tickets * ticketPrice;
         // Parameters: (referrer, value, recipient)
         ILotteryContract(lotteryContract).purchaseTickets(
             lotteryReferrer, // referrer
-            usdcAmount, // value
+            spendAmount, // value
             address(this) // recipient (PotRaider contract)
         );
 

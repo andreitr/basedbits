@@ -318,6 +318,12 @@ contract PotRaiderTest is BBitsTestUtils {
     function testMintAndPurchase() public prank(user0) {
         potRaider.mint{value: 50 * mintPrice}(50);
         potRaider.mint{value: 50 * mintPrice}(50);
+        // Ensure the contract has enough ETH to buy at least one ticket
+        vm.deal(address(potRaider), 1 ether);
+
         potRaider.purchaseLotteryTicket();
+
+        (uint256 tickets,) = potRaider.lotteryPurchaseHistory(0);
+        assertGt(tickets, 0);
     }
 }
