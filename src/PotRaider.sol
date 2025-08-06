@@ -58,11 +58,11 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     uint256 public currentLotteryDay;
 
     struct LotteryPurchase {
-        uint256 usdcAmount;
+        uint256 tickets;
         uint256 timestamp;
     }
 
-    mapping(uint256 => LotteryPurchase) public lotteryPurchasedForDay;
+    mapping(uint256 => LotteryPurchase) public lotteryPurchaseHistory;
 
     constructor(
         address _owner,
@@ -153,14 +153,19 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         // Swap ETH to USDC using Uniswap V3
         uint256 usdcAmount = _swapETHForUSDC(dailyAmount);
 
-        // Record lottery purchase information in USDC and timestamp
-        lotteryPurchasedForDay[currentLotteryDay] = LotteryPurchase({
-            usdcAmount: usdcAmount,
+        // Calculate number of whole tickets purchased
+        uint256 tickets = usdcAmount / lotteryTicketPriceUSD;
+        if (tickets == 0) revert InsufficientUSDCForTicket();
+
+        // Record lottery purchase information in tickets and timestamp
+        lotteryPurchaseHistory[currentLotteryDay] = LotteryPurchase({
+            tickets: tickets,
             timestamp: block.timestamp
         });
 
-        // Purchase lottery tickets using the lottery contract's purchaseTickets method
-        lottery.purchaseTickets(lotteryReferrer, usdcAmount, address(this));
+        // Purchase only the number of full tickets
+        uint256 spendAmount = tickets * lotteryTicketPriceUSD;
+        lottery.purchaseTickets(lotteryReferrer, spendAmount, address(this));
 
         // Update lottery counter
         currentLotteryDay++;
