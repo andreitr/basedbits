@@ -32,6 +32,8 @@ contract PotRaiderDeploy is Script {
             uniV3Quoter,
             lotteryContract
         );
+
+        potRaider.setLotteryReferrer(0x1d671d1B191323A38490972D58354971E5c1cd2A);
         vm.stopBroadcast();
     }
 }

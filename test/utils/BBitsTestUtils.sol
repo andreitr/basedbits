@@ -120,7 +120,7 @@ contract BBitsTestUtils is Test, IERC721Receiver, IERC1155Receiver {
     }
 
     function forkBase() public {
-        uint256 baseFork = vm.createFork("https://base-rpc.publicnode.com");
+        uint256 baseFork = vm.createFork("https://mainnet.base.org");
         vm.selectFork(baseFork);
 
         vm.warp(block.timestamp + 1000 days);
