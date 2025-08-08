@@ -35,6 +35,8 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
 
     uint256 public immutable maxMint;
 
+    uint256 public constant MAX_SUPPLY = 1000;
+
     uint256 public totalSupply;
 
     uint256 public circulatingSupply;
@@ -97,6 +99,7 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     function mint(uint256 quantity) external payable whenNotPaused nonReentrant {
         if (quantity == 0) revert QuantityZero();
         if (quantity > maxMint) revert MaxMintPerCallExceeded();
+        if (totalSupply + quantity > MAX_SUPPLY) revert MaxSupplyReached();
         if (msg.value < mintPrice * quantity) revert InsufficientPayment();
 
         uint256 burnAmount = (msg.value * burnPercentage) / 10_000;
