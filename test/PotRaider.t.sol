@@ -47,8 +47,7 @@ contract PotRaiderTest is BBitsTestUtils {
         uniV3Quoter = IV3Quoter(0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a);
         lottery = IBaseJackpot(0xbEDd4F2beBE9E3E636161E644759f3cbe3d51B95);
 
-        potRaider =
-            new PotRaiderHarness(owner, mintPrice, burner, WETH, USDC, uniV3Router, uniV3Quoter, lottery);
+        potRaider = new PotRaiderHarness(owner, mintPrice, burner, WETH, USDC, uniV3Router, uniV3Quoter, lottery);
     }
 
     function testConstructor() public {
@@ -62,6 +61,7 @@ contract PotRaiderTest is BBitsTestUtils {
         assertEq(address(potRaider.lottery()), address(lottery));
         assertEq(potRaider.lotteryTicketPriceUSD(), 1e6);
         assertEq(potRaider.maxMint(), 50);
+        assertEq(potRaider.MAX_SUPPLY(), 1000);
         assertEq(potRaider.totalSupply(), 0);
         assertEq(potRaider.circulatingSupply(), 0);
         assertEq(potRaider.mintPrice(), mintPrice);
@@ -306,6 +306,22 @@ contract PotRaiderTest is BBitsTestUtils {
         string memory uri = potRaider.tokenURI(0);
         assertTrue(bytes(uri).length > 0, "Token URI should not be empty");
         assertTrue(keccak256(bytes(uri)) != keccak256(bytes("")), "Token URI should not be empty string");
+    }
+
+    function testMaxSupply() public {
+        vm.deal(user1, mintPrice * potRaider.MAX_SUPPLY());
+        vm.startPrank(user1);
+        for (uint256 i = 0; i < potRaider.MAX_SUPPLY() / potRaider.maxMint(); i++) {
+            potRaider.mint{value: mintPrice * potRaider.maxMint()}(potRaider.maxMint());
+        }
+        vm.stopPrank();
+
+        assertEq(potRaider.totalSupply(), potRaider.MAX_SUPPLY());
+
+        vm.deal(user1, mintPrice);
+        vm.prank(user1);
+        vm.expectRevert(IPotRaider.MaxSupplyReached.selector);
+        potRaider.mint{value: mintPrice}(1);
     }
 
     function testTokenURINonexistentToken() public {

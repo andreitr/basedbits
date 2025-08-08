@@ -11,6 +11,7 @@ interface IPotRaider {
 
     error QuantityZero();
     error MaxMintPerCallExceeded();
+    error MaxSupplyReached();
     error InsufficientPayment();
     error TransferFailed();
     error InvalidPercentage();
