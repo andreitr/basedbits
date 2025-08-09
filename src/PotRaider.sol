@@ -37,6 +37,8 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
 
     uint256 public constant MAX_SUPPLY = 1000;
 
+    uint256 constant CHUNK_USDC = 5e6;
+
     uint256 public totalSupply;
 
     uint256 public circulatingSupply;
@@ -166,10 +168,10 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         uint256 spendAmount = tickets * lotteryTicketPriceUSD;
         lottery.purchaseTickets(lotteryReferrer, spendAmount, address(this));
 
-        // Swap any leftover USDC back to ETH
-        uint256 leftoverUSDC = usdc.balanceOf(address(this));
-        if (leftoverUSDC > 0) {
-            _swapUSDCforETH(leftoverUSDC);
+        // Swap leftover USDC to ETH in 5 USDC increments
+        uint256 usdcBalance = usdc.balanceOf(address(this));
+        if (usdcBalance >= CHUNK_USDC) {
+            _swapUSDCforETH(CHUNK_USDC);
         }
 
         // Update lottery counter
