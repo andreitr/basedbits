@@ -348,7 +348,8 @@ contract PotRaiderTest is BBitsTestUtils {
 
         potRaider.purchaseLotteryTicket();
 
-        (uint256 tickets,) = potRaider.lotteryPurchaseHistory(0);
+        (uint256 tickets,) = potRaider.lotteryPurchaseHistory(1);
         assertGt(tickets, 0);
+        assertEq(potRaider.currentLotteryDay(), 1);
     }
 }
