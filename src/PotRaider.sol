@@ -161,8 +161,12 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         uint256 tickets = usdcAmount / lotteryTicketPriceUSD;
         if (tickets == 0) revert InsufficientUSDCForTicket();
 
+        // Update lottery counter before recording purchase
+        currentLotteryDay++;
+
         // Record lottery purchase information in tickets and timestamp
-        lotteryPurchaseHistory[currentLotteryDay] = LotteryPurchase({tickets: tickets, timestamp: block.timestamp});
+        lotteryPurchaseHistory[currentLotteryDay] =
+            LotteryPurchase({tickets: tickets, timestamp: block.timestamp});
 
         // Purchase only the number of full tickets
         uint256 spendAmount = tickets * lotteryTicketPriceUSD;
@@ -174,8 +178,6 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
             _swapUSDCforETH(CHUNK_USDC);
         }
 
-        // Update lottery counter
-        currentLotteryDay++;
         emit LotteryTicketPurchased(currentLotteryDay, dailyAmount);
     }
 
