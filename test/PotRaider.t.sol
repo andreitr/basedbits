@@ -51,8 +51,7 @@ contract PotRaiderTest is BBitsTestUtils {
         // Deploy the art contract
         artContract = new PotRaiderArt();
 
-        potRaider =
-            new PotRaiderHarness(owner, mintPrice, burner, WETH, USDC, uniV3Router, uniV3Quoter, lottery, artContract);
+        potRaider = new PotRaiderHarness(owner, mintPrice, burner, WETH, USDC, uniV3Router, uniV3Quoter, lottery, artContract);
     }
 
     function testConstructor() public {
@@ -66,6 +65,7 @@ contract PotRaiderTest is BBitsTestUtils {
         assertEq(address(potRaider.lottery()), address(lottery));
         assertEq(potRaider.lotteryTicketPriceUSD(), 1e6);
         assertEq(potRaider.maxMint(), 50);
+        assertEq(potRaider.MAX_SUPPLY(), 1000);
         assertEq(potRaider.totalSupply(), 0);
         assertEq(potRaider.circulatingSupply(), 0);
         assertEq(potRaider.mintPrice(), mintPrice);
@@ -242,6 +242,22 @@ contract PotRaiderTest is BBitsTestUtils {
         assertTrue(keccak256(bytes(uri)) != keccak256(bytes("")), "Token URI should not be empty string");
     }
 
+    function testMaxSupply() public {
+        vm.deal(user1, mintPrice * potRaider.MAX_SUPPLY());
+        vm.startPrank(user1);
+        for (uint256 i = 0; i < potRaider.MAX_SUPPLY() / potRaider.maxMint(); i++) {
+            potRaider.mint{value: mintPrice * potRaider.maxMint()}(potRaider.maxMint());
+        }
+        vm.stopPrank();
+
+        assertEq(potRaider.totalSupply(), potRaider.MAX_SUPPLY());
+
+        vm.deal(user1, mintPrice);
+        vm.prank(user1);
+        vm.expectRevert(IPotRaider.MaxSupplyReached.selector);
+        potRaider.mint{value: mintPrice}(1);
+    }
+
     function testTokenURINonexistentToken() public {
         vm.expectRevert("ERC721NonexistentToken(999)");
         potRaider.tokenURI(999);
@@ -266,7 +282,8 @@ contract PotRaiderTest is BBitsTestUtils {
 
         potRaider.purchaseLotteryTicket();
 
-        (uint256 tickets,) = potRaider.lotteryPurchaseHistory(0);
+        (uint256 tickets,) = potRaider.lotteryPurchaseHistory(1);
         assertGt(tickets, 0);
+        assertEq(potRaider.currentLotteryDay(), 1);
     }
 }

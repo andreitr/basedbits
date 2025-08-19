@@ -38,6 +38,10 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
 
     PotRaiderArt public immutable artContract;
 
+    uint256 public constant MAX_SUPPLY = 1000;
+
+    uint256 constant CHUNK_USDC = 5e6;
+
     uint256 public totalSupply;
 
     uint256 public circulatingSupply;
@@ -102,6 +106,7 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
     function mint(uint256 quantity) external payable whenNotPaused nonReentrant {
         if (quantity == 0) revert QuantityZero();
         if (quantity > maxMint) revert MaxMintPerCallExceeded();
+        if (totalSupply + quantity > MAX_SUPPLY) revert MaxSupplyReached();
         if (msg.value < mintPrice * quantity) revert InsufficientPayment();
 
         uint256 burnAmount = (msg.value * burnPercentage) / 10_000;
@@ -161,21 +166,23 @@ contract PotRaider is IPotRaider, ERC721Burnable, Ownable, Pausable, ReentrancyG
         uint256 tickets = usdcAmount / lotteryTicketPriceUSD;
         if (tickets == 0) revert InsufficientUSDCForTicket();
 
+        // Update lottery counter before recording purchase
+        currentLotteryDay++;
+
         // Record lottery purchase information in tickets and timestamp
-        lotteryPurchaseHistory[currentLotteryDay] = LotteryPurchase({tickets: tickets, timestamp: block.timestamp});
+        lotteryPurchaseHistory[currentLotteryDay] =
+            LotteryPurchase({tickets: tickets, timestamp: block.timestamp});
 
         // Purchase only the number of full tickets
         uint256 spendAmount = tickets * lotteryTicketPriceUSD;
         lottery.purchaseTickets(lotteryReferrer, spendAmount, address(this));
 
-        // Swap any leftover USDC back to ETH
-        uint256 leftoverUSDC = usdc.balanceOf(address(this));
-        if (leftoverUSDC > 0) {
-            _swapUSDCforETH(leftoverUSDC);
+        // Swap leftover USDC to ETH in 5 USDC increments
+        uint256 usdcBalance = usdc.balanceOf(address(this));
+        if (usdcBalance >= CHUNK_USDC) {
+            _swapUSDCforETH(CHUNK_USDC);
         }
 
-        // Update lottery counter
-        currentLotteryDay++;
         emit LotteryTicketPurchased(currentLotteryDay, dailyAmount);
     }
 
