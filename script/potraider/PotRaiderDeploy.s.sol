@@ -8,9 +8,11 @@ import {IV3Quoter} from "@src/interfaces/uniswap/IV3Quoter.sol";
 import {IBaseJackpot} from "@src/interfaces/baseJackpot/IBaseJackpot.sol";
 import {BBitsBurner} from "src/BBitsBurner.sol";
 import {PotRaider} from "@src/PotRaider.sol";
+import {PotRaiderArt} from "@src/modules/PotRaiderArt.sol";
 
 contract PotRaiderDeploy is Script {
     PotRaider public potRaider;
+    PotRaiderArt public artContract;
 
     BBitsBurner public burner = BBitsBurner(payable(0x1595409cbAEf3dD2485107fb1e328fA0fA505c10));
     IERC20 public WETH = IERC20(0x4200000000000000000000000000000000000006);
@@ -22,15 +24,20 @@ contract PotRaiderDeploy is Script {
     function run() external {
         vm.startBroadcast();
 
+        // Deploy the art contract first
+        artContract = new PotRaiderArt();
+
+        // Deploy the main PotRaider contract
         potRaider = new PotRaider(
             msg.sender,
-            0.0013 ether,
+            0.0011 ether,
             burner,
             WETH,
             USDC,
             uniV3Router,
             uniV3Quoter,
-            lotteryContract
+            lotteryContract,
+            artContract
         );
 
         potRaider.setLotteryReferrer(0x1d671d1B191323A38490972D58354971E5c1cd2A);

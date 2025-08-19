@@ -15,7 +15,7 @@ contract PotRaiderArt {
                     abi.encodePacked(
                         '{"name": "Raider #',
                         tokenId.toString(),
-                        '", "description": "A Pot Raider NFT", "image": "data:image/svg+xml;base64,',
+                        '", "description": "For a full year, Pot Raiders will spend a share of the treasury on Megapot tickets. Each NFT can be redeemed for a share of the treasury at any time.", "image": "data:image/svg+xml;base64,',
                         Base64.encode(bytes(svg)),
                         '"}'
                     )
