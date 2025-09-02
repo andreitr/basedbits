@@ -7,7 +7,7 @@ import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {IBaseJackpot} from "@src/interfaces/baseJackpot/IBaseJackpot.sol";
 
 /// @title MegaPool
-/// @notice Allows users to pool USDC funds to purchase Megapot lottery tickets
+/// @notice Buys Megapot lottery tickets immediately by pulling USDC from the caller; the contract only holds funds when claiming winnings.
 contract MegaPool is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -17,23 +17,16 @@ contract MegaPool is Ownable, ReentrancyGuard {
     /// @notice Optional referrer address for lottery purchases
     address public lotteryReferrer;
 
-    /// @notice Amount of USDC each depositor has provided
-    mapping(address => uint256) public deposits;
-    uint256 public totalDeposits;
-
-    /// @notice Number of purchases made each day
+    /// @notice Number of purchases made per lottery day (keyed by round start timestamp)
     mapping(uint256 => uint256) public dailyPurchaseCount;
-    /// @notice Addresses that triggered purchases each day
+    /// @notice Addresses that triggered purchases per lottery day (keyed by round start timestamp)
     mapping(uint256 => address[]) public dailyPurchasers;
 
-    event Deposited(address indexed user, uint256 amount);
     event Purchased(address indexed buyer, uint256 day, uint256 amount);
-    event Withdrawn(address indexed user, uint256 amount);
     event WinningsClaimed(uint256 amount);
 
     error AmountZero();
-    error InsufficientBalance();
-    error NothingToWithdraw();
+    // No deposits/withdrawals: contract should not hold funds except winnings
 
     constructor(IERC20 _usdc, IBaseJackpot _lottery, address _owner) Ownable(_owner) {
         usdc = _usdc;
@@ -47,32 +40,21 @@ contract MegaPool is Ownable, ReentrancyGuard {
         lotteryReferrer = _referrer;
     }
 
-    /// @notice Deposit USDC into the pool
-    /// @param amount Amount of USDC to deposit
-    function deposit(uint256 amount) external nonReentrant {
-        if (amount == 0) revert AmountZero();
-
-        deposits[msg.sender] += amount;
-        totalDeposits += amount;
-
-        usdc.safeTransferFrom(msg.sender, address(this), amount);
-
-        emit Deposited(msg.sender, amount);
-    }
-
-    /// @notice Purchase lottery tickets using pooled funds
+    /// @notice Purchase lottery tickets immediately using caller-provided USDC
     /// @param amount Amount of USDC to spend on tickets
     function buy(uint256 amount) external nonReentrant {
         if (amount == 0) revert AmountZero();
-        if (usdc.balanceOf(address(this)) < amount) revert InsufficientBalance();
+        // Pull USDC from the buyer and immediately purchase tickets.
+        // The lottery contract uses allowance to transfer USDC from this contract.
+        usdc.safeTransferFrom(msg.sender, address(this), amount);
 
-        uint256 day = block.timestamp / 1 days;
-        dailyPurchaseCount[day] += 1;
-        dailyPurchasers[day].push(msg.sender);
+        uint256 dayKey = _currentLotteryDayKey();
+        dailyPurchaseCount[dayKey] += 1;
+        dailyPurchasers[dayKey].push(msg.sender);
 
         lottery.purchaseTickets(lotteryReferrer, amount, address(this));
 
-        emit Purchased(msg.sender, day, amount);
+        emit Purchased(msg.sender, dayKey, amount);
     }
 
     /// @notice Claim winnings from the Megapot lottery
@@ -83,19 +65,45 @@ contract MegaPool is Ownable, ReentrancyGuard {
         emit WinningsClaimed(gained);
     }
 
-    /// @notice Withdraw the caller's share of the pool's balance
-    function withdraw() external nonReentrant {
-        uint256 userDeposit = deposits[msg.sender];
-        if (userDeposit == 0) revert NothingToWithdraw();
+    /// VIEW HELPERS ///
 
-        uint256 poolBalance = usdc.balanceOf(address(this));
-        uint256 amount = (poolBalance * userDeposit) / totalDeposits;
-
-        deposits[msg.sender] = 0;
-        totalDeposits -= userDeposit;
-
-        usdc.safeTransfer(msg.sender, amount);
-
-        emit Withdrawn(msg.sender, amount);
+    /// @notice Returns the current lottery day key (round start timestamp) used for indexing daily stats
+    /// @dev Uses lottery's last end time and round duration to align 24h windows
+    function currentLotteryDayKey() external view returns (uint256) {
+        return _currentLotteryDayKey();
     }
+
+    /// @notice Returns the current lottery window start and end timestamps
+    function currentLotteryWindow() external view returns (uint256 start, uint256 end) {
+        (start, end) = _currentLotteryWindow();
+    }
+
+    /// INTERNAL ///
+
+    function _currentLotteryDayKey() internal view returns (uint256) {
+        (uint256 start,) = _currentLotteryWindow();
+        return start;
+    }
+
+    function _currentLotteryWindow() internal view returns (uint256 start, uint256 end) {
+        uint256 duration = lottery.roundDurationInSeconds();
+        if (duration == 0) {
+            duration = 1 days; // fallback to 24h if not provided
+        }
+        uint256 lastEnd = lottery.lastJackpotEndTime();
+
+        // If timestamp is before the last recorded end, consider the window ending at lastEnd
+        // and starting duration before it.
+        if (block.timestamp <= lastEnd) {
+            start = lastEnd - duration;
+            end = lastEnd;
+            return (start, end);
+        }
+
+        uint256 elapsed = block.timestamp - lastEnd;
+        uint256 k = elapsed / duration; // number of full periods since last end
+        start = lastEnd + k * duration;
+        end = start + duration;
+    }
+
 }
