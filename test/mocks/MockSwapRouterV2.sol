@@ -15,6 +15,8 @@ contract MockSwapRouterV2 is IV3Router {
 
     uint256 public ethToUsdcCalls;
     uint256 public usdcToEthCalls;
+    uint256 public lastUsdcToEthAmount;
+    uint256 public totalUsdcToEth;
     bool public failSwaps;
 
     constructor(MockWETH _weth, MockERC20 _usdc, uint256 _usdcPerEth) {
@@ -53,6 +55,8 @@ contract MockSwapRouterV2 is IV3Router {
             weth.deposit{value: amountOut}();
             require(weth.transfer(params.recipient, amountOut), "MockSwapRouterV2: weth transfer failed");
             usdcToEthCalls++;
+            lastUsdcToEthAmount = params.amountIn;
+            totalUsdcToEth += params.amountIn;
         }
     }
 

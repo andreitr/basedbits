@@ -25,7 +25,9 @@ interface ILuckyGhouls {
     );
     event TicketPurchaseFailed(uint256 indexed drawingId, uint256 ticketIndex, bytes reason);
     event EvilTicketSpaceExhausted(uint256 indexed drawingId, uint256 ticketsSecured);
-    event ReckoningClaimed(uint256 indexed drawingId, uint256 ticketCount, uint256 usdcReceived);
+    event ReckoningClaimed(uint256 indexed drawingId, uint256 ticketCount, uint256 usdcReceived, uint256 ethReceived);
+    event RitualClockStarted(uint256 ritualStartTime, uint256 burnUnlockTime);
+    event TreasuryBurned(uint256 ethBurned, uint256 timestamp);
     event BurnPercentageUpdated(uint256 burnPercentage);
     event RitualReferrerUpdated(address indexed newReferrer);
     event SummoningPriceUpdated(uint256 mintPrice);
@@ -47,6 +49,8 @@ interface ILuckyGhouls {
     error NoTicketsForDrawing();
     error DrawingNotSettled();
     error InvalidEvilNumber();
+    error BurnWindowNotReached();
+    error NothingToBurn();
 
     function lotteryReferrer() external view returns (address);
 }

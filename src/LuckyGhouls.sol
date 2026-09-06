@@ -21,6 +21,9 @@ import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
 ///         any time, burning their Ghoul for a proportional share of the ETH and USDC the Cauldron holds.
 /// @dev    Structure mirrors PotRaider.sol; the ticket-purchase surface is rewritten for the Megapot V2 API
 ///         (discrete NFT tickets with explicit numbers, no built-in once-per-round guard, id-based claims).
+///         Winnings are converted back to ETH at claim time so they feed future rituals. One year after the
+///         first ritual, plus a 30-day claim window, the owner may burn whatever is left in the Cauldron
+///         through the shared BBITS burner (the wind-down).
 contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
 
@@ -53,7 +56,11 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
     /// @notice Telemetry tag passed to Megapot on every purchase
     bytes32 public constant RITUAL_SOURCE = "LuckyGhouls";
 
-    uint256 constant CHUNK_USDC = 5e6;
+    /// @notice The wind-down clock: burning the unclaimed treasury unlocks this long after the first ritual...
+    uint256 public constant YEAR_MARK_DELAY = 365 days;
+
+    /// @notice ...plus this claim window, during which holders can still break the pact
+    uint256 public constant CLAIM_WINDOW_DURATION = 30 days;
 
     /// @dev Megapot referral splits are scaled to 1e18
     uint256 constant PRECISE_UNIT = 1e18;
@@ -90,11 +97,20 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
     ///         instead of running out of gas and reverting its own earlier successes
     uint256 public ritualGasReserve;
 
+    /// @notice Timestamp of the first fully completed ritual; starts the wind-down clock (0 = not started)
+    uint256 public ritualStartTime;
+
     /// @notice Numbers the Evil Number Generator prefers, in priority order
     uint8[] public evilNumbers;
 
     /// @notice Tickets the ritual intends to buy for a drawing, locked in on the first attempt
     mapping(uint256 => uint256) public ritualTargetTicketCount;
+
+    /// @notice USDC obtained from the day's ETH swap, per drawing (the day's whole ticket budget)
+    mapping(uint256 => uint256) public ritualUsdcBudget;
+
+    /// @notice Ticket price read on the day's first attempt, per drawing
+    mapping(uint256 => uint256) public ritualTicketPrice;
 
     /// @dev Every ticket successfully bought per drawing (id + numbers), consumed by claimReckoning
     mapping(uint256 => PurchasedTicket[]) internal _purchasedTickets;
@@ -206,10 +222,13 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
             if (dailyAmount == 0) revert InsufficientTreasury();
 
             uint256 usdcAmount = _swapETHForUSDC(dailyAmount);
-            target = usdcAmount / lottery.ticketPrice();
+            uint256 price = lottery.ticketPrice();
+            target = usdcAmount / price;
             if (target == 0) revert InsufficientUSDCForTicket();
 
             ritualTargetTicketCount[currentId] = target;
+            ritualUsdcBudget[currentId] = usdcAmount;
+            ritualTicketPrice[currentId] = price;
         }
 
         PurchasedTicket[] storage tickets = _purchasedTickets[currentId];
@@ -250,8 +269,18 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
             ritualHistory[currentRitualDay] =
                 RitualPurchase({ticketCount: target, drawingId: currentId, timestamp: block.timestamp});
 
-            // Swap leftover USDC dust back to ETH in 5 USDC increments
-            if (usdc.balanceOf(address(this)) >= CHUNK_USDC) _swapUSDCforETH(CHUNK_USDC);
+            // The first completed ritual starts the wind-down clock
+            if (ritualStartTime == 0) {
+                ritualStartTime = block.timestamp;
+                emit RitualClockStarted(block.timestamp, getBurnUnlockTime());
+            }
+
+            // Swap the day's own unspent budget back to ETH. Scoped to this ritual's remainder only - never the
+            // contract's USDC balance, which may hold USDC earmarked for another drawing's pending tickets.
+            uint256 leftover = ritualUsdcBudget[currentId] - tickets.length * ritualTicketPrice[currentId];
+            uint256 usdcBalance = usdc.balanceOf(address(this));
+            if (leftover > usdcBalance) leftover = usdcBalance;
+            if (leftover > 0) _swapUSDCforETH(leftover);
 
             emit NightlyRitualPerformed(currentRitualDay, currentId, boughtThisCall, dailyAmount);
         } else {
@@ -259,8 +288,10 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
         }
     }
 
-    /// @notice The Reckoning: claim every ticket bought for a settled drawing (win or lose) in one call.
+    /// @notice The Reckoning: claim every ticket bought for a settled drawing (win or lose) in one call. Any USDC
+    ///         won is swapped straight back to ETH so it flows into the remaining rituals' daily budgets.
     /// @dev    Anyone can call this. Losing tickets simply pay 0; the drawing's records are cleared afterwards.
+    ///         Only the USDC actually received by this claim is swapped, never the contract's balance.
     function claimReckoning(uint256 drawingId) external whenNotPaused nonReentrant {
         PurchasedTicket[] storage tickets = _purchasedTickets[drawingId];
         uint256 count = tickets.length;
@@ -277,7 +308,10 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
         lottery.claimWinnings(ids);
         uint256 usdcReceived = usdc.balanceOf(address(this)) - balanceBefore;
 
-        emit ReckoningClaimed(drawingId, count, usdcReceived);
+        uint256 ethReceived;
+        if (usdcReceived > 0) ethReceived = _swapUSDCforETH(usdcReceived);
+
+        emit ReckoningClaimed(drawingId, count, usdcReceived, ethReceived);
     }
 
     /// @notice Claim referral fees accrued on the Megapot contract
@@ -292,6 +326,23 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
     }
 
     /// SETTINGS ///
+
+    /// @notice Wind-down: once the claim window has closed, destroy whatever is left in the Cauldron by routing
+    ///         it through the shared BBITS burner (USDC is converted to ETH first). Callable again if more
+    ///         funds arrive later. Deliberately not gated by the pause switch.
+    function burnUnclaimedTreasury() external onlyOwner nonReentrant {
+        if (!isBurnWindowReached()) revert BurnWindowNotReached();
+
+        uint256 usdcToBurn = usdc.balanceOf(address(this));
+        if (usdcToBurn > 0) _swapUSDCforETH(usdcToBurn);
+
+        uint256 ethToBurn = address(this).balance;
+        if (ethToBurn == 0) revert NothingToBurn();
+
+        bbitsBurner.burn{value: ethToBurn}(0);
+
+        emit TreasuryBurned(ethToBurn, block.timestamp);
+    }
 
     /// @notice Emergency withdraw of ETH or ERC20 tokens
     /// @param token Address of the token to withdraw, or address(0) for ETH
@@ -571,6 +622,18 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
     /// @notice Megapot drawing cycle length in seconds
     function getDrawingDurationInSeconds() external view returns (uint256 duration) {
         duration = lottery.drawingDurationInSeconds();
+    }
+
+    /// @notice Timestamp from which burnUnclaimedTreasury() may be called. type(uint256).max until the first
+    ///         ritual has completed and started the clock.
+    function getBurnUnlockTime() public view returns (uint256) {
+        if (ritualStartTime == 0) return type(uint256).max;
+        return ritualStartTime + YEAR_MARK_DELAY + CLAIM_WINDOW_DURATION;
+    }
+
+    /// @notice Whether the claim window has closed and the treasury may be burned
+    function isBurnWindowReached() public view returns (bool) {
+        return block.timestamp >= getBurnUnlockTime();
     }
 
     /// @notice Ticket NFT ids held for a drawing (empty once claimed)

@@ -132,6 +132,11 @@ contract LuckyGhoulsTest is Test {
         assertEq(ghouls.lastRitualDrawingId(), type(uint256).max);
         assertEq(ghouls.ritualGasReserve(), 600_000);
         assertEq(ghouls.RITUAL_SOURCE(), bytes32("LuckyGhouls"));
+        assertEq(ghouls.YEAR_MARK_DELAY(), 365 days);
+        assertEq(ghouls.CLAIM_WINDOW_DURATION(), 30 days);
+        assertEq(ghouls.ritualStartTime(), 0);
+        assertEq(ghouls.getBurnUnlockTime(), type(uint256).max);
+        assertFalse(ghouls.isBurnWindowReached());
         assertEq(usdcToken.allowance(address(ghouls), address(jackpot)), type(uint256).max);
         assertEq(usdcToken.allowance(address(ghouls), address(router)), type(uint256).max);
 
@@ -312,10 +317,15 @@ contract LuckyGhoulsTest is Test {
         (uint256 count, uint256 drawingId, uint256 ts) = ghouls.ritualHistory(1);
         assertEq(count, 12);
         assertEq(drawingId, DRAWING);
-        assertEq(ts, block.timestamp);
+        assertEq(ts, vm.getBlockTimestamp());
         (uint256 target, uint256 bought) = ghouls.getRitualProgress(DRAWING);
         assertEq(target, 12);
         assertEq(bought, 12);
+        assertEq(ghouls.ritualUsdcBudget(DRAWING), 12e6);
+        assertEq(ghouls.ritualTicketPrice(DRAWING), 1e6);
+        assertEq(router.usdcToEthCalls(), 0, "no remainder, nothing to sweep");
+        assertEq(ghouls.ritualStartTime(), vm.getBlockTimestamp(), "first completed ritual starts the clock");
+        assertEq(ghouls.getBurnUnlockTime(), vm.getBlockTimestamp() + 395 days);
 
         // Every ticket valid and pairwise distinct; ids recorded and owned by the Cauldron
         ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
@@ -416,25 +426,51 @@ contract LuckyGhoulsTest is Test {
         assertEq(split.length, 0);
     }
 
-    function testRitualSweepsUsdcDust() public {
-        _fundForTickets(3);
-        // Extra USDC sitting in the Cauldron gets swept back to ETH one 5-USDC chunk at a time
+    function testRitualSweepsDayRemainderOnly() public {
+        // 3.5 USDC budget -> 3 tickets, 0.5 USDC of the day's own budget left over
+        vm.prank(owner);
+        ghouls.setRitualParticipationDays(1);
+        vm.deal(address(ghouls), 3 * WEI_PER_TICKET + WEI_PER_TICKET / 2);
+        // Unrelated USDC already in the Cauldron must not be touched
         usdcToken.mint(address(ghouls), 7e6);
 
         ghouls.performNightlyRitual();
 
+        (uint256 target, uint256 bought) = ghouls.getRitualProgress(DRAWING);
+        assertEq(target, 3);
+        assertEq(bought, 3);
         assertEq(router.usdcToEthCalls(), 1);
-        assertEq(usdcToken.balanceOf(address(ghouls)), 2e6);
+        assertEq(router.lastUsdcToEthAmount(), 0.5e6);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 7e6);
         assertEq(weth.balanceOf(address(ghouls)), 0, "WETH should be unwrapped");
-        assertEq(address(ghouls).balance, (5e6 * 1e18) / USDC_PER_ETH);
+        assertEq(address(ghouls).balance, (0.5e6 * 1e18) / USDC_PER_ETH);
     }
 
-    function testRitualNoSweepBelowChunk() public {
+    function testRitualNoSweepWithoutRemainder() public {
         _fundForTickets(3);
-        usdcToken.mint(address(ghouls), 4e6);
+        usdcToken.mint(address(ghouls), 7e6);
         ghouls.performNightlyRitual();
         assertEq(router.usdcToEthCalls(), 0);
-        assertEq(usdcToken.balanceOf(address(ghouls)), 4e6);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 7e6);
+    }
+
+    function testRitualRemainderSweptOnCompletionNotPartial() public {
+        vm.prank(owner);
+        ghouls.setRitualParticipationDays(1);
+        vm.deal(address(ghouls), 4 * WEI_PER_TICKET + WEI_PER_TICKET / 4); // 4.25 USDC -> 4 tickets
+        jackpot.setFailWhenSold(2);
+
+        ghouls.performNightlyRitual();
+        assertEq(router.usdcToEthCalls(), 0, "partial run must not sweep");
+        assertEq(usdcToken.balanceOf(address(ghouls)), 2.25e6);
+        assertEq(ghouls.ritualStartTime(), 0, "partial run must not start the clock");
+
+        jackpot.clearFail();
+        ghouls.performNightlyRitual();
+        assertEq(router.usdcToEthCalls(), 1);
+        assertEq(router.lastUsdcToEthAmount(), 0.25e6);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 0);
+        assertEq(ghouls.ritualStartTime(), vm.getBlockTimestamp());
     }
 
     function testRitualFailureConditions() public {
@@ -585,9 +621,10 @@ contract LuckyGhoulsTest is Test {
         assertEq(ghouls.lastRitualDrawingId(), DRAWING);
         (uint256 count,,) = ghouls.ritualHistory(1);
         assertEq(count, 2);
-        // Unspent USDC: 8 left, one 5-chunk swept back
-        assertEq(usdcToken.balanceOf(address(ghouls)), 3e6);
+        // The whole unspent budget (8 USDC) is swept back to ETH
+        assertEq(usdcToken.balanceOf(address(ghouls)), 0);
         assertEq(router.usdcToEthCalls(), 1);
+        assertEq(router.lastUsdcToEthAmount(), 8e6);
 
         ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         assertTrue(_contains(tickets[0].normals, 5) != _contains(tickets[1].normals, 5));
@@ -605,7 +642,8 @@ contract LuckyGhoulsTest is Test {
 
         assertEq(jackpot.buyCalls(), 0);
         assertEq(ghouls.lastRitualDrawingId(), DRAWING);
-        assertEq(usdcToken.balanceOf(address(ghouls)), 3e6);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 0, "unspent budget swept back to ETH");
+        assertEq(router.lastUsdcToEthAmount(), 3e6);
     }
 
     function testRitualRollsOverToNextDrawing() public {
@@ -643,6 +681,8 @@ contract LuckyGhoulsTest is Test {
         (, bought) = ghouls.getRitualProgress(DRAWING + 1);
         assertEq(bought, 3);
         assertEq(ghouls.heldTicketIds(DRAWING).length, 2);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 2e6, "yesterday's earmarked USDC is not swept");
+        assertEq(router.usdcToEthCalls(), 0);
 
         jackpot.setCurrentDrawingId(DRAWING + 2);
         ghouls.claimReckoning(DRAWING);
@@ -665,12 +705,17 @@ contract LuckyGhoulsTest is Test {
         jackpot.setPayoutPerTicket(2e6);
         usdcToken.mint(address(jackpot), 8e6);
 
+        uint256 ethBefore = address(ghouls).balance;
         vm.prank(user2); // anyone can call
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.ReckoningClaimed(DRAWING, 4, 8e6);
+        emit ILuckyGhouls.ReckoningClaimed(DRAWING, 4, 8e6, (8e6 * 1e18) / USDC_PER_ETH);
         ghouls.claimReckoning(DRAWING);
 
-        assertEq(usdcToken.balanceOf(address(ghouls)), 8e6);
+        // Winnings land in the Cauldron as ETH, not USDC
+        assertEq(usdcToken.balanceOf(address(ghouls)), 0);
+        assertEq(address(ghouls).balance, ethBefore + (8e6 * 1e18) / USDC_PER_ETH);
+        assertEq(router.usdcToEthCalls(), 1);
+        assertEq(router.lastUsdcToEthAmount(), 8e6);
         assertEq(ghouls.heldTicketIds(DRAWING).length, 0);
         assertEq(ghouls.getPurchasedTickets(DRAWING).length, 0);
         for (uint256 i = 0; i < ids.length; i++) {
@@ -688,9 +733,41 @@ contract LuckyGhoulsTest is Test {
         jackpot.setCurrentDrawingId(DRAWING + 1);
 
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.ReckoningClaimed(DRAWING, 3, 0);
+        emit ILuckyGhouls.ReckoningClaimed(DRAWING, 3, 0, 0);
         ghouls.claimReckoning(DRAWING);
         assertEq(ghouls.heldTicketIds(DRAWING).length, 0);
+        assertEq(router.usdcToEthCalls(), 0, "nothing to convert on a losing round");
+    }
+
+    function testClaimReckoningLeavesEarmarkedUsdcAlone() public {
+        // Day 1 completes with 2 tickets
+        _fundForTickets(2);
+        ghouls.performNightlyRitual();
+
+        // Day 2 is only partially done: 2 of 4 bought, 2 USDC earmarked for the rest
+        jackpot.setCurrentDrawingId(DRAWING + 1);
+        vm.prank(owner);
+        ghouls.setRitualParticipationDays(2);
+        vm.deal(address(ghouls), 4 * WEI_PER_TICKET);
+        jackpot.setFailWhenSold(4); // 2 already sold on day 1; the 5th overall (day-2 index 2) fails
+        ghouls.performNightlyRitual();
+        (, uint256 bought) = ghouls.getRitualProgress(DRAWING + 1);
+        assertEq(bought, 2);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 2e6);
+
+        // Claiming day 1's win converts exactly the winnings and nothing else
+        jackpot.setPayoutPerTicket(3e6);
+        usdcToken.mint(address(jackpot), 6e6);
+        ghouls.claimReckoning(DRAWING);
+        assertEq(router.lastUsdcToEthAmount(), 6e6);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 2e6, "earmarked USDC untouched");
+
+        // The earmarked USDC still finishes day 2
+        jackpot.clearFail();
+        ghouls.performNightlyRitual();
+        (, bought) = ghouls.getRitualProgress(DRAWING + 1);
+        assertEq(bought, 4);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 0);
     }
 
     function testClaimReckoningFailureConditions() public {
@@ -705,6 +782,121 @@ contract LuckyGhoulsTest is Test {
         ghouls.pause();
         vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
         ghouls.claimReckoning(DRAWING);
+    }
+
+    /// WIND-DOWN ///
+
+    function testWindDownClockStartsAtFirstCompletedRitual() public {
+        // Before any ritual the burn is unreachable, however long we wait
+        vm.warp(vm.getBlockTimestamp() + 3650 days);
+        assertFalse(ghouls.isBurnWindowReached());
+        vm.prank(owner);
+        vm.expectRevert(ILuckyGhouls.BurnWindowNotReached.selector);
+        ghouls.burnUnclaimedTreasury();
+
+        // A partial ritual does not start the clock
+        _fundForTickets(3);
+        jackpot.setRevertAll(true);
+        ghouls.performNightlyRitual();
+        assertEq(ghouls.ritualStartTime(), 0);
+
+        // The first completed ritual does
+        jackpot.setRevertAll(false);
+        uint256 t0 = vm.getBlockTimestamp();
+        vm.expectEmit(false, false, false, true);
+        emit ILuckyGhouls.RitualClockStarted(t0, t0 + 395 days);
+        ghouls.performNightlyRitual();
+        assertEq(ghouls.ritualStartTime(), t0);
+        assertEq(ghouls.getBurnUnlockTime(), t0 + 395 days);
+
+        // A later completed ritual does not move it
+        vm.warp(t0 + 1 days);
+        jackpot.setCurrentDrawingId(DRAWING + 1);
+        vm.prank(owner);
+        ghouls.setRitualParticipationDays(2);
+        vm.deal(address(ghouls), 2 * WEI_PER_TICKET);
+        ghouls.performNightlyRitual();
+        assertEq(ghouls.currentRitualDay(), 2);
+        assertEq(ghouls.ritualStartTime(), t0);
+    }
+
+    function _startWindDownClock() internal returns (uint256 unlockTime) {
+        _fundForTickets(2);
+        ghouls.performNightlyRitual();
+        unlockTime = ghouls.getBurnUnlockTime();
+        assertEq(unlockTime, vm.getBlockTimestamp() + 395 days);
+    }
+
+    function testBurnUnclaimedTreasury() public {
+        uint256 unlockTime = _startWindDownClock();
+        vm.deal(address(ghouls), 1 ether);
+        usdcToken.mint(address(ghouls), 10e6);
+        uint256 burnerBefore = mockBurner.totalReceived();
+
+        // One second early: still locked
+        vm.warp(unlockTime - 1);
+        assertFalse(ghouls.isBurnWindowReached());
+        vm.prank(owner);
+        vm.expectRevert(ILuckyGhouls.BurnWindowNotReached.selector);
+        ghouls.burnUnclaimedTreasury();
+
+        // At the unlock time: USDC converted first, then everything burned through BBitsBurner
+        vm.warp(unlockTime);
+        assertTrue(ghouls.isBurnWindowReached());
+        uint256 expectedEth = 1 ether + (10e6 * 1e18) / USDC_PER_ETH;
+        vm.prank(owner);
+        vm.expectEmit(false, false, false, true);
+        emit ILuckyGhouls.TreasuryBurned(expectedEth, unlockTime);
+        ghouls.burnUnclaimedTreasury();
+
+        assertEq(router.lastUsdcToEthAmount(), 10e6);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 0);
+        assertEq(address(ghouls).balance, 0);
+        assertEq(mockBurner.totalReceived() - burnerBefore, expectedEth);
+        assertEq(mockBurner.lastMinAmountBurned(), 0);
+    }
+
+    function testBurnUnclaimedTreasuryFailureConditionsAndRepeat() public {
+        uint256 unlockTime = _startWindDownClock();
+        vm.warp(unlockTime);
+
+        // Only the owner
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", user1));
+        ghouls.burnUnclaimedTreasury();
+
+        // Nothing there
+        vm.deal(address(ghouls), 0);
+        vm.prank(owner);
+        vm.expectRevert(ILuckyGhouls.NothingToBurn.selector);
+        ghouls.burnUnclaimedTreasury();
+
+        // Works while paused
+        vm.startPrank(owner);
+        ghouls.pause();
+        vm.deal(address(ghouls), 1 ether);
+        ghouls.burnUnclaimedTreasury();
+        assertEq(address(ghouls).balance, 0);
+
+        // Callable again once more funds arrive
+        vm.deal(address(ghouls), 0.5 ether);
+        ghouls.burnUnclaimedTreasury();
+        assertEq(address(ghouls).balance, 0);
+        vm.stopPrank();
+    }
+
+    function testBreakThePactAfterBurnReverts() public {
+        vm.prank(user1);
+        ghouls.summon{value: mintPrice}(1);
+        uint256 unlockTime = _startWindDownClock();
+        vm.deal(address(ghouls), 1 ether);
+        vm.warp(unlockTime);
+        vm.prank(owner);
+        ghouls.burnUnclaimedTreasury();
+
+        vm.prank(user1);
+        vm.expectRevert(ILuckyGhouls.NoTreasuryAvailable.selector);
+        ghouls.breakThePact(0);
     }
 
     /// REFERRAL FEES ///
@@ -801,6 +993,8 @@ contract LuckyGhoulsTest is Test {
         ghouls.pause();
         vm.expectRevert(err);
         ghouls.emergencyWithdraw(address(0));
+        vm.expectRevert(err);
+        ghouls.burnUnclaimedTreasury();
         uint8[] memory evil = new uint8[](1);
         evil[0] = 1;
         vm.expectRevert(err);
