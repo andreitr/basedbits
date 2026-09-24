@@ -27,3 +27,8 @@ remappings = [
     "@src/=src",
     "@test/=test",
 ]
+
+# LuckyGhouls exceeds the EIP-170 size limit at 420k optimizer runs; deploy/verify it with
+# FOUNDRY_PROFILE=luckyghouls (inherits everything else from the default profile).
+[profile.luckyghouls]
+optimizer_runs = 200

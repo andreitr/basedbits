@@ -10,7 +10,7 @@ import {BBitsBurner} from "@src/BBitsBurner.sol";
 import {LuckyGhouls} from "@src/LuckyGhouls.sol";
 import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
 
-/// @dev forge script script/luckyghouls/LuckyGhoulsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
+/// @dev FOUNDRY_PROFILE=luckyghouls forge script script/luckyghouls/LuckyGhoulsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
 contract LuckyGhoulsDeploy is Script {
     LuckyGhouls public luckyGhouls;
     LuckyGhoulsArt public artContract;

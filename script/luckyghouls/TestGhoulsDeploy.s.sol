@@ -14,7 +14,7 @@ import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
 /// @notice A short-lived dress rehearsal of LuckyGhouls on Base mainnet: same contract, same art, but the
 ///         Cauldron is spent over 10 ritual days and a mint costs the ETH equivalent of 1 USDC (quoted from
 ///         Uniswap at deploy time). Everything else (supply cap, burn split, wind-down clock) is unchanged.
-/// @dev    forge script script/luckyghouls/TestGhoulsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
+/// @dev    FOUNDRY_PROFILE=luckyghouls forge script script/luckyghouls/TestGhoulsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
 contract TestGhoulsDeploy is Script {
     LuckyGhouls public testGhouls;
     LuckyGhoulsArt public artContract;
