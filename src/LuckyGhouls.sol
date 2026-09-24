@@ -119,6 +119,8 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
     mapping(uint256 => RitualPurchase) public ritualHistory;
 
     constructor(
+        string memory _name,
+        string memory _symbol,
         address _owner,
         uint256 _mintPrice,
         BBitsBurner _bbitsBurner,
@@ -128,7 +130,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
         IV3Quoter _quoter,
         IJackpot _lottery,
         LuckyGhoulsArt _artContract
-    ) ERC721("Lucky Ghouls", "GHOUL") Ownable(_owner) {
+    ) ERC721(_name, _symbol) Ownable(_owner) {
         mintPrice = _mintPrice;
         bbitsBurner = _bbitsBurner;
         weth = _weth;

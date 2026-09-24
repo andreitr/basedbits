@@ -58,9 +58,11 @@ contract LuckyGhoulsTest is Test {
         router = new MockSwapRouterV2(weth, usdcToken, USDC_PER_ETH);
         vm.deal(address(router), 100 ether);
         jackpot = new MockJackpotV2(usdcToken);
-        artContract = new LuckyGhoulsArt();
+        artContract = new LuckyGhoulsArt("Ghoul");
 
         ghouls = new LuckyGhouls(
+            "Lucky Ghouls",
+            "GHOUL",
             owner,
             mintPrice,
             BBitsBurner(payable(address(mockBurner))),
@@ -1076,6 +1078,44 @@ contract LuckyGhoulsTest is Test {
 
         vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 999));
         ghouls.tokenURI(999);
+    }
+
+    function testArtIsStaticAcrossTokens() public view {
+        assertEq(artContract.tokenNamePrefix(), "Ghoul");
+        string memory a = artContract.generateSVG(0);
+        string memory b = artContract.generateSVG(665);
+        assertEq(keccak256(bytes(a)), keccak256(bytes(b)), "art must not vary per token");
+        assertTrue(bytes(a).length > 100);
+        // Background from luckyghoul.svg is kept as-is
+        assertTrue(_contains(a, '<rect width="48" height="48" fill="#EA9412"/>'));
+        assertTrue(_startsWith(a, "<svg "));
+    }
+
+    function _startsWith(string memory s, string memory prefix) internal pure returns (bool) {
+        bytes memory sb = bytes(s);
+        bytes memory pb = bytes(prefix);
+        if (pb.length > sb.length) return false;
+        for (uint256 i = 0; i < pb.length; i++) {
+            if (sb[i] != pb[i]) return false;
+        }
+        return true;
+    }
+
+    function _contains(string memory s, string memory needle) internal pure returns (bool) {
+        bytes memory sb = bytes(s);
+        bytes memory nb = bytes(needle);
+        if (nb.length > sb.length) return false;
+        for (uint256 i = 0; i + nb.length <= sb.length; i++) {
+            bool ok = true;
+            for (uint256 j = 0; j < nb.length; j++) {
+                if (sb[i + j] != nb[j]) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (ok) return true;
+        }
+        return false;
     }
 
     function testOnERC721Received() public view {

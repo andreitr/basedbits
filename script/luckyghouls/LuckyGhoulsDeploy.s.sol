@@ -27,10 +27,20 @@ contract LuckyGhoulsDeploy is Script {
     function run() external {
         vm.startBroadcast();
 
-        artContract = new LuckyGhoulsArt();
+        artContract = new LuckyGhoulsArt("Ghoul");
 
         luckyGhouls = new LuckyGhouls(
-            msg.sender, 0.0011 ether, burner, WETH, USDC, uniV3Router, uniV3Quoter, lotteryContract, artContract
+            "Lucky Ghouls",
+            "GHOUL",
+            msg.sender,
+            0.0011 ether,
+            burner,
+            WETH,
+            USDC,
+            uniV3Router,
+            uniV3Quoter,
+            lotteryContract,
+            artContract
         );
 
         luckyGhouls.setRitualReferrer(0x1d671d1B191323A38490972D58354971E5c1cd2A);
