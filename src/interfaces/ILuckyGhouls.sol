@@ -9,31 +9,38 @@ interface ILuckyGhouls {
         uint8 bonusball;
     }
 
-    /// @notice Per-ritual-day record, written once the full ticket target for a drawing is reached.
-    struct RitualPurchase {
+    /// @notice Per-day purchase record, written once the full ticket target for a drawing is reached.
+    struct DailyPurchase {
         uint256 ticketCount;
         uint256 drawingId;
         uint256 timestamp;
     }
 
-    event PactBroken(uint256 indexed tokenId, address indexed owner, uint256 ethAmount, uint256 usdcAmount);
-    event NightlyRitualPerformed(
-        uint256 indexed day, uint256 indexed drawingId, uint256 ticketsBoughtThisCall, uint256 ethSpent
+    /// @notice A token was burned and its share of the treasury paid to its owner
+    event TokenBurned(uint256 indexed tokenId, address indexed owner, uint256 ethPaid, uint256 usdcPaid);
+    /// @notice A drawing's full ticket target was bought. `ethSpent` is the ETH swapped on the day's first call
+    ///         (0 when the target is completed on a retry call).
+    event TicketsPurchased(
+        uint256 indexed purchaseDay, uint256 indexed drawingId, uint256 ticketsBoughtThisCall, uint256 ethSpent
     );
-    event NightlyRitualPartiallyPerformed(
-        uint256 indexed drawingId, uint256 ticketsBoughtThisCall, uint256 ticketsRemaining
-    );
+    /// @notice buyTickets stopped before the target (gas reserve hit or a purchase failed); call again to resume
+    event TicketsPartiallyPurchased(uint256 indexed drawingId, uint256 ticketsBoughtThisCall, uint256 ticketsRemaining);
+    /// @notice A single Megapot purchase reverted; `reason` is the raw revert data
     event TicketPurchaseFailed(uint256 indexed drawingId, uint256 ticketIndex, bytes reason);
-    event EvilTicketSpaceExhausted(uint256 indexed drawingId, uint256 ticketsSecured);
-    event ReckoningClaimed(uint256 indexed drawingId, uint256 ticketCount, uint256 usdcReceived, uint256 ethReceived);
-    event RitualClockStarted(uint256 ritualStartTime, uint256 burnUnlockTime);
+    /// @notice No further unique number combination could be generated; the target was reduced to `ticketsBought`
+    event UniqueTicketsExhausted(uint256 indexed drawingId, uint256 ticketsBought);
+    /// @notice A drawing's tickets were claimed on Megapot and the USDC won was swapped to ETH
+    event WinningsClaimed(uint256 indexed drawingId, uint256 ticketCount, uint256 usdcReceived, uint256 ethReceived);
+    /// @notice The first completed purchase started the clock for burnRemainingTreasury
+    event TreasuryBurnClockStarted(uint256 firstPurchaseTime, uint256 treasuryBurnUnlockTime);
+    /// @notice The remaining treasury was sent to the BBITS burner
     event TreasuryBurned(uint256 ethBurned, uint256 timestamp);
-    event BurnPercentageUpdated(uint256 burnPercentage);
-    event RitualReferrerUpdated(address indexed newReferrer);
-    event SummoningPriceUpdated(uint256 mintPrice);
-    event RitualParticipationDaysUpdated(uint256 ritualParticipationDays);
-    event EvilNumbersUpdated(uint8[] evilNumbers);
-    event RitualGasReserveUpdated(uint256 ritualGasReserve);
+    event MintBurnBpsUpdated(uint256 mintBurnBps);
+    event MegapotReferrerUpdated(address indexed newReferrer);
+    event MintPriceUpdated(uint256 mintPrice);
+    event TotalPurchaseDaysUpdated(uint256 totalPurchaseDays);
+    event PreferredNumbersUpdated(uint8[] preferredNumbers);
+    event MinGasPerPurchaseUpdated(uint256 minGasPerPurchase);
 
     error QuantityZero();
     error MaxMintPerCallExceeded();
@@ -43,14 +50,14 @@ interface ILuckyGhouls {
     error InvalidPercentage();
     error NotOwner();
     error NoTreasuryAvailable();
-    error RitualAlreadyPerformed();
+    error TicketsAlreadyPurchased();
     error InsufficientUSDCForTicket();
     error InsufficientTreasury();
     error NoTicketsForDrawing();
     error DrawingNotSettled();
-    error InvalidEvilNumber();
-    error BurnWindowNotReached();
+    error InvalidPreferredNumber();
+    error TreasuryBurnLocked();
     error NothingToBurn();
 
-    function lotteryReferrer() external view returns (address);
+    function megapotReferrer() external view returns (address);
 }

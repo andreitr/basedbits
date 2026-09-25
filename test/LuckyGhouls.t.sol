@@ -80,7 +80,7 @@ contract LuckyGhoulsTest is Test {
     /// @dev Gives the Cauldron exactly enough ETH for `n` tickets on the next ritual (single participation day)
     function _fundForTickets(uint256 n) internal {
         vm.prank(owner);
-        ghouls.setRitualParticipationDays(1);
+        ghouls.setTotalPurchaseDays(1);
         vm.deal(address(ghouls), n * WEI_PER_TICKET);
     }
 
@@ -121,42 +121,42 @@ contract LuckyGhoulsTest is Test {
         assertEq(address(ghouls.usdc()), address(usdcToken));
         assertEq(address(ghouls.uniswapRouter()), address(router));
         assertEq(address(ghouls.uniswapQuoter()), address(quoter));
-        assertEq(address(ghouls.lottery()), address(jackpot));
+        assertEq(address(ghouls.megapot()), address(jackpot));
         assertEq(address(ghouls.artContract()), address(artContract));
         assertEq(ghouls.MAX_SUPPLY(), 666);
-        assertEq(ghouls.maxMint(), 50);
+        assertEq(ghouls.maxMintPerTx(), 50);
+        assertEq(ghouls.totalMinted(), 0);
         assertEq(ghouls.totalSupply(), 0);
-        assertEq(ghouls.circulatingSupply(), 0);
         assertEq(ghouls.mintPrice(), mintPrice);
-        assertEq(ghouls.burnPercentage(), 2000);
-        assertEq(ghouls.ritualParticipationDays(), 365);
-        assertEq(ghouls.currentRitualDay(), 0);
-        assertEq(ghouls.lastRitualDrawingId(), type(uint256).max);
-        assertEq(ghouls.ritualGasReserve(), 600_000);
-        assertEq(ghouls.RITUAL_SOURCE(), bytes32("LuckyGhouls"));
-        assertEq(ghouls.YEAR_MARK_DELAY(), 365 days);
-        assertEq(ghouls.CLAIM_WINDOW_DURATION(), 30 days);
-        assertEq(ghouls.ritualStartTime(), 0);
-        assertEq(ghouls.getBurnUnlockTime(), type(uint256).max);
-        assertFalse(ghouls.isBurnWindowReached());
+        assertEq(ghouls.mintBurnBps(), 2000);
+        assertEq(ghouls.totalPurchaseDays(), 365);
+        assertEq(ghouls.completedPurchaseDays(), 0);
+        assertEq(ghouls.lastCompletedDrawingId(), type(uint256).max);
+        assertEq(ghouls.minGasPerPurchase(), 600_000);
+        assertEq(ghouls.MEGAPOT_SOURCE_TAG(), bytes32("LuckyGhouls"));
+        assertEq(ghouls.TREASURY_BURN_DELAY(), 365 days);
+        assertEq(ghouls.TREASURY_BURN_GRACE_PERIOD(), 30 days);
+        assertEq(ghouls.firstPurchaseTime(), 0);
+        assertEq(ghouls.getTreasuryBurnUnlockTime(), type(uint256).max);
+        assertFalse(ghouls.isTreasuryBurnUnlocked());
         assertEq(usdcToken.allowance(address(ghouls), address(jackpot)), type(uint256).max);
         assertEq(usdcToken.allowance(address(ghouls), address(router)), type(uint256).max);
 
-        uint8[] memory evil = ghouls.getEvilNumbers();
-        assertEq(evil.length, 4);
-        assertEq(evil[0], 4);
-        assertEq(evil[1], 9);
-        assertEq(evil[2], 13);
-        assertEq(evil[3], 17);
+        uint8[] memory preferred = ghouls.getPreferredNumbers();
+        assertEq(preferred.length, 4);
+        assertEq(preferred[0], 4);
+        assertEq(preferred[1], 9);
+        assertEq(preferred[2], 13);
+        assertEq(preferred[3], 17);
     }
 
     /// SUMMON ///
 
-    function testSummon() public prank(user1) {
-        ghouls.summon{value: mintPrice * 3}(3);
+    function testMint() public prank(user1) {
+        ghouls.mint{value: mintPrice * 3}(3);
 
+        assertEq(ghouls.totalMinted(), 3);
         assertEq(ghouls.totalSupply(), 3);
-        assertEq(ghouls.circulatingSupply(), 3);
         assertEq(ghouls.ownerOf(0), user1);
         assertEq(ghouls.ownerOf(1), user1);
         assertEq(ghouls.ownerOf(2), user1);
@@ -168,77 +168,77 @@ contract LuckyGhoulsTest is Test {
         assertEq(address(ghouls).balance, mintPrice * 3 - mockBurner.totalReceived());
     }
 
-    function testSummonSkipsBurnerWhenPercentageZero() public {
+    function testMintSkipsBurnerWhenPercentageZero() public {
         vm.prank(owner);
-        ghouls.setBurnPercentage(0);
+        ghouls.setMintBurnBps(0);
 
         vm.prank(user1);
-        ghouls.summon{value: mintPrice}(1);
+        ghouls.mint{value: mintPrice}(1);
 
         assertEq(mockBurner.calls(), 0);
         assertEq(address(ghouls).balance, mintPrice);
     }
 
-    function testSummonFailureConditions() public prank(user1) {
-        uint256 largeQuantity = ghouls.maxMint() + 1;
+    function testMintFailureConditions() public prank(user1) {
+        uint256 largeQuantity = ghouls.maxMintPerTx() + 1;
         vm.expectRevert(ILuckyGhouls.MaxMintPerCallExceeded.selector);
-        ghouls.summon{value: mintPrice * largeQuantity}(largeQuantity);
+        ghouls.mint{value: mintPrice * largeQuantity}(largeQuantity);
 
         vm.expectRevert(ILuckyGhouls.InsufficientPayment.selector);
-        ghouls.summon{value: mintPrice - 1}(1);
+        ghouls.mint{value: mintPrice - 1}(1);
 
         vm.expectRevert(ILuckyGhouls.QuantityZero.selector);
-        ghouls.summon{value: 0}(0);
+        ghouls.mint{value: 0}(0);
     }
 
-    function testSummonWhenPaused() public {
+    function testMintWhenPaused() public {
         vm.prank(owner);
         ghouls.pause();
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
-        ghouls.summon{value: mintPrice}(1);
+        ghouls.mint{value: mintPrice}(1);
     }
 
     function testMaxSupply() public {
         uint256 max = ghouls.MAX_SUPPLY();
-        uint256 perCall = ghouls.maxMint();
+        uint256 perCall = ghouls.maxMintPerTx();
         vm.deal(user1, mintPrice * (max + 1));
         vm.startPrank(user1);
         uint256 fullBatches = max / perCall; // 13
         for (uint256 i = 0; i < fullBatches; i++) {
-            ghouls.summon{value: mintPrice * perCall}(perCall);
+            ghouls.mint{value: mintPrice * perCall}(perCall);
         }
         uint256 remainder = max - fullBatches * perCall; // 16
         assertEq(remainder, 16);
 
         // One too many in the final batch
         vm.expectRevert(ILuckyGhouls.MaxSupplyReached.selector);
-        ghouls.summon{value: mintPrice * (remainder + 1)}(remainder + 1);
+        ghouls.mint{value: mintPrice * (remainder + 1)}(remainder + 1);
 
-        ghouls.summon{value: mintPrice * remainder}(remainder);
-        assertEq(ghouls.totalSupply(), max);
+        ghouls.mint{value: mintPrice * remainder}(remainder);
+        assertEq(ghouls.totalMinted(), max);
 
         vm.expectRevert(ILuckyGhouls.MaxSupplyReached.selector);
-        ghouls.summon{value: mintPrice}(1);
+        ghouls.mint{value: mintPrice}(1);
         vm.stopPrank();
     }
 
     /// BREAK THE PACT ///
 
-    function testBreakThePact() public prank(user1) {
-        ghouls.summon{value: mintPrice * 2}(2);
+    function testBurn() public prank(user1) {
+        ghouls.mint{value: mintPrice * 2}(2);
         vm.deal(address(ghouls), 1 ether);
         usdcToken.mint(address(ghouls), 100e6);
 
         uint256 ethBefore = user1.balance;
 
         vm.expectEmit(true, true, false, true);
-        emit ILuckyGhouls.PactBroken(0, user1, 0.5 ether, 50e6);
-        ghouls.breakThePact(0);
+        emit ILuckyGhouls.TokenBurned(0, user1, 0.5 ether, 50e6);
+        ghouls.burn(0);
 
-        assertEq(ghouls.circulatingSupply(), 1);
-        assertEq(ghouls.totalSupply(), 2);
+        assertEq(ghouls.totalSupply(), 1);
+        assertEq(ghouls.totalMinted(), 2);
         assertEq(user1.balance, ethBefore + 0.5 ether);
         assertEq(usdcToken.balanceOf(user1), 50e6);
         assertEq(address(ghouls).balance, 0.5 ether);
@@ -248,30 +248,45 @@ contract LuckyGhoulsTest is Test {
         ghouls.ownerOf(0);
     }
 
-    function testBreakThePactFailureConditions() public {
+    function testBurnFailureConditions() public {
         vm.prank(user1);
-        ghouls.summon{value: mintPrice}(1);
+        ghouls.mint{value: mintPrice}(1);
 
         vm.prank(user2);
         vm.expectRevert(ILuckyGhouls.NotOwner.selector);
-        ghouls.breakThePact(0);
+        ghouls.burn(0);
 
         vm.deal(address(ghouls), 0);
         vm.prank(user1);
         vm.expectRevert(ILuckyGhouls.NoTreasuryAvailable.selector);
-        ghouls.breakThePact(0);
+        ghouls.burn(0);
 
+        vm.deal(address(ghouls), 1 ether);
         vm.prank(user1);
         ghouls.burn(0);
-        assertEq(ghouls.circulatingSupply(), 0);
+        assertEq(ghouls.totalSupply(), 0);
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 0));
-        ghouls.breakThePact(0);
+        ghouls.burn(0);
     }
 
-    function testBreakThePactWhenPaused() public {
+    function testBurnByApprovedOperatorReverts() public {
         vm.prank(user1);
-        ghouls.summon{value: mintPrice}(1);
+        ghouls.mint{value: mintPrice}(1);
+        vm.deal(address(ghouls), 1 ether);
+
+        vm.prank(user1);
+        ghouls.setApprovalForAll(user2, true);
+
+        vm.prank(user2);
+        vm.expectRevert(ILuckyGhouls.NotOwner.selector);
+        ghouls.burn(0);
+        assertEq(ghouls.ownerOf(0), user1);
+    }
+
+    function testBurnWhenPaused() public {
+        vm.prank(user1);
+        ghouls.mint{value: mintPrice}(1);
         vm.deal(address(ghouls), 1 ether);
 
         vm.prank(owner);
@@ -279,32 +294,32 @@ contract LuckyGhoulsTest is Test {
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
-        ghouls.breakThePact(0);
+        ghouls.burn(0);
     }
 
-    function testGetRedeemValue() public {
-        (uint256 e, uint256 u) = ghouls.getRedeemValue();
+    function testGetBurnPayoutPerToken() public {
+        (uint256 e, uint256 u) = ghouls.getBurnPayoutPerToken();
         assertEq(e, 0);
         assertEq(u, 0);
 
         vm.prank(user1);
-        ghouls.summon{value: mintPrice * 4}(4);
+        ghouls.mint{value: mintPrice * 4}(4);
         vm.deal(address(ghouls), 2 ether);
         usdcToken.mint(address(ghouls), 10e6);
 
-        (e, u) = ghouls.getRedeemValue();
+        (e, u) = ghouls.getBurnPayoutPerToken();
         assertEq(e, 0.5 ether);
         assertEq(u, 2.5e6);
     }
 
     /// NIGHTLY RITUAL ///
 
-    function testRitualFirstAttemptBuysFullTarget() public {
+    function testBuyTicketsFirstAttemptBuysFullTarget() public {
         _fundForTickets(12);
 
         vm.expectEmit(true, true, false, true);
-        emit ILuckyGhouls.NightlyRitualPerformed(1, DRAWING, 12, 12 * WEI_PER_TICKET);
-        ghouls.performNightlyRitual();
+        emit ILuckyGhouls.TicketsPurchased(1, DRAWING, 12, 12 * WEI_PER_TICKET);
+        ghouls.buyTickets();
 
         // One swap, twelve single-ticket purchases
         assertEq(router.ethToUsdcCalls(), 1);
@@ -314,24 +329,24 @@ contract LuckyGhoulsTest is Test {
         assertEq(usdcToken.balanceOf(address(ghouls)), 0);
 
         // Guard + bookkeeping
-        assertEq(ghouls.lastRitualDrawingId(), DRAWING);
-        assertEq(ghouls.currentRitualDay(), 1);
-        (uint256 count, uint256 drawingId, uint256 ts) = ghouls.ritualHistory(1);
+        assertEq(ghouls.lastCompletedDrawingId(), DRAWING);
+        assertEq(ghouls.completedPurchaseDays(), 1);
+        (uint256 count, uint256 drawingId, uint256 ts) = ghouls.purchaseHistoryByDay(1);
         assertEq(count, 12);
         assertEq(drawingId, DRAWING);
         assertEq(ts, vm.getBlockTimestamp());
-        (uint256 target, uint256 bought) = ghouls.getRitualProgress(DRAWING);
+        (uint256 target, uint256 bought) = ghouls.getPurchaseProgress(DRAWING);
         assertEq(target, 12);
         assertEq(bought, 12);
-        assertEq(ghouls.ritualUsdcBudget(DRAWING), 12e6);
-        assertEq(ghouls.ritualTicketPrice(DRAWING), 1e6);
+        assertEq(ghouls.drawingUsdcBudget(DRAWING), 12e6);
+        assertEq(ghouls.drawingTicketPrice(DRAWING), 1e6);
         assertEq(router.usdcToEthCalls(), 0, "no remainder, nothing to sweep");
-        assertEq(ghouls.ritualStartTime(), vm.getBlockTimestamp(), "first completed ritual starts the clock");
-        assertEq(ghouls.getBurnUnlockTime(), vm.getBlockTimestamp() + 395 days);
+        assertEq(ghouls.firstPurchaseTime(), vm.getBlockTimestamp(), "first completed ritual starts the clock");
+        assertEq(ghouls.getTreasuryBurnUnlockTime(), vm.getBlockTimestamp() + 395 days);
 
         // Every ticket valid and pairwise distinct; ids recorded and owned by the Cauldron
         ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
-        uint256[] memory ids = ghouls.heldTicketIds(DRAWING);
+        uint256[] memory ids = ghouls.getUnclaimedTicketIds(DRAWING);
         assertEq(tickets.length, 12);
         assertEq(ids.length, 12);
         for (uint256 i = 0; i < tickets.length; i++) {
@@ -350,13 +365,13 @@ contract LuckyGhoulsTest is Test {
         }
 
         // Second call for the same drawing is refused
-        vm.expectRevert(ILuckyGhouls.RitualAlreadyPerformed.selector);
-        ghouls.performNightlyRitual();
+        vm.expectRevert(ILuckyGhouls.TicketsAlreadyPurchased.selector);
+        ghouls.buyTickets();
     }
 
-    function testRitualEvilBias() public {
+    function testBuyTicketsPreferredNumberBias() public {
         _fundForTickets(3);
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
 
         ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         for (uint256 i = 0; i < tickets.length; i++) {
@@ -368,10 +383,10 @@ contract LuckyGhoulsTest is Test {
         }
     }
 
-    function testRitualSkipsEvilNumbersOutOfRange() public {
+    function testBuyTicketsSkipsPreferredNumbersOutOfRange() public {
         jackpot.setRanges(10, 3);
         _fundForTickets(4);
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
 
         ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         assertEq(tickets.length, 4);
@@ -387,18 +402,18 @@ contract LuckyGhoulsTest is Test {
     }
 
     function testPreviewMatchesPurchase() public {
-        (uint8[5] memory previewNormals, uint8 previewBonus, bool ok) = ghouls.previewEvilTicket(DRAWING, 0);
+        (uint8[5] memory previewNormals, uint8 previewBonus, bool ok) = ghouls.previewTicketNumbers(DRAWING, 0);
         assertTrue(ok);
 
         _fundForTickets(5);
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
 
         ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         assertEq(_mask(tickets[0].normals), _mask(previewNormals));
         assertEq(tickets[0].bonusball, previewBonus);
 
         // The next preview accounts for everything already bought
-        (uint8[5] memory nextNormals, uint8 nextBonus, bool nextOk) = ghouls.previewEvilTicket(DRAWING, 5);
+        (uint8[5] memory nextNormals, uint8 nextBonus, bool nextOk) = ghouls.previewTicketNumbers(DRAWING, 5);
         assertTrue(nextOk);
         for (uint256 i = 0; i < tickets.length; i++) {
             bool same = _mask(tickets[i].normals) == _mask(nextNormals) && tickets[i].bonusball == nextBonus;
@@ -406,12 +421,12 @@ contract LuckyGhoulsTest is Test {
         }
     }
 
-    function testRitualUsesReferrer() public {
+    function testBuyTicketsUsesReferrer() public {
         address referrer = address(0xBEEF);
         vm.prank(owner);
-        ghouls.setRitualReferrer(referrer);
+        ghouls.setMegapotReferrer(referrer);
         _fundForTickets(2);
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
 
         (address[] memory referrers, uint256[] memory split) = jackpot.getSoldReferrers(1);
         assertEq(referrers.length, 1);
@@ -420,25 +435,38 @@ contract LuckyGhoulsTest is Test {
         assertEq(split[0], 1e18);
     }
 
-    function testRitualWithoutReferrer() public {
+    function testBuyTicketsUsesDefaultReferrer() public {
+        assertEq(ghouls.megapotReferrer(), 0xDAdA5bAd8cdcB9e323d0606d081E6Dc5D3a577a1);
         _fundForTickets(1);
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
+
+        (address[] memory referrers, uint256[] memory split) = jackpot.getSoldReferrers(1);
+        assertEq(referrers.length, 1);
+        assertEq(referrers[0], 0xDAdA5bAd8cdcB9e323d0606d081E6Dc5D3a577a1);
+        assertEq(split[0], 1e18);
+    }
+
+    function testBuyTicketsWithoutReferrer() public {
+        vm.prank(owner);
+        ghouls.setMegapotReferrer(address(0));
+        _fundForTickets(1);
+        ghouls.buyTickets();
         (address[] memory referrers, uint256[] memory split) = jackpot.getSoldReferrers(1);
         assertEq(referrers.length, 0);
         assertEq(split.length, 0);
     }
 
-    function testRitualSweepsDayRemainderOnly() public {
+    function testBuyTicketsSweepsDayRemainderOnly() public {
         // 3.5 USDC budget -> 3 tickets, 0.5 USDC of the day's own budget left over
         vm.prank(owner);
-        ghouls.setRitualParticipationDays(1);
+        ghouls.setTotalPurchaseDays(1);
         vm.deal(address(ghouls), 3 * WEI_PER_TICKET + WEI_PER_TICKET / 2);
         // Unrelated USDC already in the Cauldron must not be touched
         usdcToken.mint(address(ghouls), 7e6);
 
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
 
-        (uint256 target, uint256 bought) = ghouls.getRitualProgress(DRAWING);
+        (uint256 target, uint256 bought) = ghouls.getPurchaseProgress(DRAWING);
         assertEq(target, 3);
         assertEq(bought, 3);
         assertEq(router.usdcToEthCalls(), 1);
@@ -448,54 +476,54 @@ contract LuckyGhoulsTest is Test {
         assertEq(address(ghouls).balance, (0.5e6 * 1e18) / USDC_PER_ETH);
     }
 
-    function testRitualNoSweepWithoutRemainder() public {
+    function testBuyTicketsNoSweepWithoutRemainder() public {
         _fundForTickets(3);
         usdcToken.mint(address(ghouls), 7e6);
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
         assertEq(router.usdcToEthCalls(), 0);
         assertEq(usdcToken.balanceOf(address(ghouls)), 7e6);
     }
 
-    function testRitualRemainderSweptOnCompletionNotPartial() public {
+    function testBuyTicketsRemainderSweptOnCompletionNotPartial() public {
         vm.prank(owner);
-        ghouls.setRitualParticipationDays(1);
+        ghouls.setTotalPurchaseDays(1);
         vm.deal(address(ghouls), 4 * WEI_PER_TICKET + WEI_PER_TICKET / 4); // 4.25 USDC -> 4 tickets
         jackpot.setFailWhenSold(2);
 
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
         assertEq(router.usdcToEthCalls(), 0, "partial run must not sweep");
         assertEq(usdcToken.balanceOf(address(ghouls)), 2.25e6);
-        assertEq(ghouls.ritualStartTime(), 0, "partial run must not start the clock");
+        assertEq(ghouls.firstPurchaseTime(), 0, "partial run must not start the clock");
 
         jackpot.clearFail();
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
         assertEq(router.usdcToEthCalls(), 1);
         assertEq(router.lastUsdcToEthAmount(), 0.25e6);
         assertEq(usdcToken.balanceOf(address(ghouls)), 0);
-        assertEq(ghouls.ritualStartTime(), vm.getBlockTimestamp());
+        assertEq(ghouls.firstPurchaseTime(), vm.getBlockTimestamp());
     }
 
-    function testRitualFailureConditions() public {
+    function testBuyTicketsFailureConditions() public {
         // Nothing in the treasury
         vm.expectRevert(ILuckyGhouls.InsufficientTreasury.selector);
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
 
         // Budget too small for one whole ticket
         vm.prank(owner);
-        ghouls.setRitualParticipationDays(1);
+        ghouls.setTotalPurchaseDays(1);
         vm.deal(address(ghouls), WEI_PER_TICKET / 2);
         vm.expectRevert(ILuckyGhouls.InsufficientUSDCForTicket.selector);
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
 
         // Paused
         vm.deal(address(ghouls), 3 * WEI_PER_TICKET);
         vm.prank(owner);
         ghouls.pause();
         vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
     }
 
-    function testRitualPartialThenRetry() public {
+    function testBuyTicketsPartialThenRetry() public {
         _fundForTickets(10);
         // Fourth purchase fails (ticket index 3)
         jackpot.setFailWhenSold(3);
@@ -503,35 +531,35 @@ contract LuckyGhoulsTest is Test {
         vm.expectEmit(true, false, false, false);
         emit ILuckyGhouls.TicketPurchaseFailed(DRAWING, 3, "");
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.NightlyRitualPartiallyPerformed(DRAWING, 3, 7);
-        ghouls.performNightlyRitual();
+        emit ILuckyGhouls.TicketsPartiallyPurchased(DRAWING, 3, 7);
+        ghouls.buyTickets();
 
         // Three secured, guard not satisfied, USDC for the rest still in the Cauldron
-        (uint256 target, uint256 bought) = ghouls.getRitualProgress(DRAWING);
+        (uint256 target, uint256 bought) = ghouls.getPurchaseProgress(DRAWING);
         assertEq(target, 10);
         assertEq(bought, 3);
-        assertEq(ghouls.lastRitualDrawingId(), type(uint256).max);
-        assertEq(ghouls.currentRitualDay(), 0);
+        assertEq(ghouls.lastCompletedDrawingId(), type(uint256).max);
+        assertEq(ghouls.completedPurchaseDays(), 0);
         assertEq(usdcToken.balanceOf(address(ghouls)), 7e6);
         assertEq(router.ethToUsdcCalls(), 1);
 
         // Retry while the failure persists: nothing new is bought, still no revert
-        ghouls.performNightlyRitual();
-        (, bought) = ghouls.getRitualProgress(DRAWING);
+        ghouls.buyTickets();
+        (, bought) = ghouls.getPurchaseProgress(DRAWING);
         assertEq(bought, 3);
 
         // Failure clears; retry does not re-swap, resumes at index 3, finishes
         jackpot.clearFail();
         vm.expectEmit(true, true, false, true);
-        emit ILuckyGhouls.NightlyRitualPerformed(1, DRAWING, 7, 0);
-        ghouls.performNightlyRitual();
+        emit ILuckyGhouls.TicketsPurchased(1, DRAWING, 7, 0);
+        ghouls.buyTickets();
 
         assertEq(router.ethToUsdcCalls(), 1, "retry must not re-swap");
         assertEq(jackpot.buyCalls(), 10); // reverted calls roll back the mock's counter
-        (target, bought) = ghouls.getRitualProgress(DRAWING);
+        (target, bought) = ghouls.getPurchaseProgress(DRAWING);
         assertEq(bought, 10);
-        assertEq(ghouls.lastRitualDrawingId(), DRAWING);
-        assertEq(ghouls.currentRitualDay(), 1);
+        assertEq(ghouls.lastCompletedDrawingId(), DRAWING);
+        assertEq(ghouls.completedPurchaseDays(), 1);
         assertEq(usdcToken.balanceOf(address(ghouls)), 0);
 
         ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
@@ -543,85 +571,85 @@ contract LuckyGhoulsTest is Test {
             }
         }
 
-        vm.expectRevert(ILuckyGhouls.RitualAlreadyPerformed.selector);
-        ghouls.performNightlyRitual();
+        vm.expectRevert(ILuckyGhouls.TicketsAlreadyPurchased.selector);
+        ghouls.buyTickets();
     }
 
-    function testRitualFirstPurchaseFailsKeepsBudget() public {
+    function testBuyTicketsFirstPurchaseFailsKeepsBudget() public {
         _fundForTickets(5);
         jackpot.setRevertAll(true);
 
-        ghouls.performNightlyRitual(); // does not revert
+        ghouls.buyTickets(); // does not revert
 
-        (uint256 target, uint256 bought) = ghouls.getRitualProgress(DRAWING);
+        (uint256 target, uint256 bought) = ghouls.getPurchaseProgress(DRAWING);
         assertEq(target, 5);
         assertEq(bought, 0);
         assertEq(usdcToken.balanceOf(address(ghouls)), 5e6);
-        assertEq(ghouls.currentRitualDay(), 0);
+        assertEq(ghouls.completedPurchaseDays(), 0);
 
         jackpot.setRevertAll(false);
-        ghouls.performNightlyRitual();
-        (, bought) = ghouls.getRitualProgress(DRAWING);
+        ghouls.buyTickets();
+        (, bought) = ghouls.getPurchaseProgress(DRAWING);
         assertEq(bought, 5);
-        assertEq(ghouls.currentRitualDay(), 1);
+        assertEq(ghouls.completedPurchaseDays(), 1);
     }
 
-    function testRitualStopsAtGasReserve() public {
+    function testBuyTicketsStopsAtGasReserve() public {
         _fundForTickets(8);
         vm.prank(owner);
-        ghouls.setRitualGasReserve(30_000_000);
+        ghouls.setMinGasPerPurchase(30_000_000);
 
         // Reserve exceeds the whole call's gas: loop never starts, nothing reverts
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.NightlyRitualPartiallyPerformed(DRAWING, 0, 8);
-        ghouls.performNightlyRitual{gas: 5_000_000}();
+        emit ILuckyGhouls.TicketsPartiallyPurchased(DRAWING, 0, 8);
+        ghouls.buyTickets{gas: 5_000_000}();
 
-        (uint256 target, uint256 bought) = ghouls.getRitualProgress(DRAWING);
+        (uint256 target, uint256 bought) = ghouls.getPurchaseProgress(DRAWING);
         assertEq(target, 8);
         assertEq(bought, 0);
         assertEq(usdcToken.balanceOf(address(ghouls)), 8e6);
 
         // Tight but reachable reserve: some progress, then a clean stop
         vm.prank(owner);
-        ghouls.setRitualGasReserve(1_500_000);
-        ghouls.performNightlyRitual{gas: 2_000_000}();
-        (, bought) = ghouls.getRitualProgress(DRAWING);
+        ghouls.setMinGasPerPurchase(1_500_000);
+        ghouls.buyTickets{gas: 2_000_000}();
+        (, bought) = ghouls.getPurchaseProgress(DRAWING);
         assertTrue(bought < 8, "should stop before the target");
-        assertEq(ghouls.currentRitualDay(), 0);
+        assertEq(ghouls.completedPurchaseDays(), 0);
 
         // Normal reserve finishes the job
         vm.prank(owner);
-        ghouls.setRitualGasReserve(600_000);
-        ghouls.performNightlyRitual();
-        (, bought) = ghouls.getRitualProgress(DRAWING);
+        ghouls.setMinGasPerPurchase(600_000);
+        ghouls.buyTickets();
+        (, bought) = ghouls.getPurchaseProgress(DRAWING);
         assertEq(bought, 8);
-        assertEq(ghouls.currentRitualDay(), 1);
+        assertEq(ghouls.completedPurchaseDays(), 1);
         assertEq(router.ethToUsdcCalls(), 1);
     }
 
-    function testRitualExhaustionShrinksTarget() public {
+    function testBuyTicketsExhaustionShrinksTarget() public {
         // Evil numbers fill four slots; ballMax 6 leaves only {5,6} for the fifth; one bonusball value.
-        uint8[] memory evil = new uint8[](4);
-        evil[0] = 1;
-        evil[1] = 2;
-        evil[2] = 3;
-        evil[3] = 4;
+        uint8[] memory preferred = new uint8[](4);
+        preferred[0] = 1;
+        preferred[1] = 2;
+        preferred[2] = 3;
+        preferred[3] = 4;
         vm.prank(owner);
-        ghouls.setEvilNumbers(evil);
+        ghouls.setPreferredNumbers(preferred);
         jackpot.setRanges(6, 1);
         _fundForTickets(10);
 
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.EvilTicketSpaceExhausted(DRAWING, 2);
+        emit ILuckyGhouls.UniqueTicketsExhausted(DRAWING, 2);
         vm.expectEmit(true, true, false, true);
-        emit ILuckyGhouls.NightlyRitualPerformed(1, DRAWING, 2, 10 * WEI_PER_TICKET);
-        ghouls.performNightlyRitual();
+        emit ILuckyGhouls.TicketsPurchased(1, DRAWING, 2, 10 * WEI_PER_TICKET);
+        ghouls.buyTickets();
 
-        (uint256 target, uint256 bought) = ghouls.getRitualProgress(DRAWING);
+        (uint256 target, uint256 bought) = ghouls.getPurchaseProgress(DRAWING);
         assertEq(target, 2);
         assertEq(bought, 2);
-        assertEq(ghouls.lastRitualDrawingId(), DRAWING);
-        (uint256 count,,) = ghouls.ritualHistory(1);
+        assertEq(ghouls.lastCompletedDrawingId(), DRAWING);
+        (uint256 count,,) = ghouls.purchaseHistoryByDay(1);
         assertEq(count, 2);
         // The whole unspent budget (8 USDC) is swept back to ETH
         assertEq(usdcToken.balanceOf(address(ghouls)), 0);
@@ -630,78 +658,78 @@ contract LuckyGhoulsTest is Test {
 
         ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         assertTrue(_contains(tickets[0].normals, 5) != _contains(tickets[1].normals, 5));
-        (,, bool ok) = ghouls.previewEvilTicket(DRAWING, 2);
+        (,, bool ok) = ghouls.previewTicketNumbers(DRAWING, 2);
         assertFalse(ok);
     }
 
-    function testRitualUnreachableRangesFinalizeEmpty() public {
+    function testBuyTicketsUnreachableRangesFinalizeEmpty() public {
         jackpot.setRanges(4, 10); // fewer numbers than slots: nothing can be generated
         _fundForTickets(3);
 
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.EvilTicketSpaceExhausted(DRAWING, 0);
-        ghouls.performNightlyRitual();
+        emit ILuckyGhouls.UniqueTicketsExhausted(DRAWING, 0);
+        ghouls.buyTickets();
 
         assertEq(jackpot.buyCalls(), 0);
-        assertEq(ghouls.lastRitualDrawingId(), DRAWING);
+        assertEq(ghouls.lastCompletedDrawingId(), DRAWING);
         assertEq(usdcToken.balanceOf(address(ghouls)), 0, "unspent budget swept back to ETH");
         assertEq(router.lastUsdcToEthAmount(), 3e6);
     }
 
-    function testRitualRollsOverToNextDrawing() public {
+    function testBuyTicketsRollsOverToNextDrawing() public {
         vm.prank(owner);
-        ghouls.setRitualParticipationDays(2);
+        ghouls.setTotalPurchaseDays(2);
         vm.deal(address(ghouls), 2 * 6 * WEI_PER_TICKET);
 
-        ghouls.performNightlyRitual();
-        assertEq(ghouls.currentRitualDay(), 1);
-        (, uint256 bought) = ghouls.getRitualProgress(DRAWING);
+        ghouls.buyTickets();
+        assertEq(ghouls.completedPurchaseDays(), 1);
+        (, uint256 bought) = ghouls.getPurchaseProgress(DRAWING);
         assertEq(bought, 6);
 
         jackpot.setCurrentDrawingId(DRAWING + 1);
-        ghouls.performNightlyRitual();
-        assertEq(ghouls.currentRitualDay(), 2);
-        (, bought) = ghouls.getRitualProgress(DRAWING + 1);
+        ghouls.buyTickets();
+        assertEq(ghouls.completedPurchaseDays(), 2);
+        (, bought) = ghouls.getPurchaseProgress(DRAWING + 1);
         assertEq(bought, 6);
-        (, uint256 drawingId,) = ghouls.ritualHistory(2);
+        (, uint256 drawingId,) = ghouls.purchaseHistoryByDay(2);
         assertEq(drawingId, DRAWING + 1);
         assertEq(router.ethToUsdcCalls(), 2);
     }
 
-    function testIncompleteRitualSurvivesRollover() public {
+    function testIncompletePurchaseSurvivesRollover() public {
         _fundForTickets(4);
         jackpot.setFailWhenSold(2);
-        ghouls.performNightlyRitual();
-        (, uint256 bought) = ghouls.getRitualProgress(DRAWING);
+        ghouls.buyTickets();
+        (, uint256 bought) = ghouls.getPurchaseProgress(DRAWING);
         assertEq(bought, 2);
 
         // Drawing moves on before the retry: yesterday's two tickets stay claimable, today starts fresh
         jackpot.clearFail();
         jackpot.setCurrentDrawingId(DRAWING + 1);
         vm.deal(address(ghouls), 3 * WEI_PER_TICKET);
-        ghouls.performNightlyRitual();
-        (, bought) = ghouls.getRitualProgress(DRAWING + 1);
+        ghouls.buyTickets();
+        (, bought) = ghouls.getPurchaseProgress(DRAWING + 1);
         assertEq(bought, 3);
-        assertEq(ghouls.heldTicketIds(DRAWING).length, 2);
+        assertEq(ghouls.getUnclaimedTicketIds(DRAWING).length, 2);
         assertEq(usdcToken.balanceOf(address(ghouls)), 2e6, "yesterday's earmarked USDC is not swept");
         assertEq(router.usdcToEthCalls(), 0);
 
         jackpot.setCurrentDrawingId(DRAWING + 2);
-        ghouls.claimReckoning(DRAWING);
-        assertEq(ghouls.heldTicketIds(DRAWING).length, 0);
+        ghouls.claimWinnings(DRAWING);
+        assertEq(ghouls.getUnclaimedTicketIds(DRAWING).length, 0);
     }
 
     /// CLAIM RECKONING ///
 
-    function testClaimReckoning() public {
+    function testClaimWinnings() public {
         _fundForTickets(4);
-        ghouls.performNightlyRitual();
-        uint256[] memory ids = ghouls.heldTicketIds(DRAWING);
+        ghouls.buyTickets();
+        uint256[] memory ids = ghouls.getUnclaimedTicketIds(DRAWING);
         assertEq(ids.length, 4);
 
         // Not settled yet
         vm.expectRevert(ILuckyGhouls.DrawingNotSettled.selector);
-        ghouls.claimReckoning(DRAWING);
+        ghouls.claimWinnings(DRAWING);
 
         jackpot.setCurrentDrawingId(DRAWING + 1);
         jackpot.setPayoutPerTicket(2e6);
@@ -710,15 +738,15 @@ contract LuckyGhoulsTest is Test {
         uint256 ethBefore = address(ghouls).balance;
         vm.prank(user2); // anyone can call
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.ReckoningClaimed(DRAWING, 4, 8e6, (8e6 * 1e18) / USDC_PER_ETH);
-        ghouls.claimReckoning(DRAWING);
+        emit ILuckyGhouls.WinningsClaimed(DRAWING, 4, 8e6, (8e6 * 1e18) / USDC_PER_ETH);
+        ghouls.claimWinnings(DRAWING);
 
         // Winnings land in the Cauldron as ETH, not USDC
         assertEq(usdcToken.balanceOf(address(ghouls)), 0);
         assertEq(address(ghouls).balance, ethBefore + (8e6 * 1e18) / USDC_PER_ETH);
         assertEq(router.usdcToEthCalls(), 1);
         assertEq(router.lastUsdcToEthAmount(), 8e6);
-        assertEq(ghouls.heldTicketIds(DRAWING).length, 0);
+        assertEq(ghouls.getUnclaimedTicketIds(DRAWING).length, 0);
         assertEq(ghouls.getPurchasedTickets(DRAWING).length, 0);
         for (uint256 i = 0; i < ids.length; i++) {
             (,,,, bool burned) = jackpot.getSold(ids[i]);
@@ -726,110 +754,110 @@ contract LuckyGhoulsTest is Test {
         }
 
         vm.expectRevert(ILuckyGhouls.NoTicketsForDrawing.selector);
-        ghouls.claimReckoning(DRAWING);
+        ghouls.claimWinnings(DRAWING);
     }
 
-    function testClaimReckoningAllLosing() public {
+    function testClaimWinningsAllLosing() public {
         _fundForTickets(3);
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
         jackpot.setCurrentDrawingId(DRAWING + 1);
 
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.ReckoningClaimed(DRAWING, 3, 0, 0);
-        ghouls.claimReckoning(DRAWING);
-        assertEq(ghouls.heldTicketIds(DRAWING).length, 0);
+        emit ILuckyGhouls.WinningsClaimed(DRAWING, 3, 0, 0);
+        ghouls.claimWinnings(DRAWING);
+        assertEq(ghouls.getUnclaimedTicketIds(DRAWING).length, 0);
         assertEq(router.usdcToEthCalls(), 0, "nothing to convert on a losing round");
     }
 
-    function testClaimReckoningLeavesEarmarkedUsdcAlone() public {
+    function testClaimWinningsLeavesEarmarkedUsdcAlone() public {
         // Day 1 completes with 2 tickets
         _fundForTickets(2);
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
 
         // Day 2 is only partially done: 2 of 4 bought, 2 USDC earmarked for the rest
         jackpot.setCurrentDrawingId(DRAWING + 1);
         vm.prank(owner);
-        ghouls.setRitualParticipationDays(2);
+        ghouls.setTotalPurchaseDays(2);
         vm.deal(address(ghouls), 4 * WEI_PER_TICKET);
         jackpot.setFailWhenSold(4); // 2 already sold on day 1; the 5th overall (day-2 index 2) fails
-        ghouls.performNightlyRitual();
-        (, uint256 bought) = ghouls.getRitualProgress(DRAWING + 1);
+        ghouls.buyTickets();
+        (, uint256 bought) = ghouls.getPurchaseProgress(DRAWING + 1);
         assertEq(bought, 2);
         assertEq(usdcToken.balanceOf(address(ghouls)), 2e6);
 
         // Claiming day 1's win converts exactly the winnings and nothing else
         jackpot.setPayoutPerTicket(3e6);
         usdcToken.mint(address(jackpot), 6e6);
-        ghouls.claimReckoning(DRAWING);
+        ghouls.claimWinnings(DRAWING);
         assertEq(router.lastUsdcToEthAmount(), 6e6);
         assertEq(usdcToken.balanceOf(address(ghouls)), 2e6, "earmarked USDC untouched");
 
         // The earmarked USDC still finishes day 2
         jackpot.clearFail();
-        ghouls.performNightlyRitual();
-        (, bought) = ghouls.getRitualProgress(DRAWING + 1);
+        ghouls.buyTickets();
+        (, bought) = ghouls.getPurchaseProgress(DRAWING + 1);
         assertEq(bought, 4);
         assertEq(usdcToken.balanceOf(address(ghouls)), 0);
     }
 
-    function testClaimReckoningFailureConditions() public {
+    function testClaimWinningsFailureConditions() public {
         vm.expectRevert(ILuckyGhouls.NoTicketsForDrawing.selector);
-        ghouls.claimReckoning(DRAWING);
+        ghouls.claimWinnings(DRAWING);
 
         _fundForTickets(1);
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
         jackpot.setCurrentDrawingId(DRAWING + 1);
 
         vm.prank(owner);
         ghouls.pause();
         vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
-        ghouls.claimReckoning(DRAWING);
+        ghouls.claimWinnings(DRAWING);
     }
 
     /// WIND-DOWN ///
 
-    function testWindDownClockStartsAtFirstCompletedRitual() public {
+    function testWindDownClockStartsAtFirstCompletedBuyTickets() public {
         // Before any ritual the burn is unreachable, however long we wait
         vm.warp(vm.getBlockTimestamp() + 3650 days);
-        assertFalse(ghouls.isBurnWindowReached());
+        assertFalse(ghouls.isTreasuryBurnUnlocked());
         vm.prank(owner);
-        vm.expectRevert(ILuckyGhouls.BurnWindowNotReached.selector);
-        ghouls.burnUnclaimedTreasury();
+        vm.expectRevert(ILuckyGhouls.TreasuryBurnLocked.selector);
+        ghouls.burnRemainingTreasury();
 
         // A partial ritual does not start the clock
         _fundForTickets(3);
         jackpot.setRevertAll(true);
-        ghouls.performNightlyRitual();
-        assertEq(ghouls.ritualStartTime(), 0);
+        ghouls.buyTickets();
+        assertEq(ghouls.firstPurchaseTime(), 0);
 
         // The first completed ritual does
         jackpot.setRevertAll(false);
         uint256 t0 = vm.getBlockTimestamp();
         vm.expectEmit(false, false, false, true);
-        emit ILuckyGhouls.RitualClockStarted(t0, t0 + 395 days);
-        ghouls.performNightlyRitual();
-        assertEq(ghouls.ritualStartTime(), t0);
-        assertEq(ghouls.getBurnUnlockTime(), t0 + 395 days);
+        emit ILuckyGhouls.TreasuryBurnClockStarted(t0, t0 + 395 days);
+        ghouls.buyTickets();
+        assertEq(ghouls.firstPurchaseTime(), t0);
+        assertEq(ghouls.getTreasuryBurnUnlockTime(), t0 + 395 days);
 
         // A later completed ritual does not move it
         vm.warp(t0 + 1 days);
         jackpot.setCurrentDrawingId(DRAWING + 1);
         vm.prank(owner);
-        ghouls.setRitualParticipationDays(2);
+        ghouls.setTotalPurchaseDays(2);
         vm.deal(address(ghouls), 2 * WEI_PER_TICKET);
-        ghouls.performNightlyRitual();
-        assertEq(ghouls.currentRitualDay(), 2);
-        assertEq(ghouls.ritualStartTime(), t0);
+        ghouls.buyTickets();
+        assertEq(ghouls.completedPurchaseDays(), 2);
+        assertEq(ghouls.firstPurchaseTime(), t0);
     }
 
     function _startWindDownClock() internal returns (uint256 unlockTime) {
         _fundForTickets(2);
-        ghouls.performNightlyRitual();
-        unlockTime = ghouls.getBurnUnlockTime();
+        ghouls.buyTickets();
+        unlockTime = ghouls.getTreasuryBurnUnlockTime();
         assertEq(unlockTime, vm.getBlockTimestamp() + 395 days);
     }
 
-    function testBurnUnclaimedTreasury() public {
+    function testBurnRemainingTreasury() public {
         uint256 unlockTime = _startWindDownClock();
         vm.deal(address(ghouls), 1 ether);
         usdcToken.mint(address(ghouls), 10e6);
@@ -837,19 +865,19 @@ contract LuckyGhoulsTest is Test {
 
         // One second early: still locked
         vm.warp(unlockTime - 1);
-        assertFalse(ghouls.isBurnWindowReached());
+        assertFalse(ghouls.isTreasuryBurnUnlocked());
         vm.prank(owner);
-        vm.expectRevert(ILuckyGhouls.BurnWindowNotReached.selector);
-        ghouls.burnUnclaimedTreasury();
+        vm.expectRevert(ILuckyGhouls.TreasuryBurnLocked.selector);
+        ghouls.burnRemainingTreasury();
 
         // At the unlock time: USDC converted first, then everything burned through BBitsBurner
         vm.warp(unlockTime);
-        assertTrue(ghouls.isBurnWindowReached());
+        assertTrue(ghouls.isTreasuryBurnUnlocked());
         uint256 expectedEth = 1 ether + (10e6 * 1e18) / USDC_PER_ETH;
         vm.prank(owner);
         vm.expectEmit(false, false, false, true);
         emit ILuckyGhouls.TreasuryBurned(expectedEth, unlockTime);
-        ghouls.burnUnclaimedTreasury();
+        ghouls.burnRemainingTreasury();
 
         assertEq(router.lastUsdcToEthAmount(), 10e6);
         assertEq(usdcToken.balanceOf(address(ghouls)), 0);
@@ -858,137 +886,125 @@ contract LuckyGhoulsTest is Test {
         assertEq(mockBurner.lastMinAmountBurned(), 0);
     }
 
-    function testBurnUnclaimedTreasuryFailureConditionsAndRepeat() public {
+    function testBurnRemainingTreasuryFailureConditionsAndRepeat() public {
         uint256 unlockTime = _startWindDownClock();
         vm.warp(unlockTime);
 
         // Only the owner
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", user1));
-        ghouls.burnUnclaimedTreasury();
+        ghouls.burnRemainingTreasury();
 
         // Nothing there
         vm.deal(address(ghouls), 0);
         vm.prank(owner);
         vm.expectRevert(ILuckyGhouls.NothingToBurn.selector);
-        ghouls.burnUnclaimedTreasury();
+        ghouls.burnRemainingTreasury();
 
         // Works while paused
         vm.startPrank(owner);
         ghouls.pause();
         vm.deal(address(ghouls), 1 ether);
-        ghouls.burnUnclaimedTreasury();
+        ghouls.burnRemainingTreasury();
         assertEq(address(ghouls).balance, 0);
 
         // Callable again once more funds arrive
         vm.deal(address(ghouls), 0.5 ether);
-        ghouls.burnUnclaimedTreasury();
+        ghouls.burnRemainingTreasury();
         assertEq(address(ghouls).balance, 0);
         vm.stopPrank();
     }
 
-    function testBreakThePactAfterBurnReverts() public {
+    function testBurnAfterBurnReverts() public {
         vm.prank(user1);
-        ghouls.summon{value: mintPrice}(1);
+        ghouls.mint{value: mintPrice}(1);
         uint256 unlockTime = _startWindDownClock();
         vm.deal(address(ghouls), 1 ether);
         vm.warp(unlockTime);
         vm.prank(owner);
-        ghouls.burnUnclaimedTreasury();
+        ghouls.burnRemainingTreasury();
 
         vm.prank(user1);
         vm.expectRevert(ILuckyGhouls.NoTreasuryAvailable.selector);
-        ghouls.breakThePact(0);
-    }
-
-    /// REFERRAL FEES ///
-
-    function testClaimReferralFees() public {
-        vm.expectRevert(MockJackpotV2.NoReferralFeesToClaim.selector);
-        ghouls.claimReferralFees();
-
-        usdcToken.mint(address(jackpot), 3e6);
-        jackpot.setReferralFeesClaimable(3e6);
-        ghouls.claimReferralFees();
-        assertEq(usdcToken.balanceOf(address(ghouls)), 3e6);
+        ghouls.burn(0);
     }
 
     /// SETTINGS ///
 
-    function testSetSummoningPrice() public prank(owner) {
+    function testSetMintPrice() public prank(owner) {
         vm.expectEmit(false, false, false, true);
-        emit ILuckyGhouls.SummoningPriceUpdated(0.001 ether);
-        ghouls.setSummoningPrice(0.001 ether);
+        emit ILuckyGhouls.MintPriceUpdated(0.001 ether);
+        ghouls.setMintPrice(0.001 ether);
         assertEq(ghouls.mintPrice(), 0.001 ether);
     }
 
-    function testSetBurnPercentage() public prank(owner) {
-        ghouls.setBurnPercentage(500);
-        assertEq(ghouls.burnPercentage(), 500);
+    function testSetMintBurnBps() public prank(owner) {
+        ghouls.setMintBurnBps(500);
+        assertEq(ghouls.mintBurnBps(), 500);
 
         vm.expectRevert(ILuckyGhouls.InvalidPercentage.selector);
-        ghouls.setBurnPercentage(10001);
+        ghouls.setMintBurnBps(10001);
     }
 
-    function testSetRitualParticipationDays() public prank(owner) {
-        ghouls.setRitualParticipationDays(180);
-        assertEq(ghouls.ritualParticipationDays(), 180);
+    function testSetTotalPurchaseDays() public prank(owner) {
+        ghouls.setTotalPurchaseDays(180);
+        assertEq(ghouls.totalPurchaseDays(), 180);
 
         vm.expectRevert(ILuckyGhouls.QuantityZero.selector);
-        ghouls.setRitualParticipationDays(0);
+        ghouls.setTotalPurchaseDays(0);
     }
 
-    function testSetRitualReferrer() public prank(owner) {
+    function testSetMegapotReferrer() public prank(owner) {
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.RitualReferrerUpdated(user2);
-        ghouls.setRitualReferrer(user2);
-        assertEq(ghouls.lotteryReferrer(), user2);
+        emit ILuckyGhouls.MegapotReferrerUpdated(user2);
+        ghouls.setMegapotReferrer(user2);
+        assertEq(ghouls.megapotReferrer(), user2);
     }
 
-    function testSetEvilNumbers() public prank(owner) {
-        uint8[] memory evil = new uint8[](2);
-        evil[0] = 6;
-        evil[1] = 66;
+    function testSetPreferredNumbers() public prank(owner) {
+        uint8[] memory preferred = new uint8[](2);
+        preferred[0] = 6;
+        preferred[1] = 66;
         vm.expectEmit(false, false, false, true);
-        emit ILuckyGhouls.EvilNumbersUpdated(evil);
-        ghouls.setEvilNumbers(evil);
-        uint8[] memory stored = ghouls.getEvilNumbers();
+        emit ILuckyGhouls.PreferredNumbersUpdated(preferred);
+        ghouls.setPreferredNumbers(preferred);
+        uint8[] memory stored = ghouls.getPreferredNumbers();
         assertEq(stored.length, 2);
         assertEq(stored[0], 6);
         assertEq(stored[1], 66);
-        assertEq(ghouls.evilNumbers(1), 66);
+        assertEq(ghouls.preferredNumbers(1), 66);
 
         uint8[] memory empty = new uint8[](0);
         vm.expectRevert(ILuckyGhouls.QuantityZero.selector);
-        ghouls.setEvilNumbers(empty);
+        ghouls.setPreferredNumbers(empty);
 
-        evil[1] = 0;
-        vm.expectRevert(ILuckyGhouls.InvalidEvilNumber.selector);
-        ghouls.setEvilNumbers(evil);
+        preferred[1] = 0;
+        vm.expectRevert(ILuckyGhouls.InvalidPreferredNumber.selector);
+        ghouls.setPreferredNumbers(preferred);
     }
 
-    function testSetRitualGasReserve() public prank(owner) {
+    function testSetMinGasPerPurchase() public prank(owner) {
         vm.expectEmit(false, false, false, true);
-        emit ILuckyGhouls.RitualGasReserveUpdated(1_000_000);
-        ghouls.setRitualGasReserve(1_000_000);
-        assertEq(ghouls.ritualGasReserve(), 1_000_000);
+        emit ILuckyGhouls.MinGasPerPurchaseUpdated(1_000_000);
+        ghouls.setMinGasPerPurchase(1_000_000);
+        assertEq(ghouls.minGasPerPurchase(), 1_000_000);
 
         vm.expectRevert(ILuckyGhouls.QuantityZero.selector);
-        ghouls.setRitualGasReserve(0);
+        ghouls.setMinGasPerPurchase(0);
     }
 
     function testSettingsOnlyOwner() public prank(user1) {
         bytes memory err = abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", user1);
         vm.expectRevert(err);
-        ghouls.setSummoningPrice(1);
+        ghouls.setMintPrice(1);
         vm.expectRevert(err);
-        ghouls.setBurnPercentage(1);
+        ghouls.setMintBurnBps(1);
         vm.expectRevert(err);
-        ghouls.setRitualParticipationDays(1);
+        ghouls.setTotalPurchaseDays(1);
         vm.expectRevert(err);
-        ghouls.setRitualReferrer(user1);
+        ghouls.setMegapotReferrer(user1);
         vm.expectRevert(err);
-        ghouls.setRitualGasReserve(1);
+        ghouls.setMinGasPerPurchase(1);
         vm.expectRevert(err);
         ghouls.setContractURI("x");
         vm.expectRevert(err);
@@ -996,11 +1012,11 @@ contract LuckyGhoulsTest is Test {
         vm.expectRevert(err);
         ghouls.emergencyWithdraw(address(0));
         vm.expectRevert(err);
-        ghouls.burnUnclaimedTreasury();
-        uint8[] memory evil = new uint8[](1);
-        evil[0] = 1;
+        ghouls.burnRemainingTreasury();
+        uint8[] memory preferred = new uint8[](1);
+        preferred[0] = 1;
         vm.expectRevert(err);
-        ghouls.setEvilNumbers(evil);
+        ghouls.setPreferredNumbers(preferred);
     }
 
     function testPauseUnpause() public prank(owner) {
@@ -1041,38 +1057,38 @@ contract LuckyGhoulsTest is Test {
     function testMegapotViews() public {
         jackpot.setPrizePool(123e6);
         jackpot.setDrawingTime(999_999);
-        assertEq(ghouls.getCauldronJackpot(), 123e6);
+        assertEq(ghouls.getMegapotJackpot(), 123e6);
         assertEq(ghouls.getNextDrawingTime(), 999_999);
         assertEq(ghouls.getDrawingDurationInSeconds(), 86_400);
     }
 
-    function testGetDailyPurchaseAmount() public {
-        assertEq(ghouls.getDailyPurchaseAmount(), 0);
+    function testGetDailyEthBudget() public {
+        assertEq(ghouls.getDailyEthBudget(), 0);
         vm.deal(address(ghouls), 365 ether);
-        assertEq(ghouls.getDailyPurchaseAmount(), 1 ether);
+        assertEq(ghouls.getDailyEthBudget(), 1 ether);
     }
 
-    function testGetDailyPurchaseAmountAfterParticipationEnds() public {
+    function testGetDailyEthBudgetAfterParticipationEnds() public {
         _fundForTickets(2);
-        ghouls.performNightlyRitual();
-        assertEq(ghouls.currentRitualDay(), 1);
+        ghouls.buyTickets();
+        assertEq(ghouls.completedPurchaseDays(), 1);
 
         // Participation window used up: no budget, no underflow
         vm.deal(address(ghouls), 1 ether);
-        assertEq(ghouls.getDailyPurchaseAmount(), 0);
+        assertEq(ghouls.getDailyEthBudget(), 0);
         jackpot.setCurrentDrawingId(DRAWING + 1);
         vm.expectRevert(ILuckyGhouls.InsufficientTreasury.selector);
-        ghouls.performNightlyRitual();
+        ghouls.buyTickets();
 
         // Owner can extend the window and the ritual resumes
         vm.prank(owner);
-        ghouls.setRitualParticipationDays(2);
-        assertEq(ghouls.getDailyPurchaseAmount(), 1 ether);
+        ghouls.setTotalPurchaseDays(2);
+        assertEq(ghouls.getDailyEthBudget(), 1 ether);
     }
 
     function testTokenURI() public {
         vm.prank(user1);
-        ghouls.summon{value: mintPrice}(1);
+        ghouls.mint{value: mintPrice}(1);
         string memory uri = ghouls.tokenURI(0);
         assertTrue(bytes(uri).length > 0);
 

@@ -12,14 +12,14 @@ import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
 
 /// @title  Test Ghouls deploy
 /// @notice A short-lived dress rehearsal of LuckyGhouls on Base mainnet: same contract, same art, but the
-///         Cauldron is spent over 10 ritual days and a mint costs the ETH equivalent of 1 USDC (quoted from
-///         Uniswap at deploy time). Everything else (supply cap, burn split, wind-down clock) is unchanged.
+///         treasury is spent over 10 purchase days and a mint costs the ETH equivalent of 1 USDC (quoted from
+///         Uniswap at deploy time). Everything else (supply cap, mint burn share, treasury burn clock) is unchanged.
 /// @dev    FOUNDRY_PROFILE=luckyghouls forge script script/luckyghouls/TestGhoulsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
 contract TestGhoulsDeploy is Script {
     LuckyGhouls public testGhouls;
     LuckyGhoulsArt public artContract;
 
-    uint256 public constant RITUAL_DAYS = 10;
+    uint256 public constant PURCHASE_DAYS = 10;
     uint256 public constant MINT_PRICE_USDC = 1e6; // $1
 
     // Base mainnet
@@ -54,8 +54,7 @@ contract TestGhoulsDeploy is Script {
             artContract
         );
 
-        testGhouls.setRitualParticipationDays(RITUAL_DAYS);
-        testGhouls.setRitualReferrer(0x1d671d1B191323A38490972D58354971E5c1cd2A);
+        testGhouls.setTotalPurchaseDays(PURCHASE_DAYS);
 
         vm.stopBroadcast();
     }

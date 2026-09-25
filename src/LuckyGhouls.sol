@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {ERC721Burnable, ERC721} from "@openzeppelin/token/ERC721/extensions/ERC721Burnable.sol";
+import {ERC721} from "@openzeppelin/token/ERC721/ERC721.sol";
 import {IERC721Receiver} from "@openzeppelin/token/ERC721/IERC721Receiver.sol";
 import {SafeERC20, IERC20} from "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/access/Ownable.sol";
@@ -15,16 +15,16 @@ import {ILuckyGhouls} from "@src/interfaces/ILuckyGhouls.sol";
 import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
 
 /// @title  Lucky Ghouls
-/// @notice ERC-721 collection whose mint proceeds pool into a shared treasury (the Cauldron). Every drawing a
-///         keeper performs the Nightly Ritual: a slice of the Cauldron is swapped to USDC and spent on Megapot V2
-///         tickets whose numbers are biased toward the configured Evil Numbers. Any holder may Break the Pact at
-///         any time, burning their Ghoul for a proportional share of the ETH and USDC the Cauldron holds.
+/// @notice ERC-721 collection whose mint proceeds pool into a shared treasury. Every drawing a keeper calls
+///         `buyTickets`: a daily slice of the treasury is swapped to USDC and spent on Megapot V2 tickets whose
+///         numbers are biased toward the configured preferred numbers. Any holder may `burn` their token at any
+///         time for a proportional share of the ETH and USDC the treasury holds.
 /// @dev    Structure mirrors PotRaider.sol; the ticket-purchase surface is rewritten for the Megapot V2 API
 ///         (discrete NFT tickets with explicit numbers, no built-in once-per-round guard, id-based claims).
-///         Winnings are converted back to ETH at claim time so they feed future rituals. One year after the
-///         first ritual, plus a 30-day claim window, the owner may burn whatever is left in the Cauldron
-///         through the shared BBITS burner (the wind-down).
-contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
+///         Winnings are converted back to ETH at claim time so they feed future purchases. One year after the
+///         first completed purchase, plus a 30-day grace period, the owner may burn whatever is left in the
+///         treasury through the shared BBITS burner.
+contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable weth;
@@ -40,9 +40,9 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
     IV3Quoter public immutable uniswapQuoter;
 
     /// @notice Megapot V2 Jackpot
-    IJackpot public immutable lottery;
+    IJackpot public immutable megapot;
 
-    uint256 public immutable maxMint;
+    uint256 public immutable maxMintPerTx;
 
     LuckyGhoulsArt public immutable artContract;
 
@@ -50,73 +50,73 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
 
     uint256 public constant NORMALS_PER_TICKET = 5;
 
-    /// @notice Upper bound on drawing-wide dedup retries per ticket before the generator gives up
-    uint256 public constant MAX_GENERATOR_ATTEMPTS = 20;
+    /// @notice Upper bound on retries per ticket to find numbers not already bought for the drawing
+    uint256 public constant MAX_UNIQUE_TICKET_ATTEMPTS = 20;
 
     /// @notice Telemetry tag passed to Megapot on every purchase
-    bytes32 public constant RITUAL_SOURCE = "LuckyGhouls";
+    bytes32 public constant MEGAPOT_SOURCE_TAG = "LuckyGhouls";
 
-    /// @notice The wind-down clock: burning the unclaimed treasury unlocks this long after the first ritual...
-    uint256 public constant YEAR_MARK_DELAY = 365 days;
+    /// @notice burnRemainingTreasury unlocks this long after the first completed purchase...
+    uint256 public constant TREASURY_BURN_DELAY = 365 days;
 
-    /// @notice ...plus this claim window, during which holders can still break the pact
-    uint256 public constant CLAIM_WINDOW_DURATION = 30 days;
+    /// @notice ...plus this grace period, during which holders can still burn for their share
+    uint256 public constant TREASURY_BURN_GRACE_PERIOD = 30 days;
 
     /// @dev Megapot referral splits are scaled to 1e18
     uint256 constant PRECISE_UNIT = 1e18;
 
-    /// @dev Bound on in-ticket re-rolls when filling the non-evil slots
+    /// @dev Bound on in-ticket re-rolls when filling the non-preferred slots
     uint256 constant MAX_SLOT_REROLLS = 256;
 
-    uint256 public totalSupply;
+    uint256 public totalMinted;
 
-    uint256 public circulatingSupply;
+    uint256 public totalSupply;
 
     uint256 public mintPrice;
 
     /// @dev 10_000 = 100%
-    uint256 public burnPercentage;
+    uint256 public mintBurnBps;
 
     /// @notice OpenSea-style contract-level metadata URI
     string public contractURI;
 
-    /// @notice Referrer address for ticket purchases (zero = no referrer)
-    address public lotteryReferrer;
+    /// @notice Megapot referral wallet credited on every ticket purchase (zero = no referrer)
+    address public megapotReferrer;
 
-    /// @notice Number of ritual days the treasury is spread across
-    uint256 public ritualParticipationDays;
+    /// @notice Number of daily Megapot ticket purchases the treasury is spread across
+    uint256 public totalPurchaseDays;
 
-    /// @dev Internal counter of completed ritual days
-    uint256 public currentRitualDay;
+    /// @notice Number of days on which the full ticket target was bought
+    uint256 public completedPurchaseDays;
 
-    /// @notice Megapot drawingId for which the ritual last reached its full ticket target
+    /// @notice Megapot drawingId for which buyTickets last reached its full ticket target
     /// @dev    Replaces the V1 usersInfo(address).active guard. Initialised to max so drawing 0 is not blocked.
-    uint256 public lastRitualDrawingId;
+    uint256 public lastCompletedDrawingId;
 
-    /// @notice Gas the ritual loop reserves before starting another purchase, so a long loop stops cleanly
+    /// @notice Gas buyTickets keeps in reserve before starting another purchase, so a long loop stops cleanly
     ///         instead of running out of gas and reverting its own earlier successes
-    uint256 public ritualGasReserve;
+    uint256 public minGasPerPurchase;
 
-    /// @notice Timestamp of the first fully completed ritual; starts the wind-down clock (0 = not started)
-    uint256 public ritualStartTime;
+    /// @notice Timestamp of the first fully completed purchase; starts the treasury burn clock (0 = not started)
+    uint256 public firstPurchaseTime;
 
-    /// @notice Numbers the Evil Number Generator prefers, in priority order
-    uint8[] public evilNumbers;
+    /// @notice Numbers the ticket generator prefers, in priority order
+    uint8[] public preferredNumbers;
 
-    /// @notice Tickets the ritual intends to buy for a drawing, locked in on the first attempt
-    mapping(uint256 => uint256) public ritualTargetTicketCount;
+    /// @notice Tickets buyTickets intends to buy for a drawing, locked in on the first attempt
+    mapping(uint256 => uint256) public targetTicketCount;
 
     /// @notice USDC obtained from the day's ETH swap, per drawing (the day's whole ticket budget)
-    mapping(uint256 => uint256) public ritualUsdcBudget;
+    mapping(uint256 => uint256) public drawingUsdcBudget;
 
     /// @notice Ticket price read on the day's first attempt, per drawing
-    mapping(uint256 => uint256) public ritualTicketPrice;
+    mapping(uint256 => uint256) public drawingTicketPrice;
 
-    /// @dev Every ticket successfully bought per drawing (id + numbers), consumed by claimReckoning
+    /// @dev Every ticket successfully bought per drawing (id + numbers), consumed by claimWinnings
     mapping(uint256 => PurchasedTicket[]) internal _purchasedTickets;
 
-    /// @notice Per completed ritual day
-    mapping(uint256 => RitualPurchase) public ritualHistory;
+    /// @notice Purchase record per completed day number (1-based)
+    mapping(uint256 => DailyPurchase) public purchaseHistoryByDay;
 
     constructor(
         string memory _name,
@@ -128,7 +128,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
         IERC20 _usdc,
         IV3Router _router,
         IV3Quoter _quoter,
-        IJackpot _lottery,
+        IJackpot _megapot,
         LuckyGhoulsArt _artContract
     ) ERC721(_name, _symbol) Ownable(_owner) {
         mintPrice = _mintPrice;
@@ -137,21 +137,22 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
         usdc = _usdc;
         uniswapRouter = _router;
         uniswapQuoter = _quoter;
-        lottery = _lottery;
+        megapot = _megapot;
         artContract = _artContract;
 
-        burnPercentage = 2000; // 20%
-        maxMint = 50;
-        ritualParticipationDays = 365;
-        ritualGasReserve = 600_000;
-        lastRitualDrawingId = type(uint256).max;
+        mintBurnBps = 2000; // 20%
+        maxMintPerTx = 50;
+        totalPurchaseDays = 365;
+        minGasPerPurchase = 600_000;
+        lastCompletedDrawingId = type(uint256).max;
+        megapotReferrer = 0xDAdA5bAd8cdcB9e323d0606d081E6Dc5D3a577a1;
 
-        evilNumbers.push(4);
-        evilNumbers.push(9);
-        evilNumbers.push(13);
-        evilNumbers.push(17);
+        preferredNumbers.push(4);
+        preferredNumbers.push(9);
+        preferredNumbers.push(13);
+        preferredNumbers.push(17);
 
-        usdc.approve(address(lottery), type(uint256).max);
+        usdc.approve(address(megapot), type(uint256).max);
         usdc.approve(address(uniswapRouter), type(uint256).max);
     }
 
@@ -159,37 +160,39 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
 
     receive() external payable {}
 
-    /// @notice The Summoning: mint Ghouls for ETH. A burnPercentage share goes to the BBITS burner, the rest
-    ///         stays in the Cauldron.
-    function summon(uint256 quantity) external payable whenNotPaused nonReentrant {
+    /// @notice Mint tokens for ETH. A mintBurnBps share goes to the BBITS burner, the rest
+    ///         stays in the treasury.
+    function mint(uint256 quantity) external payable whenNotPaused nonReentrant {
         if (quantity == 0) revert QuantityZero();
-        if (quantity > maxMint) revert MaxMintPerCallExceeded();
-        if (totalSupply + quantity > MAX_SUPPLY) revert MaxSupplyReached();
+        if (quantity > maxMintPerTx) revert MaxMintPerCallExceeded();
+        if (totalMinted + quantity > MAX_SUPPLY) revert MaxSupplyReached();
         if (msg.value < mintPrice * quantity) revert InsufficientPayment();
 
-        uint256 burnAmount = (msg.value * burnPercentage) / 10_000;
+        uint256 burnAmount = (msg.value * mintBurnBps) / 10_000;
 
         // Send burn amount to burner contract
         if (burnAmount > 0) bbitsBurner.burn{value: burnAmount}(0);
 
         for (uint256 i = 0; i < quantity; i++) {
-            _mint(msg.sender, totalSupply);
+            _mint(msg.sender, totalMinted);
+            totalMinted++;
             totalSupply++;
-            circulatingSupply++;
         }
     }
 
-    /// @notice Breaking the Pact: burn a Ghoul for its proportional share of the Cauldron's ETH and USDC.
-    function breakThePact(uint256 tokenId) external whenNotPaused nonReentrant {
+    /// @notice Burn a token for its proportional share of the treasury's ETH and USDC.
+    /// @dev    The only way to burn a Ghoul, so a burn always redeems its share.
+    function burn(uint256 tokenId) external whenNotPaused nonReentrant {
         if (ownerOf(tokenId) != msg.sender) revert NotOwner();
 
         // Calculate shares
-        uint256 ethShare = address(this).balance / circulatingSupply;
-        uint256 usdcShare = usdc.balanceOf(address(this)) / circulatingSupply;
+        uint256 ethShare = address(this).balance / totalSupply;
+        uint256 usdcShare = usdc.balanceOf(address(this)) / totalSupply;
         if (ethShare == 0 && usdcShare == 0) revert NoTreasuryAvailable();
 
         // Burn the NFT first (state update before external calls)
-        burn(tokenId);
+        _burn(tokenId);
+        totalSupply--;
 
         // Send USDC share to the owner (if any)
         if (usdcShare > 0) usdc.safeTransfer(msg.sender, usdcShare);
@@ -198,39 +201,33 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
         (bool success,) = msg.sender.call{value: ethShare}("");
         if (!success) revert TransferFailed();
 
-        emit PactBroken(tokenId, msg.sender, ethShare, usdcShare);
+        emit TokenBurned(tokenId, msg.sender, ethShare, usdcShare);
     }
 
-    /// @notice Burns a token and updates circulating supply
-    function burn(uint256 tokenId) public override {
-        super.burn(tokenId);
-        circulatingSupply--;
-    }
-
-    /// @notice The Nightly Ritual: buy this drawing's Megapot tickets, one at a time, until the day's target is
+    /// @notice Buy this drawing's Megapot tickets, one at a time, until the day's target is
     ///         reached. Safe to call again for the same drawing after a partial run - a retry never re-swaps and
     ///         resumes from the first ticket not yet bought.
     /// @dev    Does not revert when a purchase fails or the gas reserve is hit; whatever was bought stays
     ///         committed and the once-per-drawing guard is only satisfied once the full target is reached.
-    function performNightlyRitual() external whenNotPaused nonReentrant {
-        uint256 currentId = lottery.currentDrawingId();
-        if (lastRitualDrawingId == currentId) revert RitualAlreadyPerformed();
+    function buyTickets() external whenNotPaused nonReentrant {
+        uint256 currentId = megapot.currentDrawingId();
+        if (lastCompletedDrawingId == currentId) revert TicketsAlreadyPurchased();
 
         // First attempt for this drawing: spend today's ETH budget and lock in the ticket target
-        uint256 target = ritualTargetTicketCount[currentId];
+        uint256 target = targetTicketCount[currentId];
         uint256 dailyAmount;
         if (target == 0) {
-            dailyAmount = getDailyPurchaseAmount();
+            dailyAmount = getDailyEthBudget();
             if (dailyAmount == 0) revert InsufficientTreasury();
 
             uint256 usdcAmount = _swapETHForUSDC(dailyAmount);
-            uint256 price = lottery.ticketPrice();
+            uint256 price = megapot.ticketPrice();
             target = usdcAmount / price;
             if (target == 0) revert InsufficientUSDCForTicket();
 
-            ritualTargetTicketCount[currentId] = target;
-            ritualUsdcBudget[currentId] = usdcAmount;
-            ritualTicketPrice[currentId] = price;
+            targetTicketCount[currentId] = target;
+            drawingUsdcBudget[currentId] = usdcAmount;
+            drawingTicketPrice[currentId] = price;
         }
 
         PurchasedTicket[] storage tickets = _purchasedTickets[currentId];
@@ -239,14 +236,14 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
 
         for (uint256 ticketIndex = tickets.length; ticketIndex < target; ticketIndex++) {
             // Stop cleanly rather than running out of gas mid-purchase (which would revert this call entirely)
-            if (gasleft() < ritualGasReserve) break;
+            if (gasleft() < minGasPerPurchase) break;
 
-            (uint8[5] memory normals, uint8 bonusball, bool ok) = _generateEvilTicket(currentId, ticketIndex);
+            (uint8[5] memory normals, uint8 bonusball, bool ok) = _generateTicket(currentId, ticketIndex);
             if (!ok) {
-                // No further distinct combination is reachable: settle for what was secured so the ritual can
+                // No further distinct combination is reachable: settle for what was secured so the day can
                 // finalize instead of being stuck on this drawing forever
-                emit EvilTicketSpaceExhausted(currentId, ticketIndex);
-                ritualTargetTicketCount[currentId] = ticketIndex;
+                emit UniqueTicketsExhausted(currentId, ticketIndex);
+                targetTicketCount[currentId] = ticketIndex;
                 target = ticketIndex;
                 break;
             }
@@ -254,7 +251,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
             IJackpot.Ticket[] memory order = new IJackpot.Ticket[](1);
             order[0] = IJackpot.Ticket({normals: _toDynamic(normals), bonusball: bonusball});
 
-            try lottery.buyTickets(order, address(this), referrers, referralSplit, RITUAL_SOURCE) returns (
+            try megapot.buyTickets(order, address(this), referrers, referralSplit, MEGAPOT_SOURCE_TAG) returns (
                 uint256[] memory ticketIds
             ) {
                 tickets.push(PurchasedTicket({ticketId: ticketIds[0], normals: normals, bonusball: bonusball}));
@@ -266,39 +263,39 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
         }
 
         if (tickets.length == target) {
-            lastRitualDrawingId = currentId;
-            currentRitualDay++;
-            ritualHistory[currentRitualDay] =
-                RitualPurchase({ticketCount: target, drawingId: currentId, timestamp: block.timestamp});
+            lastCompletedDrawingId = currentId;
+            completedPurchaseDays++;
+            purchaseHistoryByDay[completedPurchaseDays] =
+                DailyPurchase({ticketCount: target, drawingId: currentId, timestamp: block.timestamp});
 
-            // The first completed ritual starts the wind-down clock
-            if (ritualStartTime == 0) {
-                ritualStartTime = block.timestamp;
-                emit RitualClockStarted(block.timestamp, getBurnUnlockTime());
+            // The first completed purchase starts the treasury burn clock
+            if (firstPurchaseTime == 0) {
+                firstPurchaseTime = block.timestamp;
+                emit TreasuryBurnClockStarted(block.timestamp, getTreasuryBurnUnlockTime());
             }
 
-            // Swap the day's own unspent budget back to ETH. Scoped to this ritual's remainder only - never the
+            // Swap the day's own unspent budget back to ETH. Scoped to this day's remainder only - never the
             // contract's USDC balance, which may hold USDC earmarked for another drawing's pending tickets.
-            uint256 leftover = ritualUsdcBudget[currentId] - tickets.length * ritualTicketPrice[currentId];
+            uint256 leftover = drawingUsdcBudget[currentId] - tickets.length * drawingTicketPrice[currentId];
             uint256 usdcBalance = usdc.balanceOf(address(this));
             if (leftover > usdcBalance) leftover = usdcBalance;
             if (leftover > 0) _swapUSDCforETH(leftover);
 
-            emit NightlyRitualPerformed(currentRitualDay, currentId, boughtThisCall, dailyAmount);
+            emit TicketsPurchased(completedPurchaseDays, currentId, boughtThisCall, dailyAmount);
         } else {
-            emit NightlyRitualPartiallyPerformed(currentId, boughtThisCall, target - tickets.length);
+            emit TicketsPartiallyPurchased(currentId, boughtThisCall, target - tickets.length);
         }
     }
 
-    /// @notice The Reckoning: claim every ticket bought for a settled drawing (win or lose) in one call. Any USDC
-    ///         won is swapped straight back to ETH so it flows into the remaining rituals' daily budgets.
+    /// @notice Claim every ticket bought for a settled drawing (win or lose) in one call. Any USDC
+    ///         won is swapped straight back to ETH so it flows into the remaining days' budgets.
     /// @dev    Anyone can call this. Losing tickets simply pay 0; the drawing's records are cleared afterwards.
     ///         Only the USDC actually received by this claim is swapped, never the contract's balance.
-    function claimReckoning(uint256 drawingId) external whenNotPaused nonReentrant {
+    function claimWinnings(uint256 drawingId) external whenNotPaused nonReentrant {
         PurchasedTicket[] storage tickets = _purchasedTickets[drawingId];
         uint256 count = tickets.length;
         if (count == 0) revert NoTicketsForDrawing();
-        if (drawingId >= lottery.currentDrawingId()) revert DrawingNotSettled();
+        if (drawingId >= megapot.currentDrawingId()) revert DrawingNotSettled();
 
         uint256[] memory ids = new uint256[](count);
         for (uint256 i = 0; i < count; i++) {
@@ -307,33 +304,27 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
         delete _purchasedTickets[drawingId];
 
         uint256 balanceBefore = usdc.balanceOf(address(this));
-        lottery.claimWinnings(ids);
+        megapot.claimWinnings(ids);
         uint256 usdcReceived = usdc.balanceOf(address(this)) - balanceBefore;
 
         uint256 ethReceived;
         if (usdcReceived > 0) ethReceived = _swapUSDCforETH(usdcReceived);
 
-        emit ReckoningClaimed(drawingId, count, usdcReceived, ethReceived);
+        emit WinningsClaimed(drawingId, count, usdcReceived, ethReceived);
     }
 
-    /// @notice Claim referral fees accrued on the Megapot contract
-    /// @dev    Anyone can call this; reverts (in Megapot) when nothing is claimable
-    function claimReferralFees() external whenNotPaused nonReentrant {
-        lottery.claimReferralFees();
-    }
-
-    /// @notice Accept Megapot ticket NFTs (and any other ERC-721 safe-transferred to the Cauldron)
+    /// @notice Accept Megapot ticket NFTs (and any other ERC-721 safe-transferred to this contract)
     function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
     }
 
     /// SETTINGS ///
 
-    /// @notice Wind-down: once the claim window has closed, destroy whatever is left in the Cauldron by routing
+    /// @notice Once the grace period has closed, destroy whatever is left in the treasury by routing
     ///         it through the shared BBITS burner (USDC is converted to ETH first). Callable again if more
     ///         funds arrive later. Deliberately not gated by the pause switch.
-    function burnUnclaimedTreasury() external onlyOwner nonReentrant {
-        if (!isBurnWindowReached()) revert BurnWindowNotReached();
+    function burnRemainingTreasury() external onlyOwner nonReentrant {
+        if (!isTreasuryBurnUnlocked()) revert TreasuryBurnLocked();
 
         uint256 usdcToBurn = usdc.balanceOf(address(this));
         if (usdcToBurn > 0) _swapUSDCforETH(usdcToBurn);
@@ -372,58 +363,58 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
         contractURI = _uri;
     }
 
-    /// @notice Set the number of ritual days the treasury is spread across
-    function setRitualParticipationDays(uint256 _ritualParticipationDays) external onlyOwner {
-        if (_ritualParticipationDays == 0) revert QuantityZero();
-        ritualParticipationDays = _ritualParticipationDays;
-        emit RitualParticipationDaysUpdated(_ritualParticipationDays);
+    /// @notice Set the number of daily Megapot ticket purchases the treasury is spread across
+    function setTotalPurchaseDays(uint256 _totalPurchaseDays) external onlyOwner {
+        if (_totalPurchaseDays == 0) revert QuantityZero();
+        totalPurchaseDays = _totalPurchaseDays;
+        emit TotalPurchaseDaysUpdated(_totalPurchaseDays);
     }
 
-    /// @notice Set the referrer address used for ticket purchases (zero disables referrals)
-    function setRitualReferrer(address _lotteryReferrer) external onlyOwner {
-        lotteryReferrer = _lotteryReferrer;
-        emit RitualReferrerUpdated(_lotteryReferrer);
+    /// @notice Set the Megapot referral wallet used for ticket purchases (zero disables referrals)
+    function setMegapotReferrer(address _megapotReferrer) external onlyOwner {
+        megapotReferrer = _megapotReferrer;
+        emit MegapotReferrerUpdated(_megapotReferrer);
     }
 
-    function setSummoningPrice(uint256 _mintPrice) external onlyOwner {
+    function setMintPrice(uint256 _mintPrice) external onlyOwner {
         mintPrice = _mintPrice;
-        emit SummoningPriceUpdated(_mintPrice);
+        emit MintPriceUpdated(_mintPrice);
     }
 
     /// @notice Update the burn percentage
-    /// @param _burnPercentage New burn percentage (10_000 = 100%)
-    function setBurnPercentage(uint16 _burnPercentage) external onlyOwner {
-        if (_burnPercentage > 10_000) revert InvalidPercentage();
-        burnPercentage = _burnPercentage;
-        emit BurnPercentageUpdated(_burnPercentage);
+    /// @param _mintBurnBps Share of each mint sent to the BBITS burner (10_000 = 100%)
+    function setMintBurnBps(uint16 _mintBurnBps) external onlyOwner {
+        if (_mintBurnBps > 10_000) revert InvalidPercentage();
+        mintBurnBps = _mintBurnBps;
+        emit MintBurnBpsUpdated(_mintBurnBps);
     }
 
-    /// @notice Replace the Evil Numbers the generator is biased toward (priority order, all non-zero)
-    function setEvilNumbers(uint8[] calldata _evilNumbers) external onlyOwner {
-        if (_evilNumbers.length == 0) revert QuantityZero();
-        for (uint256 i = 0; i < _evilNumbers.length; i++) {
-            if (_evilNumbers[i] == 0) revert InvalidEvilNumber();
+    /// @notice Replace the numbers the ticket generator is biased toward (priority order, all non-zero)
+    function setPreferredNumbers(uint8[] calldata _preferredNumbers) external onlyOwner {
+        if (_preferredNumbers.length == 0) revert QuantityZero();
+        for (uint256 i = 0; i < _preferredNumbers.length; i++) {
+            if (_preferredNumbers[i] == 0) revert InvalidPreferredNumber();
         }
-        evilNumbers = _evilNumbers;
-        emit EvilNumbersUpdated(_evilNumbers);
+        preferredNumbers = _preferredNumbers;
+        emit PreferredNumbersUpdated(_preferredNumbers);
     }
 
-    /// @notice Set the gas the ritual loop reserves before attempting another purchase
-    function setRitualGasReserve(uint256 _ritualGasReserve) external onlyOwner {
-        if (_ritualGasReserve == 0) revert QuantityZero();
-        ritualGasReserve = _ritualGasReserve;
-        emit RitualGasReserveUpdated(_ritualGasReserve);
+    /// @notice Set the gas buyTickets keeps in reserve before attempting another purchase
+    function setMinGasPerPurchase(uint256 _minGasPerPurchase) external onlyOwner {
+        if (_minGasPerPurchase == 0) revert QuantityZero();
+        minGasPerPurchase = _minGasPerPurchase;
+        emit MinGasPerPurchaseUpdated(_minGasPerPurchase);
     }
 
     /// INTERNAL ///
 
     /// @dev Referral arguments for buyTickets: empty when no referrer, else a single 100% split
     function _referralArgs() internal view returns (address[] memory referrers, uint256[] memory referralSplit) {
-        if (lotteryReferrer == address(0)) {
+        if (megapotReferrer == address(0)) {
             return (new address[](0), new uint256[](0));
         }
         referrers = new address[](1);
-        referrers[0] = lotteryReferrer;
+        referrers[0] = megapotReferrer;
         referralSplit = new uint256[](1);
         referralSplit[0] = PRECISE_UNIT;
     }
@@ -435,45 +426,47 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
         }
     }
 
-    /// @notice Evil Number Generator: deterministic, biased toward evilNumbers, unique within the drawing.
+    /// @notice Ticket generator: deterministic, biased toward preferredNumbers, unique within the drawing.
     /// @dev    Reads ballMax/bonusballMax straight from Megapot for the drawing, fills as many normal slots as
-    ///         possible with evil numbers (in configured order), hashes the rest, prefers the first evil number as
+    ///         possible with preferred numbers (in configured order), hashes the rest, prefers the first preferred number as
     ///         bonusball, and re-rolls (bumping `attempt`) until the combination differs from every ticket already
-    ///         bought for the drawing. Returns ok=false once MAX_GENERATOR_ATTEMPTS is exhausted.
-    function _generateEvilTicket(uint256 drawingId, uint256 ticketIndex)
+    ///         bought for the drawing. Returns ok=false once MAX_UNIQUE_TICKET_ATTEMPTS is exhausted.
+    function _generateTicket(uint256 drawingId, uint256 ticketIndex)
         internal
         view
         returns (uint8[5] memory normals, uint8 bonusball, bool ok)
     {
-        IJackpot.DrawingState memory ds = lottery.getDrawingState(drawingId);
+        IJackpot.DrawingState memory ds = megapot.getDrawingState(drawingId);
         uint8 ballMax = ds.ballMax;
         uint8 bonusballMax = ds.bonusballMax;
         if (ballMax < NORMALS_PER_TICKET || bonusballMax == 0) return (normals, 0, false);
 
         PurchasedTicket[] storage existing = _purchasedTickets[drawingId];
-        uint8[] memory evil = evilNumbers;
+        uint8[] memory preferred = preferredNumbers;
 
-        for (uint256 attempt = 0; attempt < MAX_GENERATOR_ATTEMPTS; attempt++) {
+        for (uint256 attempt = 0; attempt < MAX_UNIQUE_TICKET_ATTEMPTS; attempt++) {
             bool filled;
-            (normals, filled) = _buildNormals(drawingId, ticketIndex, attempt, ballMax, evil);
+            (normals, filled) = _buildNormals(drawingId, ticketIndex, attempt, ballMax, preferred);
             if (!filled) continue;
-            bonusball = _pickBonusball(drawingId, ticketIndex, attempt, bonusballMax, evil);
+            bonusball = _pickBonusball(drawingId, ticketIndex, attempt, bonusballMax, preferred);
             if (!_alreadyBought(existing, normals, bonusball)) return (normals, bonusball, true);
         }
         return (normals, bonusball, false);
     }
 
-    /// @dev Evil numbers first (<= ballMax, no repeats), then hashed fill for the remaining slots
-    function _buildNormals(uint256 drawingId, uint256 ticketIndex, uint256 attempt, uint8 ballMax, uint8[] memory evil)
-        internal
-        pure
-        returns (uint8[5] memory normals, bool filled)
-    {
+    /// @dev Preferred numbers first (<= ballMax, no repeats), then hashed fill for the remaining slots
+    function _buildNormals(
+        uint256 drawingId,
+        uint256 ticketIndex,
+        uint256 attempt,
+        uint8 ballMax,
+        uint8[] memory preferred
+    ) internal pure returns (uint8[5] memory normals, bool filled) {
         uint256 count;
         uint256 usedMask;
 
-        for (uint256 i = 0; i < evil.length && count < NORMALS_PER_TICKET; i++) {
-            uint8 n = evil[i];
+        for (uint256 i = 0; i < preferred.length && count < NORMALS_PER_TICKET; i++) {
+            uint8 n = preferred[i];
             if (n == 0 || n > ballMax || (usedMask & _bit(n)) != 0) continue;
             normals[count++] = n;
             usedMask |= _bit(n);
@@ -492,16 +485,16 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
         filled = true;
     }
 
-    /// @dev First evil number within range, else a hashed fallback
+    /// @dev First preferred number within range, else a hashed fallback
     function _pickBonusball(
         uint256 drawingId,
         uint256 ticketIndex,
         uint256 attempt,
         uint8 bonusballMax,
-        uint8[] memory evil
+        uint8[] memory preferred
     ) internal pure returns (uint8) {
-        for (uint256 i = 0; i < evil.length; i++) {
-            if (evil[i] != 0 && evil[i] <= bonusballMax) return evil[i];
+        for (uint256 i = 0; i < preferred.length; i++) {
+            if (preferred[i] != 0 && preferred[i] <= bonusballMax) return preferred[i];
         }
         return uint8(1 + (uint256(keccak256(abi.encode(drawingId, ticketIndex, attempt, "bonus"))) % bonusballMax));
     }
@@ -594,52 +587,52 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
     }
 
     /// @notice Returns the ETH and USDC amounts redeemable per Ghoul
-    function getRedeemValue() public view returns (uint256 ethShare, uint256 usdcShare) {
-        if (circulatingSupply == 0) {
+    function getBurnPayoutPerToken() public view returns (uint256 ethShare, uint256 usdcShare) {
+        if (totalSupply == 0) {
             return (0, 0);
         }
-        ethShare = address(this).balance / circulatingSupply;
-        usdcShare = usdc.balanceOf(address(this)) / circulatingSupply;
+        ethShare = address(this).balance / totalSupply;
+        usdcShare = usdc.balanceOf(address(this)) / totalSupply;
     }
 
-    /// @notice Get the amount of ETH that will be spent on the next ritual's first attempt
-    function getDailyPurchaseAmount() public view returns (uint256 ethPerDay) {
-        if (currentRitualDay >= ritualParticipationDays) return 0;
-        uint256 remainingDays = ritualParticipationDays - currentRitualDay;
+    /// @notice ETH the next day's first buyTickets call will swap and spend
+    function getDailyEthBudget() public view returns (uint256 ethPerDay) {
+        if (completedPurchaseDays >= totalPurchaseDays) return 0;
+        uint256 remainingDays = totalPurchaseDays - completedPurchaseDays;
         uint256 contractETHBalance = address(this).balance;
         if (contractETHBalance == 0) return 0;
         ethPerDay = contractETHBalance / remainingDays;
     }
 
     /// @notice Current Megapot prize pool (USDC, 6 decimals)
-    function getCauldronJackpot() external view returns (uint256 jackPot) {
-        jackPot = lottery.getDrawingState(lottery.currentDrawingId()).prizePool;
+    function getMegapotJackpot() external view returns (uint256 jackPot) {
+        jackPot = megapot.getDrawingState(megapot.currentDrawingId()).prizePool;
     }
 
     /// @notice Timestamp at which the current drawing closes
     function getNextDrawingTime() external view returns (uint256 drawingTime) {
-        drawingTime = lottery.getDrawingState(lottery.currentDrawingId()).drawingTime;
+        drawingTime = megapot.getDrawingState(megapot.currentDrawingId()).drawingTime;
     }
 
     /// @notice Megapot drawing cycle length in seconds
     function getDrawingDurationInSeconds() external view returns (uint256 duration) {
-        duration = lottery.drawingDurationInSeconds();
+        duration = megapot.drawingDurationInSeconds();
     }
 
-    /// @notice Timestamp from which burnUnclaimedTreasury() may be called. type(uint256).max until the first
-    ///         ritual has completed and started the clock.
-    function getBurnUnlockTime() public view returns (uint256) {
-        if (ritualStartTime == 0) return type(uint256).max;
-        return ritualStartTime + YEAR_MARK_DELAY + CLAIM_WINDOW_DURATION;
+    /// @notice Timestamp from which burnRemainingTreasury() may be called. type(uint256).max until the first
+    ///         purchase has completed and started the clock.
+    function getTreasuryBurnUnlockTime() public view returns (uint256) {
+        if (firstPurchaseTime == 0) return type(uint256).max;
+        return firstPurchaseTime + TREASURY_BURN_DELAY + TREASURY_BURN_GRACE_PERIOD;
     }
 
-    /// @notice Whether the claim window has closed and the treasury may be burned
-    function isBurnWindowReached() public view returns (bool) {
-        return block.timestamp >= getBurnUnlockTime();
+    /// @notice Whether the grace period has closed and the treasury may be burned
+    function isTreasuryBurnUnlocked() public view returns (bool) {
+        return block.timestamp >= getTreasuryBurnUnlockTime();
     }
 
     /// @notice Ticket NFT ids held for a drawing (empty once claimed)
-    function heldTicketIds(uint256 drawingId) external view returns (uint256[] memory ids) {
+    function getUnclaimedTicketIds(uint256 drawingId) external view returns (uint256[] memory ids) {
         PurchasedTicket[] storage tickets = _purchasedTickets[drawingId];
         ids = new uint256[](tickets.length);
         for (uint256 i = 0; i < tickets.length; i++) {
@@ -652,22 +645,22 @@ contract LuckyGhouls is ILuckyGhouls, ERC721Burnable, Ownable, Pausable, Reentra
         return _purchasedTickets[drawingId];
     }
 
-    /// @notice Ritual progress for a drawing; a keeper should retry while bought < target
-    function getRitualProgress(uint256 drawingId) external view returns (uint256 target, uint256 bought) {
-        target = ritualTargetTicketCount[drawingId];
+    /// @notice Ticket purchase progress for a drawing; a keeper should retry while bought < target
+    function getPurchaseProgress(uint256 drawingId) external view returns (uint256 target, uint256 bought) {
+        target = targetTicketCount[drawingId];
         bought = _purchasedTickets[drawingId].length;
     }
 
-    function getEvilNumbers() external view returns (uint8[] memory) {
-        return evilNumbers;
+    function getPreferredNumbers() external view returns (uint8[] memory) {
+        return preferredNumbers;
     }
 
     /// @notice Preview the ticket the generator would produce next for `ticketIndex`, given what is already bought
-    function previewEvilTicket(uint256 drawingId, uint256 ticketIndex)
+    function previewTicketNumbers(uint256 drawingId, uint256 ticketIndex)
         external
         view
         returns (uint8[5] memory normals, uint8 bonusball, bool ok)
     {
-        return _generateEvilTicket(drawingId, ticketIndex);
+        return _generateTicket(drawingId, ticketIndex);
     }
 }

@@ -33,7 +33,7 @@ contract LuckyGhoulsDeploy is Script {
             "Lucky Ghouls",
             "GHOUL",
             msg.sender,
-            0.0011 ether,
+            0.002 ether,
             burner,
             WETH,
             USDC,
@@ -43,7 +43,6 @@ contract LuckyGhoulsDeploy is Script {
             artContract
         );
 
-        luckyGhouls.setRitualReferrer(0x1d671d1B191323A38490972D58354971E5c1cd2A);
         vm.stopBroadcast();
     }
 }
