@@ -17,7 +17,7 @@ import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
 /// @title  Lucky Ghouls
 /// @notice ERC-721 collection whose mint proceeds pool into a shared treasury. Every drawing a keeper calls
 ///         `buyTickets`: a daily slice of the treasury is swapped to USDC and spent on Megapot V2 tickets whose
-///         numbers are biased toward the configured preferred numbers. Any holder may `burn` their token at any
+///         numbers are drawn from the configured preferred-number pool. Any holder may `burn` their token at any
 ///         time for a proportional share of the ETH and USDC the treasury holds.
 /// @dev    Structure mirrors PotRaider.sol; the ticket-purchase surface is rewritten for the Megapot V2 API
 ///         (discrete NFT tickets with explicit numbers, no built-in once-per-round guard, id-based claims).
@@ -65,6 +65,9 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
     /// @dev Megapot referral splits are scaled to 1e18
     uint256 constant PRECISE_UNIT = 1e18;
 
+    /// @notice Upper bound on the preferredNumbers pool size, bounding the per-ticket shuffle
+    uint256 public constant MAX_PREFERRED_NUMBERS = 30;
+
     /// @dev Bound on in-ticket re-rolls when filling the non-preferred slots
     uint256 constant MAX_SLOT_REROLLS = 256;
 
@@ -100,7 +103,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
     /// @notice Timestamp of the first fully completed purchase; starts the treasury burn clock (0 = not started)
     uint256 public firstPurchaseTime;
 
-    /// @notice Numbers the ticket generator prefers, in priority order
+    /// @notice Pool of numbers the ticket generator draws from (order irrelevant; out-of-range values are skipped)
     uint8[] public preferredNumbers;
 
     /// @notice Tickets buyTickets intends to buy for a drawing, locked in on the first attempt
@@ -147,10 +150,17 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         lastCompletedDrawingId = type(uint256).max;
         megapotReferrer = 0xDAdA5bAd8cdcB9e323d0606d081E6Dc5D3a577a1;
 
+        // Default pool: numbers tied to death, the devil or bad luck across cultures
         preferredNumbers.push(4);
+        preferredNumbers.push(6);
+        preferredNumbers.push(7);
         preferredNumbers.push(9);
         preferredNumbers.push(13);
+        preferredNumbers.push(14);
+        preferredNumbers.push(15);
+        preferredNumbers.push(16);
         preferredNumbers.push(17);
+        preferredNumbers.push(24);
 
         usdc.approve(address(megapot), type(uint256).max);
         usdc.approve(address(uniswapRouter), type(uint256).max);
@@ -389,11 +399,18 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         emit MintBurnBpsUpdated(_mintBurnBps);
     }
 
-    /// @notice Replace the numbers the ticket generator is biased toward (priority order, all non-zero)
+    /// @notice Replace the pool the ticket generator draws from: 5 to MAX_PREFERRED_NUMBERS distinct, non-zero
+    ///         values. Values above the current ballMax are allowed and simply skipped until Megapot raises it.
     function setPreferredNumbers(uint8[] calldata _preferredNumbers) external onlyOwner {
-        if (_preferredNumbers.length == 0) revert QuantityZero();
-        for (uint256 i = 0; i < _preferredNumbers.length; i++) {
-            if (_preferredNumbers[i] == 0) revert InvalidPreferredNumber();
+        uint256 len = _preferredNumbers.length;
+        if (len < NORMALS_PER_TICKET) revert TooFewPreferredNumbers();
+        if (len > MAX_PREFERRED_NUMBERS) revert TooManyPreferredNumbers();
+        uint256 usedMask;
+        for (uint256 i = 0; i < len; i++) {
+            uint8 n = _preferredNumbers[i];
+            if (n == 0) revert InvalidPreferredNumber();
+            if ((usedMask & _bit(n)) != 0) revert DuplicatePreferredNumber();
+            usedMask |= _bit(n);
         }
         preferredNumbers = _preferredNumbers;
         emit PreferredNumbersUpdated(_preferredNumbers);
@@ -426,11 +443,14 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         }
     }
 
-    /// @notice Ticket generator: deterministic, biased toward preferredNumbers, unique within the drawing.
-    /// @dev    Reads ballMax/bonusballMax straight from Megapot for the drawing, fills as many normal slots as
-    ///         possible with preferred numbers (in configured order), hashes the rest, prefers the first preferred number as
-    ///         bonusball, and re-rolls (bumping `attempt`) until the combination differs from every ticket already
-    ///         bought for the drawing. Returns ok=false once MAX_UNIQUE_TICKET_ATTEMPTS is exhausted.
+    /// @notice Ticket generator: deterministic, drawn from the preferredNumbers pool, unique within the drawing.
+    /// @dev    Reads ballMax/bonusballMax straight from Megapot for the drawing and filters the pool to what is in
+    ///         range. With at least five eligible numbers, each attempt draws five distinct pool numbers with a
+    ///         seeded partial Fisher-Yates shuffle and a bonusball from the pool values <= bonusballMax (hashed
+    ///         when none qualify). `attempt` is part of the seed, so every retry is a fresh combination; if all
+    ///         MAX_UNIQUE_TICKET_ATTEMPTS collide, a lexicographic sweep takes the first combination not yet
+    ///         bought. With fewer eligible numbers (e.g. Megapot lowered ballMax) the eligible ones are pinned and
+    ///         the remaining slots hashed. Returns ok=false only when no unbought combination is found.
     function _generateTicket(uint256 drawingId, uint256 ticketIndex)
         internal
         view
@@ -441,35 +461,69 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         uint8 bonusballMax = ds.bonusballMax;
         if (ballMax < NORMALS_PER_TICKET || bonusballMax == 0) return (normals, 0, false);
 
-        PurchasedTicket[] storage existing = _purchasedTickets[drawingId];
-        uint8[] memory preferred = preferredNumbers;
+        uint8[] memory pool = _eligible(preferredNumbers, ballMax);
+        uint8[] memory bonusPool = _eligible(pool, bonusballMax);
+        bool fromPool = pool.length >= NORMALS_PER_TICKET;
+        (uint256[] memory boughtMasks, uint8[] memory boughtBonus) = _loadBought(drawingId);
 
         for (uint256 attempt = 0; attempt < MAX_UNIQUE_TICKET_ATTEMPTS; attempt++) {
-            bool filled;
-            (normals, filled) = _buildNormals(drawingId, ticketIndex, attempt, ballMax, preferred);
+            bytes32 seed = keccak256(abi.encode(drawingId, ticketIndex, attempt));
+            bool filled = true;
+            if (fromPool) normals = _pickNormals(pool, seed);
+            else (normals, filled) = _buildNormals(drawingId, ticketIndex, attempt, ballMax, pool);
             if (!filled) continue;
-            bonusball = _pickBonusball(drawingId, ticketIndex, attempt, bonusballMax, preferred);
-            if (!_alreadyBought(existing, normals, bonusball)) return (normals, bonusball, true);
+            bonusball = _pickBonusball(seed, bonusballMax, bonusPool);
+            if (!_alreadyBought(boughtMasks, boughtBonus, _normalsMask(normals), bonusball)) {
+                return (normals, bonusball, true);
+            }
         }
+        if (fromPool) return _sweep(pool, bonusPool, bonusballMax, boughtMasks, boughtBonus);
         return (normals, bonusball, false);
     }
 
-    /// @dev Preferred numbers first (<= ballMax, no repeats), then hashed fill for the remaining slots
-    function _buildNormals(
-        uint256 drawingId,
-        uint256 ticketIndex,
-        uint256 attempt,
-        uint8 ballMax,
-        uint8[] memory preferred
-    ) internal pure returns (uint8[5] memory normals, bool filled) {
+    /// @dev `numbers` filtered to 1..max, first occurrence of each value only
+    function _eligible(uint8[] memory numbers, uint8 max) internal pure returns (uint8[] memory out) {
+        out = new uint8[](numbers.length);
+        uint256 count;
+        uint256 usedMask;
+        for (uint256 i = 0; i < numbers.length; i++) {
+            uint8 n = numbers[i];
+            if (n == 0 || n > max || (usedMask & _bit(n)) != 0) continue;
+            out[count++] = n;
+            usedMask |= _bit(n);
+        }
+        assembly {
+            mstore(out, count)
+        }
+    }
+
+    /// @dev Five distinct pool numbers via a seeded partial Fisher-Yates shuffle (pool.length >= 5)
+    function _pickNormals(uint8[] memory pool, bytes32 seed) internal pure returns (uint8[5] memory normals) {
+        uint256 len = pool.length;
+        uint8[] memory deck = new uint8[](len);
+        for (uint256 i = 0; i < len; i++) {
+            deck[i] = pool[i];
+        }
+        for (uint256 i = 0; i < NORMALS_PER_TICKET; i++) {
+            uint256 j = i + (uint256(keccak256(abi.encode(seed, i))) % (len - i));
+            (deck[i], deck[j]) = (deck[j], deck[i]);
+            normals[i] = deck[i];
+        }
+    }
+
+    /// @dev Fallback when fewer than five pool numbers are in range: eligible pool numbers first, then hashed
+    ///      fill for the remaining slots. `pool` is already filtered to 1..ballMax without repeats.
+    function _buildNormals(uint256 drawingId, uint256 ticketIndex, uint256 attempt, uint8 ballMax, uint8[] memory pool)
+        internal
+        pure
+        returns (uint8[5] memory normals, bool filled)
+    {
         uint256 count;
         uint256 usedMask;
 
-        for (uint256 i = 0; i < preferred.length && count < NORMALS_PER_TICKET; i++) {
-            uint8 n = preferred[i];
-            if (n == 0 || n > ballMax || (usedMask & _bit(n)) != 0) continue;
-            normals[count++] = n;
-            usedMask |= _bit(n);
+        for (uint256 i = 0; i < pool.length && count < NORMALS_PER_TICKET; i++) {
+            normals[count++] = pool[i];
+            usedMask |= _bit(pool[i]);
         }
 
         uint256 nonce;
@@ -485,31 +539,72 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         filled = true;
     }
 
-    /// @dev First preferred number within range, else a hashed fallback
-    function _pickBonusball(
-        uint256 drawingId,
-        uint256 ticketIndex,
-        uint256 attempt,
+    /// @dev Seeded pick from the in-range pool numbers, else a hashed fallback in 1..bonusballMax
+    function _pickBonusball(bytes32 seed, uint8 bonusballMax, uint8[] memory bonusPool) internal pure returns (uint8) {
+        uint256 r = uint256(keccak256(abi.encode(seed, "bonus")));
+        if (bonusPool.length > 0) return bonusPool[r % bonusPool.length];
+        return uint8(1 + (r % bonusballMax));
+    }
+
+    /// @dev Walks every 5-of-pool combination in lexicographic order and returns the first one with a free
+    ///      bonusball (pool bonus values, or 1..bonusballMax when none qualify). ok=false means true exhaustion.
+    function _sweep(
+        uint8[] memory pool,
+        uint8[] memory bonusPool,
         uint8 bonusballMax,
-        uint8[] memory preferred
-    ) internal pure returns (uint8) {
-        for (uint256 i = 0; i < preferred.length; i++) {
-            if (preferred[i] != 0 && preferred[i] <= bonusballMax) return preferred[i];
+        uint256[] memory boughtMasks,
+        uint8[] memory boughtBonus
+    ) internal pure returns (uint8[5] memory normals, uint8 bonusball, bool ok) {
+        uint256 n = pool.length;
+        uint256 bonusCount = bonusPool.length > 0 ? bonusPool.length : bonusballMax;
+        uint256[5] memory idx;
+        for (uint256 i = 0; i < NORMALS_PER_TICKET; i++) {
+            idx[i] = i;
         }
-        return uint8(1 + (uint256(keccak256(abi.encode(drawingId, ticketIndex, attempt, "bonus"))) % bonusballMax));
+
+        while (true) {
+            for (uint256 i = 0; i < NORMALS_PER_TICKET; i++) {
+                normals[i] = pool[idx[i]];
+            }
+            uint256 mask = _normalsMask(normals);
+            for (uint256 b = 0; b < bonusCount; b++) {
+                bonusball = bonusPool.length > 0 ? bonusPool[b] : uint8(b + 1);
+                if (!_alreadyBought(boughtMasks, boughtBonus, mask, bonusball)) return (normals, bonusball, true);
+            }
+
+            // Advance to the next combination: bump the rightmost index that still has room
+            uint256 k = NORMALS_PER_TICKET;
+            while (k > 0 && idx[k - 1] == n - NORMALS_PER_TICKET + k - 1) {
+                k--;
+            }
+            if (k == 0) return (normals, bonusball, false);
+            idx[k - 1]++;
+            for (uint256 j = k; j < NORMALS_PER_TICKET; j++) {
+                idx[j] = idx[j - 1] + 1;
+            }
+        }
+    }
+
+    /// @dev Every ticket already bought for the drawing as (normals bitmask, bonusball), read from storage once
+    function _loadBought(uint256 drawingId) internal view returns (uint256[] memory masks, uint8[] memory bonuses) {
+        PurchasedTicket[] storage existing = _purchasedTickets[drawingId];
+        uint256 len = existing.length;
+        masks = new uint256[](len);
+        bonuses = new uint8[](len);
+        for (uint256 i = 0; i < len; i++) {
+            masks[i] = _normalsMask(existing[i].normals);
+            bonuses[i] = existing[i].bonusball;
+        }
     }
 
     /// @dev Order-independent comparison against every ticket already bought for the drawing
-    function _alreadyBought(PurchasedTicket[] storage existing, uint8[5] memory normals, uint8 bonusball)
+    function _alreadyBought(uint256[] memory boughtMasks, uint8[] memory boughtBonus, uint256 mask, uint8 bonusball)
         internal
-        view
+        pure
         returns (bool)
     {
-        uint256 candidateMask = _normalsMask(normals);
-        uint256 len = existing.length;
-        for (uint256 i = 0; i < len; i++) {
-            PurchasedTicket storage t = existing[i];
-            if (t.bonusball == bonusball && _normalsMask(t.normals) == candidateMask) return true;
+        for (uint256 i = 0; i < boughtMasks.length; i++) {
+            if (boughtBonus[i] == bonusball && boughtMasks[i] == mask) return true;
         }
         return false;
     }

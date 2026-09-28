@@ -56,6 +56,9 @@ interface ILuckyGhouls {
     error NoTicketsForDrawing();
     error DrawingNotSettled();
     error InvalidPreferredNumber();
+    error TooFewPreferredNumbers();
+    error TooManyPreferredNumbers();
+    error DuplicatePreferredNumber();
     error TreasuryBurnLocked();
     error NothingToBurn();
 
