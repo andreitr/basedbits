@@ -437,9 +437,36 @@ contract LuckyGhoulsTest is Test {
             assertTrue(_contains(tickets[i].normals, 4));
             assertTrue(_contains(tickets[i].normals, 6));
             assertTrue(_contains(tickets[i].normals, 7));
+            // Bonusballs come from every preferred number <= bonusballMax, including 9 (> ballMax)
             uint8 b = tickets[i].bonusball;
-            assertTrue(b == 4 || b == 6 || b == 7);
+            assertTrue(b == 4 || b == 6 || b == 7 || b == 9);
         }
+    }
+
+    function testFallbackSweepReachesEveryCombination() public {
+        // Only 1-4 fit ballMax 30, so they are pinned; the fifth slot has 26 values and one bonusball: 26 tickets
+        uint8[] memory preferred = new uint8[](5);
+        preferred[0] = 1;
+        preferred[1] = 2;
+        preferred[2] = 3;
+        preferred[3] = 4;
+        preferred[4] = 40;
+        _setPool(preferred);
+        jackpot.setRanges(30, 1);
+        _fundForTickets(27);
+
+        vm.expectEmit(true, false, false, true);
+        emit ILuckyGhouls.UniqueTicketsExhausted(DRAWING, 26);
+        ghouls.buyTickets();
+
+        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        assertEq(tickets.length, 26);
+        uint256 fifths;
+        for (uint256 i = 0; i < tickets.length; i++) {
+            _assertValidTicket(tickets[i], 30, 1);
+            fifths |= _mask(tickets[i].normals) & ~uint256(0x1e);
+        }
+        assertEq(fifths, ((uint256(1) << 31) - 1) & ~uint256(0x1f), "every 5..30 used once");
     }
 
     function testPreviewDeterministic() public view {
@@ -843,14 +870,13 @@ contract LuckyGhoulsTest is Test {
         uint256 ethBefore = address(ghouls).balance;
         vm.prank(user2); // anyone can call
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.WinningsClaimed(DRAWING, 4, 8e6, (8e6 * 1e18) / USDC_PER_ETH);
+        emit ILuckyGhouls.WinningsClaimed(DRAWING, 4, 8e6);
         ghouls.claimWinnings(DRAWING);
 
-        // Winnings land in the Cauldron as ETH, not USDC
-        assertEq(usdcToken.balanceOf(address(ghouls)), 0);
-        assertEq(address(ghouls).balance, ethBefore + (8e6 * 1e18) / USDC_PER_ETH);
-        assertEq(router.usdcToEthCalls(), 1);
-        assertEq(router.lastUsdcToEthAmount(), 8e6);
+        // Winnings stay in the treasury as USDC; nothing is swapped
+        assertEq(usdcToken.balanceOf(address(ghouls)), 8e6);
+        assertEq(address(ghouls).balance, ethBefore);
+        assertEq(router.usdcToEthCalls(), 0);
         assertEq(ghouls.getUnclaimedTicketIds(DRAWING).length, 0);
         assertEq(ghouls.getPurchasedTickets(DRAWING).length, 0);
         for (uint256 i = 0; i < ids.length; i++) {
@@ -868,7 +894,7 @@ contract LuckyGhoulsTest is Test {
         jackpot.setCurrentDrawingId(DRAWING + 1);
 
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.WinningsClaimed(DRAWING, 3, 0, 0);
+        emit ILuckyGhouls.WinningsClaimed(DRAWING, 3, 0);
         ghouls.claimWinnings(DRAWING);
         assertEq(ghouls.getUnclaimedTicketIds(DRAWING).length, 0);
         assertEq(router.usdcToEthCalls(), 0, "nothing to convert on a losing round");
@@ -890,19 +916,20 @@ contract LuckyGhoulsTest is Test {
         assertEq(bought, 2);
         assertEq(usdcToken.balanceOf(address(ghouls)), 2e6);
 
-        // Claiming day 1's win converts exactly the winnings and nothing else
+        // Claiming day 1's win adds the winnings as USDC and swaps nothing
         jackpot.setPayoutPerTicket(3e6);
         usdcToken.mint(address(jackpot), 6e6);
         ghouls.claimWinnings(DRAWING);
-        assertEq(router.lastUsdcToEthAmount(), 6e6);
-        assertEq(usdcToken.balanceOf(address(ghouls)), 2e6, "earmarked USDC untouched");
+        assertEq(router.usdcToEthCalls(), 0);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 8e6, "winnings + earmarked USDC");
 
-        // The earmarked USDC still finishes day 2
+        // The earmarked USDC still finishes day 2; the winnings are left alone
         jackpot.clearFail();
         ghouls.buyTickets();
         (, bought) = ghouls.getPurchaseProgress(DRAWING + 1);
         assertEq(bought, 4);
-        assertEq(usdcToken.balanceOf(address(ghouls)), 0);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 6e6);
+        assertEq(router.usdcToEthCalls(), 0);
     }
 
     function testClaimWinningsFailureConditions() public {
