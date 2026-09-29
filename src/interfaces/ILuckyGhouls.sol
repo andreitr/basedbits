@@ -51,6 +51,7 @@ interface ILuckyGhouls {
     error NotOwner();
     error NoTreasuryAvailable();
     error TicketsAlreadyPurchased();
+    error DrawingLocked();
     error InsufficientUSDCForTicket();
     error InsufficientTreasury();
     error NoTicketsForDrawing();

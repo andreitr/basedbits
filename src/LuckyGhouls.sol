@@ -226,13 +226,17 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
     }
 
     /// @notice Buy this drawing's Megapot tickets, one at a time, until the day's target is
-    ///         reached. Safe to call again for the same drawing after a partial run - a retry never re-swaps and
-    ///         resumes from the first ticket not yet bought.
+    ///         reached. Callable by anyone while the drawing is open. Safe to call again for the same drawing after
+    ///         a partial run - a retry never re-swaps and resumes from the first ticket not yet bought.
     /// @dev    Does not revert when a purchase fails or the gas reserve is hit; whatever was bought stays
     ///         committed and the once-per-drawing guard is only satisfied once the full target is reached.
     function buyTickets() external whenNotPaused nonReentrant {
         uint256 currentId = megapot.currentDrawingId();
         if (lastCompletedDrawingId == currentId) revert TicketsAlreadyPurchased();
+        // While Megapot settles a drawing no ticket can be bought; refusing here keeps anyone from swapping the
+        // day's budget into USDC that could never be spent on this drawing
+        IJackpot.DrawingState memory ds = megapot.getDrawingState(currentId);
+        if (ds.jackpotLock) revert DrawingLocked();
 
         // First attempt for this drawing: spend today's ETH budget and lock in the ticket target
         uint256 target = targetTicketCount[currentId];
@@ -254,7 +258,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         PurchasedTicket[] storage tickets = _purchasedTickets[currentId];
         uint256 boughtThisCall;
         (address[] memory referrers, uint256[] memory referralSplit) = _referralArgs();
-        TicketContext memory ctx = _ticketContext(currentId, target);
+        TicketContext memory ctx = _ticketContext(ds, currentId, target);
 
         for (uint256 ticketIndex = tickets.length; ticketIndex < target; ticketIndex++) {
             // Stop cleanly rather than running out of gas mid-purchase (which would revert this call entirely)
@@ -454,10 +458,14 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         }
     }
 
-    /// @dev Reads ballMax/bonusballMax from Megapot, filters the pool, and loads every ticket already bought for
-    ///      the drawing into memory once. `capacity` reserves room for tickets recorded later in the same call.
-    function _ticketContext(uint256 drawingId, uint256 capacity) internal view returns (TicketContext memory ctx) {
-        IJackpot.DrawingState memory ds = megapot.getDrawingState(drawingId);
+    /// @dev Takes ballMax/bonusballMax from the drawing state, filters the pool, and loads every ticket already
+    ///      bought for the drawing into memory once. `capacity` reserves room for tickets recorded later in the
+    ///      same call.
+    function _ticketContext(IJackpot.DrawingState memory ds, uint256 drawingId, uint256 capacity)
+        internal
+        view
+        returns (TicketContext memory ctx)
+    {
         ctx.ballMax = ds.ballMax;
         ctx.bonusballMax = ds.bonusballMax;
         uint8[] memory preferred = preferredNumbers;
@@ -797,6 +805,6 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         view
         returns (uint8[5] memory normals, uint8 bonusball, bool ok)
     {
-        return _generateTicket(_ticketContext(drawingId, 0), drawingId, ticketIndex);
+        return _generateTicket(_ticketContext(megapot.getDrawingState(drawingId), drawingId, 0), drawingId, ticketIndex);
     }
 }

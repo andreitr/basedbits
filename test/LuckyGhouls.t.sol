@@ -655,6 +655,28 @@ contract LuckyGhoulsTest is Test {
         ghouls.buyTickets();
     }
 
+    function testBuyTicketsRevertsWhileDrawingLocked() public {
+        _fundForTickets(3);
+        uint256 ethBefore = address(ghouls).balance;
+        jackpot.setJackpotLock(true);
+
+        // Anyone may call, but not while Megapot is settling: nothing is swapped or locked in
+        vm.prank(user2);
+        vm.expectRevert(ILuckyGhouls.DrawingLocked.selector);
+        ghouls.buyTickets();
+        assertEq(address(ghouls).balance, ethBefore);
+        assertEq(router.ethToUsdcCalls(), 0);
+        (uint256 target,) = ghouls.getPurchaseProgress(DRAWING);
+        assertEq(target, 0);
+
+        // Once the drawing is open again any caller can buy
+        jackpot.setJackpotLock(false);
+        vm.prank(user2);
+        ghouls.buyTickets();
+        (, uint256 bought) = ghouls.getPurchaseProgress(DRAWING);
+        assertEq(bought, 3);
+    }
+
     function testBuyTicketsPartialThenRetry() public {
         _fundForTickets(10);
         // Fourth purchase fails (ticket index 3)
