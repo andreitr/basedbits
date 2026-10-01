@@ -29,8 +29,8 @@ interface ILuckyGhouls {
     event TicketPurchaseFailed(uint256 indexed drawingId, uint256 ticketIndex, bytes reason);
     /// @notice No further unique number combination could be generated; the target was reduced to `ticketsBought`
     event UniqueTicketsExhausted(uint256 indexed drawingId, uint256 ticketsBought);
-    /// @notice A drawing's tickets were claimed on Megapot and the USDC won was swapped to ETH
-    event WinningsClaimed(uint256 indexed drawingId, uint256 ticketCount, uint256 usdcReceived, uint256 ethReceived);
+    /// @notice A drawing's tickets were claimed on Megapot; the USDC won stays in the treasury
+    event WinningsClaimed(uint256 indexed drawingId, uint256 ticketCount, uint256 usdcReceived);
     /// @notice The first completed purchase started the clock for burnRemainingTreasury
     event TreasuryBurnClockStarted(uint256 firstPurchaseTime, uint256 treasuryBurnUnlockTime);
     /// @notice The remaining treasury was sent to the BBITS burner
@@ -51,11 +51,15 @@ interface ILuckyGhouls {
     error NotOwner();
     error NoTreasuryAvailable();
     error TicketsAlreadyPurchased();
+    error DrawingLocked();
     error InsufficientUSDCForTicket();
     error InsufficientTreasury();
     error NoTicketsForDrawing();
     error DrawingNotSettled();
     error InvalidPreferredNumber();
+    error TooFewPreferredNumbers();
+    error TooManyPreferredNumbers();
+    error DuplicatePreferredNumber();
     error TreasuryBurnLocked();
     error NothingToBurn();
 

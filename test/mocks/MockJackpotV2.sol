@@ -44,6 +44,7 @@ contract MockJackpotV2 is IJackpot {
     uint8 public bonusballMax = 10;
     uint256 public prizePool = 1_000_000e6;
     uint256 public drawingTime;
+    bool public jackpotLock;
     mapping(uint256 => uint256) public winningTicket;
 
     uint256 public nextTicketId = 1;
@@ -71,6 +72,10 @@ contract MockJackpotV2 is IJackpot {
 
     function setTicketPrice(uint256 _price) external {
         ticketPrice = _price;
+    }
+
+    function setJackpotLock(bool _locked) external {
+        jackpotLock = _locked;
     }
 
     function setRanges(uint8 _ballMax, uint8 _bonusballMax) external {
@@ -204,6 +209,7 @@ contract MockJackpotV2 is IJackpot {
         ds.winningTicket = winningTicket[_drawingId];
         ds.ballMax = ballMax;
         ds.bonusballMax = bonusballMax;
+        ds.jackpotLock = jackpotLock;
     }
 
     /// VIEW ///

@@ -97,6 +97,22 @@ contract LuckyGhoulsTest is Test {
         return false;
     }
 
+    function _inDefaultPool(uint8 n) internal pure returns (bool) {
+        return n == 4 || n == 6 || n == 7 || n == 9 || n == 13 || n == 14 || n == 15 || n == 16 || n == 17 || n == 24;
+    }
+
+    function _setPool(uint8[] memory pool) internal {
+        vm.prank(owner);
+        ghouls.setPreferredNumbers(pool);
+    }
+
+    function _range(uint8 from, uint8 to) internal pure returns (uint8[] memory out) {
+        out = new uint8[](to - from + 1);
+        for (uint8 i = 0; i < out.length; i++) {
+            out[i] = from + i;
+        }
+    }
+
     function _assertValidTicket(ILuckyGhouls.PurchasedTicket memory t, uint8 ballMax, uint8 bonusballMax)
         internal
         pure
@@ -143,11 +159,11 @@ contract LuckyGhoulsTest is Test {
         assertEq(usdcToken.allowance(address(ghouls), address(router)), type(uint256).max);
 
         uint8[] memory preferred = ghouls.getPreferredNumbers();
-        assertEq(preferred.length, 4);
-        assertEq(preferred[0], 4);
-        assertEq(preferred[1], 9);
-        assertEq(preferred[2], 13);
-        assertEq(preferred[3], 17);
+        uint8[10] memory expected = [4, 6, 7, 9, 13, 14, 15, 16, 17, 24];
+        assertEq(preferred.length, 10);
+        for (uint256 i = 0; i < 10; i++) {
+            assertEq(preferred[i], expected[i]);
+        }
     }
 
     /// SUMMON ///
@@ -369,21 +385,27 @@ contract LuckyGhoulsTest is Test {
         ghouls.buyTickets();
     }
 
-    function testBuyTicketsPreferredNumberBias() public {
-        _fundForTickets(3);
+    function testBuyTicketsDrawsFromPool() public {
+        _fundForTickets(20);
         ghouls.buyTickets();
 
         ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        assertEq(tickets.length, 20);
+        uint256 bonusSeen;
         for (uint256 i = 0; i < tickets.length; i++) {
-            assertTrue(_contains(tickets[i].normals, 4));
-            assertTrue(_contains(tickets[i].normals, 9));
-            assertTrue(_contains(tickets[i].normals, 13));
-            assertTrue(_contains(tickets[i].normals, 17));
-            assertEq(tickets[i].bonusball, 4);
+            _assertValidTicket(tickets[i], 30, 10);
+            for (uint256 j = 0; j < 5; j++) {
+                assertTrue(_inDefaultPool(tickets[i].normals[j]), "normal outside pool");
+            }
+            uint8 b = tickets[i].bonusball;
+            assertTrue(b == 4 || b == 6 || b == 7 || b == 9, "bonusball outside pool");
+            bonusSeen |= 1 << b;
         }
+        assertTrue(bonusSeen != (1 << tickets[0].bonusball), "bonusball should rotate");
     }
 
     function testBuyTicketsSkipsPreferredNumbersOutOfRange() public {
+        // Only 4, 6, 7, 9 fit ballMax 10: fewer than five, so they are pinned and the fifth slot is hashed
         jackpot.setRanges(10, 3);
         _fundForTickets(4);
         ghouls.buyTickets();
@@ -393,12 +415,122 @@ contract LuckyGhoulsTest is Test {
         for (uint256 i = 0; i < tickets.length; i++) {
             _assertValidTicket(tickets[i], 10, 3);
             assertTrue(_contains(tickets[i].normals, 4));
+            assertTrue(_contains(tickets[i].normals, 6));
+            assertTrue(_contains(tickets[i].normals, 7));
             assertTrue(_contains(tickets[i].normals, 9));
             assertFalse(_contains(tickets[i].normals, 13));
-            assertFalse(_contains(tickets[i].normals, 17));
-            // No evil number fits the bonusball range, so it falls back to a hashed pick
+            // No pool number fits the bonusball range, so it falls back to a hashed pick
             assertTrue(tickets[i].bonusball >= 1 && tickets[i].bonusball <= 3);
         }
+    }
+
+    function testLoweredBallMaxFallback() public {
+        jackpot.setRanges(8, 10);
+        _fundForTickets(6);
+        ghouls.buyTickets();
+
+        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        assertEq(tickets.length, 6);
+        assertEq(ghouls.completedPurchaseDays(), 1);
+        for (uint256 i = 0; i < tickets.length; i++) {
+            _assertValidTicket(tickets[i], 8, 10);
+            assertTrue(_contains(tickets[i].normals, 4));
+            assertTrue(_contains(tickets[i].normals, 6));
+            assertTrue(_contains(tickets[i].normals, 7));
+            // Bonusballs come from every preferred number <= bonusballMax, including 9 (> ballMax)
+            uint8 b = tickets[i].bonusball;
+            assertTrue(b == 4 || b == 6 || b == 7 || b == 9);
+        }
+    }
+
+    function testFallbackSweepReachesEveryCombination() public {
+        // Only 1-4 fit ballMax 30, so they are pinned; the fifth slot has 26 values and one bonusball: 26 tickets
+        uint8[] memory preferred = new uint8[](5);
+        preferred[0] = 1;
+        preferred[1] = 2;
+        preferred[2] = 3;
+        preferred[3] = 4;
+        preferred[4] = 40;
+        _setPool(preferred);
+        jackpot.setRanges(30, 1);
+        _fundForTickets(27);
+
+        vm.expectEmit(true, false, false, true);
+        emit ILuckyGhouls.UniqueTicketsExhausted(DRAWING, 26);
+        ghouls.buyTickets();
+
+        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        assertEq(tickets.length, 26);
+        uint256 fifths;
+        for (uint256 i = 0; i < tickets.length; i++) {
+            _assertValidTicket(tickets[i], 30, 1);
+            fifths |= _mask(tickets[i].normals) & ~uint256(0x1e);
+        }
+        assertEq(fifths, ((uint256(1) << 31) - 1) & ~uint256(0x1f), "every 5..30 used once");
+    }
+
+    function testPreviewDeterministic() public view {
+        (uint8[5] memory a, uint8 aBonus, bool aOk) = ghouls.previewTicketNumbers(DRAWING, 7);
+        (uint8[5] memory b, uint8 bBonus, bool bOk) = ghouls.previewTicketNumbers(DRAWING, 7);
+        assertTrue(aOk && bOk);
+        assertEq(aBonus, bBonus);
+        uint256 mask;
+        for (uint256 i = 0; i < 5; i++) {
+            assertEq(a[i], b[i]);
+            assertTrue(_inDefaultPool(a[i]) && a[i] <= 30);
+            assertEq(mask & (1 << a[i]), 0, "duplicate normal");
+            mask |= 1 << a[i];
+        }
+        assertTrue(aBonus == 4 || aBonus == 6 || aBonus == 7 || aBonus == 9);
+    }
+
+    function testCollisionResolvesOnLaterAttempt() public {
+        _fundForTickets(1);
+        ghouls.buyTickets();
+        ILuckyGhouls.PurchasedTicket memory first = ghouls.getPurchasedTickets(DRAWING)[0];
+
+        // Ticket index 0 again would reproduce the bought ticket on attempt 0; the retry must differ
+        (uint8[5] memory normals, uint8 bonus, bool ok) = ghouls.previewTicketNumbers(DRAWING, 0);
+        assertTrue(ok);
+        assertFalse(_mask(normals) == _mask(first.normals) && bonus == first.bonusball);
+    }
+
+    function testPoolCapacityExhaustion() public {
+        // Pool 1..6 with bonusballMax 2: C(6,5) x 2 = 12 distinct tickets, the tail reached by the sweep
+        _setPool(_range(1, 6));
+        jackpot.setRanges(30, 2);
+        _fundForTickets(13);
+
+        vm.expectEmit(true, false, false, true);
+        emit ILuckyGhouls.UniqueTicketsExhausted(DRAWING, 12);
+        ghouls.buyTickets();
+
+        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        assertEq(tickets.length, 12);
+        assertEq(ghouls.completedPurchaseDays(), 1);
+        for (uint256 i = 0; i < tickets.length; i++) {
+            _assertValidTicket(tickets[i], 6, 2);
+            for (uint256 j = i + 1; j < tickets.length; j++) {
+                bool same = _mask(tickets[i].normals) == _mask(tickets[j].normals)
+                    && tickets[i].bonusball == tickets[j].bonusball;
+                assertFalse(same, "duplicate ticket in drawing");
+            }
+        }
+        (,, bool ok) = ghouls.previewTicketNumbers(DRAWING, 12);
+        assertFalse(ok);
+    }
+
+    function testGasWith30EntryPool() public {
+        _setPool(_range(1, 30));
+        _fundForTickets(50);
+        ghouls.buyTickets();
+        assertEq(ghouls.getPurchasedTickets(DRAWING).length, 50);
+
+        uint256 gasBefore = gasleft();
+        (,, bool ok) = ghouls.previewTicketNumbers(DRAWING, 50);
+        uint256 used = gasBefore - gasleft();
+        assertTrue(ok);
+        assertLt(used, ghouls.minGasPerPurchase());
     }
 
     function testPreviewMatchesPurchase() public {
@@ -523,6 +655,28 @@ contract LuckyGhoulsTest is Test {
         ghouls.buyTickets();
     }
 
+    function testBuyTicketsRevertsWhileDrawingLocked() public {
+        _fundForTickets(3);
+        uint256 ethBefore = address(ghouls).balance;
+        jackpot.setJackpotLock(true);
+
+        // Anyone may call, but not while Megapot is settling: nothing is swapped or locked in
+        vm.prank(user2);
+        vm.expectRevert(ILuckyGhouls.DrawingLocked.selector);
+        ghouls.buyTickets();
+        assertEq(address(ghouls).balance, ethBefore);
+        assertEq(router.ethToUsdcCalls(), 0);
+        (uint256 target,) = ghouls.getPurchaseProgress(DRAWING);
+        assertEq(target, 0);
+
+        // Once the drawing is open again any caller can buy
+        jackpot.setJackpotLock(false);
+        vm.prank(user2);
+        ghouls.buyTickets();
+        (, uint256 bought) = ghouls.getPurchaseProgress(DRAWING);
+        assertEq(bought, 3);
+    }
+
     function testBuyTicketsPartialThenRetry() public {
         _fundForTickets(10);
         // Fourth purchase fails (ticket index 3)
@@ -628,14 +782,14 @@ contract LuckyGhoulsTest is Test {
     }
 
     function testBuyTicketsExhaustionShrinksTarget() public {
-        // Evil numbers fill four slots; ballMax 6 leaves only {5,6} for the fifth; one bonusball value.
-        uint8[] memory preferred = new uint8[](4);
+        // ballMax 6 leaves only 1-4 of the pool eligible (fallback pins them); {5,6} for the fifth; one bonusball.
+        uint8[] memory preferred = new uint8[](5);
         preferred[0] = 1;
         preferred[1] = 2;
         preferred[2] = 3;
         preferred[3] = 4;
-        vm.prank(owner);
-        ghouls.setPreferredNumbers(preferred);
+        preferred[4] = 20;
+        _setPool(preferred);
         jackpot.setRanges(6, 1);
         _fundForTickets(10);
 
@@ -738,14 +892,13 @@ contract LuckyGhoulsTest is Test {
         uint256 ethBefore = address(ghouls).balance;
         vm.prank(user2); // anyone can call
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.WinningsClaimed(DRAWING, 4, 8e6, (8e6 * 1e18) / USDC_PER_ETH);
+        emit ILuckyGhouls.WinningsClaimed(DRAWING, 4, 8e6);
         ghouls.claimWinnings(DRAWING);
 
-        // Winnings land in the Cauldron as ETH, not USDC
-        assertEq(usdcToken.balanceOf(address(ghouls)), 0);
-        assertEq(address(ghouls).balance, ethBefore + (8e6 * 1e18) / USDC_PER_ETH);
-        assertEq(router.usdcToEthCalls(), 1);
-        assertEq(router.lastUsdcToEthAmount(), 8e6);
+        // Winnings stay in the treasury as USDC; nothing is swapped
+        assertEq(usdcToken.balanceOf(address(ghouls)), 8e6);
+        assertEq(address(ghouls).balance, ethBefore);
+        assertEq(router.usdcToEthCalls(), 0);
         assertEq(ghouls.getUnclaimedTicketIds(DRAWING).length, 0);
         assertEq(ghouls.getPurchasedTickets(DRAWING).length, 0);
         for (uint256 i = 0; i < ids.length; i++) {
@@ -763,7 +916,7 @@ contract LuckyGhoulsTest is Test {
         jackpot.setCurrentDrawingId(DRAWING + 1);
 
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.WinningsClaimed(DRAWING, 3, 0, 0);
+        emit ILuckyGhouls.WinningsClaimed(DRAWING, 3, 0);
         ghouls.claimWinnings(DRAWING);
         assertEq(ghouls.getUnclaimedTicketIds(DRAWING).length, 0);
         assertEq(router.usdcToEthCalls(), 0, "nothing to convert on a losing round");
@@ -785,19 +938,20 @@ contract LuckyGhoulsTest is Test {
         assertEq(bought, 2);
         assertEq(usdcToken.balanceOf(address(ghouls)), 2e6);
 
-        // Claiming day 1's win converts exactly the winnings and nothing else
+        // Claiming day 1's win adds the winnings as USDC and swaps nothing
         jackpot.setPayoutPerTicket(3e6);
         usdcToken.mint(address(jackpot), 6e6);
         ghouls.claimWinnings(DRAWING);
-        assertEq(router.lastUsdcToEthAmount(), 6e6);
-        assertEq(usdcToken.balanceOf(address(ghouls)), 2e6, "earmarked USDC untouched");
+        assertEq(router.usdcToEthCalls(), 0);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 8e6, "winnings + earmarked USDC");
 
-        // The earmarked USDC still finishes day 2
+        // The earmarked USDC still finishes day 2; the winnings are left alone
         jackpot.clearFail();
         ghouls.buyTickets();
         (, bought) = ghouls.getPurchaseProgress(DRAWING + 1);
         assertEq(bought, 4);
-        assertEq(usdcToken.balanceOf(address(ghouls)), 0);
+        assertEq(usdcToken.balanceOf(address(ghouls)), 6e6);
+        assertEq(router.usdcToEthCalls(), 0);
     }
 
     function testClaimWinningsFailureConditions() public {
@@ -962,24 +1116,36 @@ contract LuckyGhoulsTest is Test {
     }
 
     function testSetPreferredNumbers() public prank(owner) {
-        uint8[] memory preferred = new uint8[](2);
+        uint8[] memory preferred = new uint8[](5);
         preferred[0] = 6;
         preferred[1] = 66;
+        preferred[2] = 13;
+        preferred[3] = 1;
+        preferred[4] = 255;
         vm.expectEmit(false, false, false, true);
         emit ILuckyGhouls.PreferredNumbersUpdated(preferred);
         ghouls.setPreferredNumbers(preferred);
         uint8[] memory stored = ghouls.getPreferredNumbers();
-        assertEq(stored.length, 2);
+        assertEq(stored.length, 5);
         assertEq(stored[0], 6);
         assertEq(stored[1], 66);
-        assertEq(ghouls.preferredNumbers(1), 66);
+        assertEq(ghouls.preferredNumbers(4), 255);
 
-        uint8[] memory empty = new uint8[](0);
-        vm.expectRevert(ILuckyGhouls.QuantityZero.selector);
-        ghouls.setPreferredNumbers(empty);
+        vm.expectRevert(ILuckyGhouls.TooFewPreferredNumbers.selector);
+        ghouls.setPreferredNumbers(new uint8[](0));
+        vm.expectRevert(ILuckyGhouls.TooFewPreferredNumbers.selector);
+        ghouls.setPreferredNumbers(_range(1, 4));
+
+        vm.expectRevert(ILuckyGhouls.TooManyPreferredNumbers.selector);
+        ghouls.setPreferredNumbers(_range(1, 31));
+        ghouls.setPreferredNumbers(_range(1, 30));
 
         preferred[1] = 0;
         vm.expectRevert(ILuckyGhouls.InvalidPreferredNumber.selector);
+        ghouls.setPreferredNumbers(preferred);
+
+        preferred[1] = 13;
+        vm.expectRevert(ILuckyGhouls.DuplicatePreferredNumber.selector);
         ghouls.setPreferredNumbers(preferred);
     }
 
@@ -1013,10 +1179,8 @@ contract LuckyGhoulsTest is Test {
         ghouls.emergencyWithdraw(address(0));
         vm.expectRevert(err);
         ghouls.burnRemainingTreasury();
-        uint8[] memory preferred = new uint8[](1);
-        preferred[0] = 1;
         vm.expectRevert(err);
-        ghouls.setPreferredNumbers(preferred);
+        ghouls.setPreferredNumbers(_range(1, 5));
     }
 
     function testPauseUnpause() public prank(owner) {

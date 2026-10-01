@@ -33,7 +33,7 @@ contract LuckyGhoulsDeploy is Script {
             "Lucky Ghouls",
             "GHOUL",
             msg.sender,
-            0.002 ether,
+            0.003 ether,
             burner,
             WETH,
             USDC,
