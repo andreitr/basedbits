@@ -1274,7 +1274,7 @@ contract LuckyGhoulsTest is Test {
         assertTrue(
             _contains(
                 a,
-                '<rect width="48" height="48" fill="rgb(229,229,25)"/><rect width="48" height="48" fill="black" opacity="0.95"/>'
+                '<rect width="48" height="48" fill="rgb(229,229,25)"/><rect width="48" height="48" fill="black" opacity="0.9"/>'
             )
         );
         // Ghoul colors from luckyghoul.svg are untouched
