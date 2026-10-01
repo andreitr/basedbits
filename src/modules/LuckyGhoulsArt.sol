@@ -28,7 +28,7 @@ contract LuckyGhoulsArt {
                         tokenNamePrefix,
                         " #",
                         tokenId.toString(),
-                        '", "description": "Every night the Cauldron buys Megapot tickets on behalf of the Lucky Ghouls. Each Ghoul can break the pact at any time to redeem its share of the Cauldron.", "image": "data:image/svg+xml;base64,',
+                        '", "description": "Each drawing, the Ghouls conjure cursed numbers and send them after the Megapot jackpot. Whatever they haul back feeds the treasury, and any holder can burn their Ghoul to claim a share.", "image": "data:image/svg+xml;base64,',
                         Base64.encode(bytes(svg)),
                         '"}'
                     )
