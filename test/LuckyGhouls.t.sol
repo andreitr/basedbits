@@ -1260,15 +1260,23 @@ contract LuckyGhoulsTest is Test {
         ghouls.tokenURI(999);
     }
 
-    function testArtIsStaticAcrossTokens() public view {
+    function testArtBackgroundVariesPerToken() public view {
         assertEq(artContract.tokenNamePrefix(), "Ghoul");
         string memory a = artContract.generateSVG(0);
-        string memory b = artContract.generateSVG(665);
-        assertEq(keccak256(bytes(a)), keccak256(bytes(b)), "art must not vary per token");
+        string memory b = artContract.generateSVG(1);
+        assertTrue(keccak256(bytes(a)) != keccak256(bytes(b)), "background must vary per token");
+        assertEq(keccak256(bytes(a)), keccak256(bytes(artContract.generateSVG(0))), "art is deterministic");
         assertTrue(bytes(a).length > 100);
-        // Background from luckyghoul.svg is kept as-is
-        assertTrue(_contains(a, '<rect width="48" height="48" fill="#EA9412"/>'));
         assertTrue(_startsWith(a, "<svg "));
+        assertFalse(_contains(a, "#EA9412"), "no hardcoded background left");
+
+        // tokenId 0 -> hue 0, 80% saturation, 50% lightness -> rgb(229,229,25)
+        assertTrue(_contains(a, '<rect width="48" height="48" fill="rgb(229,229,25)"/>'));
+        // Mouth, nose and eye cutouts share the background color
+        assertTrue(_contains(a, 'V31H16V30H14V29H18V30Z" fill="rgb(229,229,25)"/>'));
+        assertTrue(_contains(a, 'V29H22V26H23Z" fill="rgb(229,229,25)"/>'));
+        assertTrue(_contains(a, 'V26H15V25H14V24H13Z" fill="rgb(229,229,25)"/>'));
+        assertTrue(_contains(a, 'V26H27V25H26V24H25Z" fill="rgb(229,229,25)"/>'));
     }
 
     function _startsWith(string memory s, string memory prefix) internal pure returns (bool) {
