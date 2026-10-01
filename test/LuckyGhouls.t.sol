@@ -1271,7 +1271,12 @@ contract LuckyGhoulsTest is Test {
         assertFalse(_contains(a, '<rect width="48" height="48" fill="#EA9412"/>'), "no hardcoded background left");
 
         // tokenId 0 -> hue 0, 80% saturation, 50% lightness -> rgb(229,229,25)
-        assertTrue(_contains(a, '<rect width="48" height="48" fill="rgb(229,229,25)"/>'));
+        assertTrue(
+            _contains(
+                a,
+                '<rect width="48" height="48" fill="rgb(229,229,25)"/><rect width="48" height="48" fill="black" opacity="0.8"/>'
+            )
+        );
         // Ghoul colors from luckyghoul.svg are untouched
         assertTrue(_contains(a, 'fill="#E24B4B"/>'));
         assertTrue(_contains(a, 'fill="#FEC94F"/>'));
