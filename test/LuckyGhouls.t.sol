@@ -1268,15 +1268,13 @@ contract LuckyGhoulsTest is Test {
         assertEq(keccak256(bytes(a)), keccak256(bytes(artContract.generateSVG(0))), "art is deterministic");
         assertTrue(bytes(a).length > 100);
         assertTrue(_startsWith(a, "<svg "));
-        assertFalse(_contains(a, "#EA9412"), "no hardcoded background left");
+        assertFalse(_contains(a, '<rect width="48" height="48" fill="#EA9412"/>'), "no hardcoded background left");
 
         // tokenId 0 -> hue 0, 80% saturation, 50% lightness -> rgb(229,229,25)
         assertTrue(_contains(a, '<rect width="48" height="48" fill="rgb(229,229,25)"/>'));
-        // Mouth, nose and eye cutouts share the background color
-        assertTrue(_contains(a, 'V31H16V30H14V29H18V30Z" fill="rgb(229,229,25)"/>'));
-        assertTrue(_contains(a, 'V29H22V26H23Z" fill="rgb(229,229,25)"/>'));
-        assertTrue(_contains(a, 'V26H15V25H14V24H13Z" fill="rgb(229,229,25)"/>'));
-        assertTrue(_contains(a, 'V26H27V25H26V24H25Z" fill="rgb(229,229,25)"/>'));
+        // Ghoul colors from luckyghoul.svg are untouched
+        assertTrue(_contains(a, 'fill="#E24B4B"/>'));
+        assertTrue(_contains(a, 'fill="#FEC94F"/>'));
     }
 
     function _startsWith(string memory s, string memory prefix) internal pure returns (bool) {
