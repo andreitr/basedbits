@@ -17,8 +17,9 @@ import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
 /// @title  Lucky Ghouls
 /// @notice ERC-721 collection whose mint proceeds pool into a shared treasury. Every drawing a keeper calls
 ///         `buyTickets`: a daily slice of the treasury is swapped to USDC and spent on Megapot V2 tickets whose
-///         numbers are drawn from the configured preferred-number pool. Any holder may `burn` their token at any
-///         time for a proportional share of the ETH and USDC the treasury holds.
+///         normals are drawn from the configured preferred-number pool in a low-overlap design and whose bonusball
+///         rotates through Megapot's full bonusball range. Any holder may `burn` their token at any time for a
+///         proportional share of the ETH and USDC the treasury holds.
 /// @dev    Structure mirrors PotRaider.sol; the ticket-purchase surface is rewritten for the Megapot V2 API
 ///         (discrete NFT tickets with explicit numbers, no built-in once-per-round guard, id-based claims).
 ///         Winnings stay in the treasury as USDC and are only paid out through `burn`; they are never swapped
@@ -71,12 +72,21 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
     /// @dev Bound on in-ticket re-rolls when filling the non-preferred slots
     uint256 constant MAX_SLOT_REROLLS = 256;
 
+    /// @dev Candidate tickets the design step scores before keeping the least-overlapping one
+    uint256 constant DESIGN_CANDIDATES = 4;
+
+    /// @dev Most recent tickets each design candidate is scored against, bounding per-ticket gas
+    uint256 constant DESIGN_SCORE_WINDOW = 16;
+
+    /// @dev Seed domains for the design candidates and the per-drawing bonusball offset
+    uint256 constant DESIGN_DOMAIN = uint256(keccak256("LuckyGhouls.design"));
+    uint256 constant BONUS_DOMAIN = uint256(keccak256("LuckyGhouls.bonus"));
+
     /// @dev Everything the ticket generator needs for one drawing, built once per buyTickets/preview call
     struct TicketContext {
         uint8 ballMax;
         uint8 bonusballMax;
         uint8[] pool; // preferred numbers in 1..ballMax
-        uint8[] bonusPool; // preferred numbers in 1..bonusballMax
         uint256[] boughtMasks; // normals bitmask of every ticket bought for the drawing
         uint8[] boughtBonus;
         uint256 boughtCount;
@@ -470,7 +480,6 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         ctx.bonusballMax = ds.bonusballMax;
         uint8[] memory preferred = preferredNumbers;
         ctx.pool = _eligible(preferred, ds.ballMax);
-        ctx.bonusPool = _eligible(preferred, ds.bonusballMax);
 
         PurchasedTicket[] storage existing = _purchasedTickets[drawingId];
         uint256 len = existing.length;
@@ -484,13 +493,15 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         ctx.boughtCount = len;
     }
 
-    /// @notice Ticket generator: deterministic, drawn from the preferredNumbers pool, unique within the drawing.
-    /// @dev    With at least five pool numbers in range, each attempt draws five distinct pool numbers with a
-    ///         seeded partial Fisher-Yates shuffle, and a bonusball from the pool values <= bonusballMax (hashed
-    ///         when none qualify). `attempt` is part of the seed, so every retry is a fresh combination. With fewer
-    ///         in range (e.g. Megapot lowered ballMax) the eligible ones are pinned and the other slots hashed. If
-    ///         all MAX_UNIQUE_TICKET_ATTEMPTS collide, a lexicographic sweep takes the first combination not yet
-    ///         bought, so ok=false means every reachable combination is taken.
+    /// @notice Ticket generator: deterministic, normals from the preferredNumbers pool, unique within the drawing.
+    /// @dev    Bonusballs rotate through 1..bonusballMax from a per-drawing offset, so every bonusball value is
+    ///         covered equally. With at least five pool numbers in range, normals come from `_designTicket`, which
+    ///         keeps the drawing's tickets spread across the pool (low pairwise overlap, even number usage). If the
+    ///         design step cannot produce an unbought ticket, up to MAX_UNIQUE_TICKET_ATTEMPTS seeded retries draw
+    ///         five distinct pool numbers with a partial Fisher-Yates shuffle. With fewer than five in range (e.g.
+    ///         Megapot lowered ballMax) the eligible ones are pinned and the other slots hashed. If every attempt
+    ///         collides, a lexicographic sweep takes the first combination not yet bought, so ok=false means every
+    ///         reachable combination is taken.
     function _generateTicket(TicketContext memory ctx, uint256 drawingId, uint256 ticketIndex)
         internal
         pure
@@ -499,14 +510,14 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         if (ctx.ballMax < NORMALS_PER_TICKET || ctx.bonusballMax == 0) return (normals, 0, false);
 
         bool fromPool = ctx.pool.length >= NORMALS_PER_TICKET;
+        if (fromPool) {
+            (normals, bonusball, ok) = _designTicket(ctx, drawingId, ticketIndex);
+            if (ok) return (normals, bonusball, true);
+        }
+
         // One deck per ticket: re-shuffling an already shuffled deck keeps each draw uniform
         uint8[] memory deck;
-        if (fromPool) {
-            deck = new uint8[](ctx.pool.length);
-            for (uint256 i = 0; i < deck.length; i++) {
-                deck[i] = ctx.pool[i];
-            }
-        }
+        if (fromPool) deck = _copy(ctx.pool);
 
         for (uint256 attempt = 0; attempt < MAX_UNIQUE_TICKET_ATTEMPTS; attempt++) {
             bytes32 seed = keccak256(abi.encode(drawingId, ticketIndex, attempt));
@@ -514,12 +525,96 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
             if (fromPool) normals = _pickNormals(deck, seed);
             else (normals, filled) = _buildNormals(drawingId, ticketIndex, attempt, ctx.ballMax, ctx.pool);
             if (!filled) continue;
-            bonusball = _pickBonusball(seed, ctx.bonusballMax, ctx.bonusPool);
+            bonusball = _rotatedBonusball(drawingId, ticketIndex + attempt, ctx.bonusballMax);
             if ((_usedBonusBits(ctx, _normalsMask(normals)) & _bit(bonusball)) == 0) {
                 return (normals, bonusball, true);
             }
         }
         return _sweep(ctx);
+    }
+
+    /// @dev Low-overlap design for the drawing. Tickets come in pairs: an odd ticket avoids the numbers of the
+    ///      ticket bought just before it as far as the pool allows (with a 10-number pool it is the exact
+    ///      complement, so each pair uses every pool number once). Every ticket keeps the best of
+    ///      DESIGN_CANDIDATES seeded candidates, scored by the sum of squared overlaps with the last
+    ///      DESIGN_SCORE_WINDOW tickets bought for the drawing; ties go to the earliest candidate. ok=false when
+    ///      every candidate is already bought with this ticket's bonusball.
+    function _designTicket(TicketContext memory ctx, uint256 drawingId, uint256 ticketIndex)
+        internal
+        pure
+        returns (uint8[5] memory normals, uint8 bonusball, bool ok)
+    {
+        bonusball = _rotatedBonusball(drawingId, ticketIndex, ctx.bonusballMax);
+
+        uint256 avoidMask;
+        if (ticketIndex % 2 == 1 && ticketIndex - 1 < ctx.boughtCount) avoidMask = ctx.boughtMasks[ticketIndex - 1];
+
+        uint256 base = _hash(_hash(drawingId, ticketIndex), DESIGN_DOMAIN);
+        uint256 bestScore = type(uint256).max;
+        // Candidates are shuffled in place and hashed in scratch space: buyTickets generates many tickets in one
+        // call and memory is never freed, so per-candidate allocations would grow gas quadratically
+        uint8[] memory deck = _copy(ctx.pool);
+        for (uint256 c = 0; c < DESIGN_CANDIDATES; c++) {
+            _shuffleFront(deck, bytes32(_hash(base, c)), avoidMask);
+            uint256 mask = _frontMask(deck);
+            uint256 score = _overlapScore(ctx, mask);
+            if (score >= bestScore) continue;
+            if ((_usedBonusBits(ctx, mask) & _bit(bonusball)) != 0) continue;
+
+            bestScore = score;
+            for (uint256 j = 0; j < NORMALS_PER_TICKET; j++) {
+                normals[j] = deck[j];
+            }
+            ok = true;
+        }
+    }
+
+    /// @dev Sum of squared overlaps between `mask` and the last DESIGN_SCORE_WINDOW tickets bought
+    function _overlapScore(TicketContext memory ctx, uint256 mask) internal pure returns (uint256 score) {
+        uint256 count = ctx.boughtCount;
+        uint256 start = count > DESIGN_SCORE_WINDOW ? count - DESIGN_SCORE_WINDOW : 0;
+        uint256[] memory boughtMasks = ctx.boughtMasks;
+        // boughtCount never exceeds boughtMasks.length, so the reads below stay in bounds
+        for (uint256 i = start; i < count;) {
+            uint256 bought;
+            assembly ("memory-safe") {
+                bought := mload(add(boughtMasks, shl(5, add(i, 1))))
+            }
+            unchecked {
+                uint256 overlap = _popcount(mask & bought);
+                score += overlap * overlap;
+                i++;
+            }
+        }
+    }
+
+    /// @dev Normals bitmask of the five numbers at the front of `deck`
+    function _frontMask(uint8[] memory deck) internal pure returns (uint256 mask) {
+        for (uint256 i = 0; i < NORMALS_PER_TICKET; i++) {
+            mask |= _bit(deck[i]);
+        }
+    }
+
+    /// @dev Bonusball for `slot`: 1..bonusballMax in order, starting from a per-drawing offset
+    function _rotatedBonusball(uint256 drawingId, uint256 slot, uint8 bonusballMax) internal pure returns (uint8) {
+        uint256 offset = _hash(drawingId, BONUS_DOMAIN) % bonusballMax;
+        return uint8(1 + ((offset + slot) % bonusballMax));
+    }
+
+    /// @dev keccak256(abi.encode(a, b)) without allocating memory
+    function _hash(uint256 a, uint256 b) internal pure returns (uint256 result) {
+        assembly ("memory-safe") {
+            mstore(0x00, a)
+            mstore(0x20, b)
+            result := keccak256(0x00, 0x40)
+        }
+    }
+
+    function _copy(uint8[] memory numbers) internal pure returns (uint8[] memory out) {
+        out = new uint8[](numbers.length);
+        for (uint256 i = 0; i < numbers.length; i++) {
+            out[i] = numbers[i];
+        }
     }
 
     /// @dev `numbers` filtered to 1..max, first occurrence of each value only
@@ -540,11 +635,30 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
 
     /// @dev Five distinct deck numbers via a seeded partial Fisher-Yates shuffle, in place (deck.length >= 5)
     function _pickNormals(uint8[] memory deck, bytes32 seed) internal pure returns (uint8[5] memory normals) {
-        uint256 len = deck.length;
+        _shuffleFront(deck, seed, 0);
         for (uint256 i = 0; i < NORMALS_PER_TICKET; i++) {
-            uint256 j = i + (uint256(keccak256(abi.encode(seed, i))) % (len - i));
-            (deck[i], deck[j]) = (deck[j], deck[i]);
             normals[i] = deck[i];
+        }
+    }
+
+    /// @dev Seeded partial Fisher-Yates shuffle placing five distinct numbers at the front of `deck`. Numbers in
+    ///      `avoidMask` are moved behind the rest first and only drawn once the rest run out.
+    function _shuffleFront(uint8[] memory deck, bytes32 seed, uint256 avoidMask) internal pure {
+        uint256 len = deck.length;
+        uint256 preferredEnd = len;
+        if (avoidMask != 0) {
+            preferredEnd = 0;
+            for (uint256 i = 0; i < len; i++) {
+                if ((avoidMask & _bit(deck[i])) == 0) {
+                    (deck[preferredEnd], deck[i]) = (deck[i], deck[preferredEnd]);
+                    preferredEnd++;
+                }
+            }
+        }
+        for (uint256 i = 0; i < NORMALS_PER_TICKET; i++) {
+            uint256 end = i < preferredEnd ? preferredEnd : len;
+            uint256 j = i + (_hash(uint256(seed), i) % (end - i));
+            (deck[i], deck[j]) = (deck[j], deck[i]);
         }
     }
 
@@ -576,17 +690,10 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         filled = true;
     }
 
-    /// @dev Seeded pick from the in-range pool numbers, else a hashed fallback in 1..bonusballMax
-    function _pickBonusball(bytes32 seed, uint8 bonusballMax, uint8[] memory bonusPool) internal pure returns (uint8) {
-        uint256 r = uint256(keccak256(abi.encode(seed, "bonus")));
-        if (bonusPool.length > 0) return bonusPool[r % bonusPool.length];
-        return uint8(1 + (r % bonusballMax));
-    }
-
     /// @dev Walks every combination in lexicographic order - five pool numbers, or in the fallback the pinned
-    ///      pool numbers plus the rest of 1..ballMax - and returns the first one with a free bonusball (pool
-    ///      bonus values, or 1..bonusballMax when none qualify). ok=false means true exhaustion. Each full
-    ///      combination consumes at least one bought ticket, so at most boughtCount + 1 are visited.
+    ///      pool numbers plus the rest of 1..ballMax - and returns the first one with a free bonusball in
+    ///      1..bonusballMax. ok=false means true exhaustion. Each full combination consumes at least one bought
+    ///      ticket, so at most boughtCount + 1 are visited.
     function _sweep(TicketContext memory ctx)
         internal
         pure
@@ -606,7 +713,6 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
             normals[i] = pinned[i];
         }
 
-        uint256 bonusCount = ctx.bonusPool.length > 0 ? ctx.bonusPool.length : ctx.bonusballMax;
         uint256[5] memory idx;
         for (uint256 i = 0; i < need; i++) {
             idx[i] = i;
@@ -617,8 +723,8 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
                 normals[k + i] = others[idx[i]];
             }
             uint256 used = _usedBonusBits(ctx, _normalsMask(normals));
-            for (uint256 b = 0; b < bonusCount; b++) {
-                bonusball = ctx.bonusPool.length > 0 ? ctx.bonusPool[b] : uint8(b + 1);
+            for (uint256 b = 1; b <= ctx.bonusballMax; b++) {
+                bonusball = uint8(b);
                 if ((used & _bit(bonusball)) == 0) return (normals, bonusball, true);
             }
 
@@ -661,6 +767,17 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
     /// @dev Bit `n` of a normals bitmask (n <= 255)
     function _bit(uint8 n) internal pure returns (uint256) {
         return uint256(1) << n;
+    }
+
+    /// @dev Set bits in `x` (SWAR); the byte-sum fold is exact while the count stays below 256
+    function _popcount(uint256 x) internal pure returns (uint256) {
+        unchecked {
+            x -= (x >> 1) & 0x5555555555555555555555555555555555555555555555555555555555555555;
+            x = (x & 0x3333333333333333333333333333333333333333333333333333333333333333)
+                + ((x >> 2) & 0x3333333333333333333333333333333333333333333333333333333333333333);
+            x = (x + (x >> 4)) & 0x0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f;
+            return (x * 0x0101010101010101010101010101010101010101010101010101010101010101) >> 248;
+        }
     }
 
     function _normalsMask(uint8[5] memory normals) internal pure returns (uint256 mask) {
