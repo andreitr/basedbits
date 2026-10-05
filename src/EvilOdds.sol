@@ -204,10 +204,11 @@ contract EvilOdds is IEvilOdds, ERC721, Ownable, Pausable, ReentrancyGuard, IERC
         // Send burn amount to burner contract
         if (burnAmount > 0) bbitsBurner.burn{value: burnAmount}(0);
 
+        // Token ids start at 1
         for (uint256 i = 0; i < quantity; i++) {
-            _mint(msg.sender, totalMinted);
             totalMinted++;
             totalSupply++;
+            _mint(msg.sender, totalMinted);
         }
     }
 

@@ -179,9 +179,13 @@ contract EvilOddsTest is Test {
 
         assertEq(evilOdds.totalMinted(), 3);
         assertEq(evilOdds.totalSupply(), 3);
-        assertEq(evilOdds.ownerOf(0), user1);
         assertEq(evilOdds.ownerOf(1), user1);
         assertEq(evilOdds.ownerOf(2), user1);
+        assertEq(evilOdds.ownerOf(3), user1);
+
+        // Ids start at 1
+        vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 0));
+        evilOdds.ownerOf(0);
 
         // 20% burned, 80% stays in the Cauldron
         assertEq(mockBurner.calls(), 1);
@@ -256,8 +260,8 @@ contract EvilOddsTest is Test {
         uint256 ethBefore = user1.balance;
 
         vm.expectEmit(true, true, false, true);
-        emit IEvilOdds.TokenBurned(0, user1, 0.5 ether, 50e6);
-        evilOdds.burn(0);
+        emit IEvilOdds.TokenBurned(1, user1, 0.5 ether, 50e6);
+        evilOdds.burn(1);
 
         assertEq(evilOdds.totalSupply(), 1);
         assertEq(evilOdds.totalMinted(), 2);
@@ -266,8 +270,8 @@ contract EvilOddsTest is Test {
         assertEq(address(evilOdds).balance, 0.5 ether);
         assertEq(usdcToken.balanceOf(address(evilOdds)), 50e6);
 
-        vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 0));
-        evilOdds.ownerOf(0);
+        vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 1));
+        evilOdds.ownerOf(1);
     }
 
     function testBurnFailureConditions() public {
@@ -276,20 +280,20 @@ contract EvilOddsTest is Test {
 
         vm.prank(user2);
         vm.expectRevert(IEvilOdds.NotOwner.selector);
-        evilOdds.burn(0);
+        evilOdds.burn(1);
 
         vm.deal(address(evilOdds), 0);
         vm.prank(user1);
         vm.expectRevert(IEvilOdds.NoTreasuryAvailable.selector);
-        evilOdds.burn(0);
+        evilOdds.burn(1);
 
         vm.deal(address(evilOdds), 1 ether);
         vm.prank(user1);
-        evilOdds.burn(0);
+        evilOdds.burn(1);
         assertEq(evilOdds.totalSupply(), 0);
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 0));
-        evilOdds.burn(0);
+        vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 1));
+        evilOdds.burn(1);
     }
 
     function testBurnByApprovedOperatorReverts() public {
@@ -302,8 +306,8 @@ contract EvilOddsTest is Test {
 
         vm.prank(user2);
         vm.expectRevert(IEvilOdds.NotOwner.selector);
-        evilOdds.burn(0);
-        assertEq(evilOdds.ownerOf(0), user1);
+        evilOdds.burn(1);
+        assertEq(evilOdds.ownerOf(1), user1);
     }
 
     function testBurnWhenPaused() public {
@@ -1156,7 +1160,7 @@ contract EvilOddsTest is Test {
 
         vm.prank(user1);
         vm.expectRevert(IEvilOdds.NoTreasuryAvailable.selector);
-        evilOdds.burn(0);
+        evilOdds.burn(1);
     }
 
     /// SETTINGS ///
@@ -1329,7 +1333,7 @@ contract EvilOddsTest is Test {
     function testTokenURI() public {
         vm.prank(user1);
         evilOdds.mint{value: mintPrice}(1);
-        string memory uri = evilOdds.tokenURI(0);
+        string memory uri = evilOdds.tokenURI(1);
         assertTrue(bytes(uri).length > 0);
 
         vm.expectRevert(abi.encodeWithSignature("ERC721NonexistentToken(uint256)", 999));
