@@ -7,13 +7,21 @@ import {IV3Router} from "@src/interfaces/uniswap/IV3Router.sol";
 import {IV3Quoter} from "@src/interfaces/uniswap/IV3Quoter.sol";
 import {IJackpot} from "@src/interfaces/megapot/IJackpot.sol";
 import {BBitsBurner} from "@src/BBitsBurner.sol";
-import {LuckyGhouls} from "@src/LuckyGhouls.sol";
-import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
+import {EvilOdds} from "@src/EvilOdds.sol";
+import {EvilOddsArt} from "@src/modules/EvilOddsArt.sol";
 
-/// @dev FOUNDRY_PROFILE=luckyghouls forge script script/luckyghouls/LuckyGhoulsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
-contract LuckyGhoulsDeploy is Script {
-    LuckyGhouls public luckyGhouls;
-    LuckyGhoulsArt public artContract;
+/// @title  Test Evil Odds deploy
+/// @notice A short-lived dress rehearsal of EvilOdds on Base mainnet: same contract, same art, but the
+///         treasury is spent over 10 purchase days and a mint costs 0.0003 ETH. Deploys paused, so minting opens
+///         only when the owner calls `unpause()`. Everything else (supply cap, mint burn share, treasury burn clock)
+///         is unchanged.
+/// @dev    FOUNDRY_PROFILE=evilodds forge script script/evilodds/TestEvilOddsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
+contract TestEvilOddsDeploy is Script {
+    EvilOdds public testEvilOdds;
+    EvilOddsArt public artContract;
+
+    uint256 public constant PURCHASE_DAYS = 10;
+    uint256 public constant MINT_PRICE = 0.0003 ether;
 
     // Base mainnet
     BBitsBurner public burner = BBitsBurner(payable(0x1595409cbAEf3dD2485107fb1e328fA0fA505c10));
@@ -27,13 +35,13 @@ contract LuckyGhoulsDeploy is Script {
     function run() external {
         vm.startBroadcast();
 
-        artContract = new LuckyGhoulsArt("Ghoul");
+        artContract = new EvilOddsArt("Test Evil Odd");
 
-        luckyGhouls = new LuckyGhouls(
-            "Lucky Ghouls",
-            "GHOUL",
+        testEvilOdds = new EvilOdds(
+            "Test Evil Odds",
+            "TEVIL",
             msg.sender,
-            0.003 ether,
+            MINT_PRICE,
             burner,
             WETH,
             USDC,
@@ -42,6 +50,9 @@ contract LuckyGhoulsDeploy is Script {
             lotteryContract,
             artContract
         );
+
+        testEvilOdds.setTotalPurchaseDays(PURCHASE_DAYS);
+        testEvilOdds.pause();
 
         vm.stopBroadcast();
     }

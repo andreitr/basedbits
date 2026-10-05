@@ -4,14 +4,14 @@ pragma solidity 0.8.25;
 import {Base64} from "@openzeppelin/utils/Base64.sol";
 import {Strings} from "@openzeppelin/utils/Strings.sol";
 
-/// @title  Lucky Ghouls Art
+/// @title  Evil Odds Art
 /// @notice On-chain art module, same interface as PotRaiderArt. Every token renders the ghoul from
-///         src/assets/luckyghoul.svg on a background color derived from its tokenId, darkened
+///         src/assets/evilodd.svg on a background color derived from its tokenId, darkened
 ///         with a black overlay (same scheme as PotRaiderArt).
-contract LuckyGhoulsArt {
+contract EvilOddsArt {
     using Strings for uint256;
 
-    /// @notice Prefix for token names, e.g. "Ghoul" renders as "Ghoul #7"
+    /// @notice Prefix for token names, e.g. "Evil Odd" renders as "Evil Odd #7"
     string public tokenNamePrefix;
 
     constructor(string memory _tokenNamePrefix) {
@@ -28,7 +28,7 @@ contract LuckyGhoulsArt {
                         tokenNamePrefix,
                         " #",
                         tokenId.toString(),
-                        '", "description": "Each drawing, the Ghouls conjure cursed numbers and send them after the Megapot jackpot. Whatever they haul back feeds the treasury, and any holder can burn their Ghoul to claim a share.", "image": "data:image/svg+xml;base64,',
+                        '", "description": "Each drawing, the Evil Odds conjure cursed numbers and send them after the Megapot jackpot. Whatever they haul back feeds the treasury, and any holder can burn their Evil Odd to claim a share.", "image": "data:image/svg+xml;base64,',
                         Base64.encode(bytes(svg)),
                         '"}'
                     )

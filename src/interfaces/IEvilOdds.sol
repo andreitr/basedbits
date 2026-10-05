@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-interface ILuckyGhouls {
+interface IEvilOdds {
     /// @notice One Megapot ticket bought by the contract for a given drawing.
     struct PurchasedTicket {
         uint256 ticketId;

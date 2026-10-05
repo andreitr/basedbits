@@ -11,10 +11,10 @@ import {BBitsBurner} from "@src/BBitsBurner.sol";
 import {IV3Router} from "@src/interfaces/uniswap/IV3Router.sol";
 import {IV3Quoter} from "@src/interfaces/uniswap/IV3Quoter.sol";
 import {IJackpot} from "@src/interfaces/megapot/IJackpot.sol";
-import {ILuckyGhouls} from "@src/interfaces/ILuckyGhouls.sol";
-import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
+import {IEvilOdds} from "@src/interfaces/IEvilOdds.sol";
+import {EvilOddsArt} from "@src/modules/EvilOddsArt.sol";
 
-/// @title  Lucky Ghouls
+/// @title  Evil Odds
 /// @notice ERC-721 collection whose mint proceeds pool into a shared treasury. Every drawing a keeper calls
 ///         `buyTickets`: a daily slice of the treasury is swapped to USDC and spent on Megapot V2 tickets whose
 ///         normals are drawn from the configured preferred-number pool in a low-overlap design and whose bonusball
@@ -25,7 +25,7 @@ import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
 ///         Winnings stay in the treasury as USDC and are only paid out through `burn`; they are never swapped
 ///         at claim time. One year after the first completed purchase, plus a 30-day grace period, the owner may
 ///         burn whatever is left in the treasury through the shared BBITS burner.
-contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
+contract EvilOdds is IEvilOdds, ERC721, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable weth;
@@ -45,7 +45,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
 
     uint256 public immutable maxMintPerTx;
 
-    LuckyGhoulsArt public immutable artContract;
+    EvilOddsArt public immutable artContract;
 
     uint256 public constant MAX_SUPPLY = 666;
 
@@ -55,7 +55,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
     uint256 public constant MAX_UNIQUE_TICKET_ATTEMPTS = 20;
 
     /// @notice Telemetry tag passed to Megapot on every purchase
-    bytes32 public constant MEGAPOT_SOURCE_TAG = "LuckyGhouls";
+    bytes32 public constant MEGAPOT_SOURCE_TAG = "EvilOdds";
 
     /// @notice burnRemainingTreasury unlocks this long after the first completed purchase...
     uint256 public constant TREASURY_BURN_DELAY = 365 days;
@@ -79,8 +79,8 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
     uint256 constant DESIGN_SCORE_WINDOW = 16;
 
     /// @dev Seed domains for the design candidates and the per-drawing bonusball offset
-    uint256 constant DESIGN_DOMAIN = uint256(keccak256("LuckyGhouls.design"));
-    uint256 constant BONUS_DOMAIN = uint256(keccak256("LuckyGhouls.bonus"));
+    uint256 constant DESIGN_DOMAIN = uint256(keccak256("EvilOdds.design"));
+    uint256 constant BONUS_DOMAIN = uint256(keccak256("EvilOdds.bonus"));
 
     /// @dev Everything the ticket generator needs for one drawing, built once per buyTickets/preview call
     struct TicketContext {
@@ -153,7 +153,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         IV3Router _router,
         IV3Quoter _quoter,
         IJackpot _megapot,
-        LuckyGhoulsArt _artContract
+        EvilOddsArt _artContract
     ) ERC721(_name, _symbol) Ownable(_owner) {
         mintPrice = _mintPrice;
         bbitsBurner = _bbitsBurner;
@@ -212,7 +212,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
     }
 
     /// @notice Burn a token for its proportional share of the treasury's ETH and USDC.
-    /// @dev    The only way to burn a Ghoul, so a burn always redeems its share.
+    /// @dev    The only way to burn an Evil Odd, so a burn always redeems its share.
     function burn(uint256 tokenId) external whenNotPaused nonReentrant {
         if (ownerOf(tokenId) != msg.sender) revert NotOwner();
 
@@ -847,7 +847,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         return artContract.generateTokenURI(tokenId);
     }
 
-    /// @notice Returns the ETH and USDC amounts redeemable per Ghoul
+    /// @notice Returns the ETH and USDC amounts redeemable per Evil Odd
     function getBurnPayoutPerToken() public view returns (uint256 ethShare, uint256 usdcShare) {
         if (totalSupply == 0) {
             return (0, 0);
