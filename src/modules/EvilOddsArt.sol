@@ -4,10 +4,10 @@ pragma solidity 0.8.25;
 import {Base64} from "@openzeppelin/utils/Base64.sol";
 import {Strings} from "@openzeppelin/utils/Strings.sol";
 
-/// @title  Lucky Ghouls Art
+/// @title  Evil Odds Art
 /// @notice Static on-chain art module, same interface as PotRaiderArt. Every token renders the same ghoul
-///         (src/assets/luckyghoul.svg, background included); only the token name differs.
-contract LuckyGhoulsArt {
+///         (src/assets/evilodds.svg, background included); only the token name differs.
+contract EvilOddsArt {
     using Strings for uint256;
 
     /// @notice Prefix for token names, e.g. "Ghoul" renders as "Ghoul #7"
@@ -27,7 +27,7 @@ contract LuckyGhoulsArt {
                         tokenNamePrefix,
                         " #",
                         tokenId.toString(),
-                        '", "description": "Every night the Cauldron buys Megapot tickets on behalf of the Lucky Ghouls. Each Ghoul can break the pact at any time to redeem its share of the Cauldron.", "image": "data:image/svg+xml;base64,',
+                        '", "description": "Every night the Cauldron buys Megapot tickets on behalf of Evil Odds. Each Ghoul can break the pact at any time to redeem its share of the Cauldron.", "image": "data:image/svg+xml;base64,',
                         Base64.encode(bytes(svg)),
                         '"}'
                     )

@@ -2,7 +2,7 @@
 pragma solidity 0.8.25;
 
 /// @title  Megapot V2 Jackpot interface (Base mainnet: 0x3bAe643002069dBCbcd62B1A4eb4C4A397d042a2)
-/// @notice Minimal subset of the deployed Jackpot ABI used by Lucky Ghouls. Struct field order matches the
+/// @notice Minimal subset of the deployed Jackpot ABI used by Evil Odds. Struct field order matches the
 ///         deployed contract exactly and must not be reordered.
 interface IJackpot {
     struct Ticket {

@@ -7,13 +7,13 @@ import {IV3Router} from "@src/interfaces/uniswap/IV3Router.sol";
 import {IV3Quoter} from "@src/interfaces/uniswap/IV3Quoter.sol";
 import {IJackpot} from "@src/interfaces/megapot/IJackpot.sol";
 import {BBitsBurner} from "@src/BBitsBurner.sol";
-import {LuckyGhouls} from "@src/LuckyGhouls.sol";
-import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
+import {EvilOdds} from "@src/EvilOdds.sol";
+import {EvilOddsArt} from "@src/modules/EvilOddsArt.sol";
 
-/// @dev FOUNDRY_PROFILE=luckyghouls forge script script/luckyghouls/LuckyGhoulsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
-contract LuckyGhoulsDeploy is Script {
-    LuckyGhouls public luckyGhouls;
-    LuckyGhoulsArt public artContract;
+/// @dev FOUNDRY_PROFILE=evilodds forge script script/evilodds/EvilOddsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
+contract EvilOddsDeploy is Script {
+    EvilOdds public evilOdds;
+    EvilOddsArt public artContract;
 
     // Base mainnet
     BBitsBurner public burner = BBitsBurner(payable(0x1595409cbAEf3dD2485107fb1e328fA0fA505c10));
@@ -27,10 +27,10 @@ contract LuckyGhoulsDeploy is Script {
     function run() external {
         vm.startBroadcast();
 
-        artContract = new LuckyGhoulsArt("Ghoul");
+        artContract = new EvilOddsArt("Ghoul");
 
-        luckyGhouls = new LuckyGhouls(
-            "Lucky Ghouls",
+        evilOdds = new EvilOdds(
+            "Evil Odds",
             "GHOUL",
             msg.sender,
             0.003 ether,

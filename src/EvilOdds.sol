@@ -11,10 +11,10 @@ import {BBitsBurner} from "@src/BBitsBurner.sol";
 import {IV3Router} from "@src/interfaces/uniswap/IV3Router.sol";
 import {IV3Quoter} from "@src/interfaces/uniswap/IV3Quoter.sol";
 import {IJackpot} from "@src/interfaces/megapot/IJackpot.sol";
-import {ILuckyGhouls} from "@src/interfaces/ILuckyGhouls.sol";
-import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
+import {IEvilOdds} from "@src/interfaces/IEvilOdds.sol";
+import {EvilOddsArt} from "@src/modules/EvilOddsArt.sol";
 
-/// @title  Lucky Ghouls
+/// @title  Evil Odds
 /// @notice ERC-721 collection whose mint proceeds pool into a shared treasury. Every drawing a keeper calls
 ///         `buyTickets`: a daily slice of the treasury is swapped to USDC and spent on Megapot V2 tickets whose
 ///         numbers are drawn from the configured preferred-number pool. Any holder may `burn` their token at any
@@ -24,7 +24,7 @@ import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
 ///         Winnings stay in the treasury as USDC and are only paid out through `burn`; they are never swapped
 ///         at claim time. One year after the first completed purchase, plus a 30-day grace period, the owner may
 ///         burn whatever is left in the treasury through the shared BBITS burner.
-contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
+contract EvilOdds is IEvilOdds, ERC721, Ownable, Pausable, ReentrancyGuard, IERC721Receiver {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable weth;
@@ -44,7 +44,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
 
     uint256 public immutable maxMintPerTx;
 
-    LuckyGhoulsArt public immutable artContract;
+    EvilOddsArt public immutable artContract;
 
     uint256 public constant MAX_SUPPLY = 666;
 
@@ -54,7 +54,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
     uint256 public constant MAX_UNIQUE_TICKET_ATTEMPTS = 20;
 
     /// @notice Telemetry tag passed to Megapot on every purchase
-    bytes32 public constant MEGAPOT_SOURCE_TAG = "LuckyGhouls";
+    bytes32 public constant MEGAPOT_SOURCE_TAG = "EvilOdds";
 
     /// @notice burnRemainingTreasury unlocks this long after the first completed purchase...
     uint256 public constant TREASURY_BURN_DELAY = 365 days;
@@ -143,7 +143,7 @@ contract LuckyGhouls is ILuckyGhouls, ERC721, Ownable, Pausable, ReentrancyGuard
         IV3Router _router,
         IV3Quoter _quoter,
         IJackpot _megapot,
-        LuckyGhoulsArt _artContract
+        EvilOddsArt _artContract
     ) ERC721(_name, _symbol) Ownable(_owner) {
         mintPrice = _mintPrice;
         bbitsBurner = _bbitsBurner;

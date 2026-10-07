@@ -7,19 +7,20 @@ import {IV3Router} from "@src/interfaces/uniswap/IV3Router.sol";
 import {IV3Quoter} from "@src/interfaces/uniswap/IV3Quoter.sol";
 import {IJackpot} from "@src/interfaces/megapot/IJackpot.sol";
 import {BBitsBurner} from "@src/BBitsBurner.sol";
-import {LuckyGhouls} from "@src/LuckyGhouls.sol";
-import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
+import {EvilOdds} from "@src/EvilOdds.sol";
+import {EvilOddsArt} from "@src/modules/EvilOddsArt.sol";
 
-/// @title  Test Ghouls deploy
-/// @notice A short-lived dress rehearsal of LuckyGhouls on Base mainnet: same contract, same art, but the
-///         treasury is spent over 10 purchase days and a mint costs the ETH equivalent of 1 USDC (quoted from
-///         Uniswap at deploy time). Everything else (supply cap, mint burn share, treasury burn clock) is unchanged.
-/// @dev    FOUNDRY_PROFILE=luckyghouls forge script script/luckyghouls/TestGhoulsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
-contract TestGhoulsDeploy is Script {
-    LuckyGhouls public testGhouls;
-    LuckyGhoulsArt public artContract;
+/// @title  Test Evil Odds deploy
+/// @notice A short-lived dress rehearsal of Evil Odds (the EvilOdds contract) on Base mainnet: same contract,
+///         same art, but the treasury is spent over 5 purchase days and a mint costs the ETH equivalent of 1 USDC
+///         (quoted from Uniswap at deploy time). Everything else (supply cap, mint burn share, treasury burn clock)
+///         is unchanged.
+/// @dev    FOUNDRY_PROFILE=evilodds forge script script/evilodds/TestEvilOddsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
+contract TestEvilOddsDeploy is Script {
+    EvilOdds public testEvilOdds;
+    EvilOddsArt public artContract;
 
-    uint256 public constant PURCHASE_DAYS = 10;
+    uint256 public constant PURCHASE_DAYS = 5;
     uint256 public constant MINT_PRICE_USDC = 1e6; // $1
 
     // Base mainnet
@@ -34,15 +35,15 @@ contract TestGhoulsDeploy is Script {
     function run() external {
         // Quote $1 in ETH off-chain (before broadcasting) so the mint price tracks the current rate
         uint256 mintPrice = quoteMintPrice();
-        console.log("Test Ghouls mint price (wei):", mintPrice);
+        console.log("Test Evil Odds mint price (wei):", mintPrice);
 
         vm.startBroadcast();
 
-        artContract = new LuckyGhoulsArt("Test Ghoul");
+        artContract = new EvilOddsArt("Test Ghoul");
 
-        testGhouls = new LuckyGhouls(
-            "Test Ghouls",
-            "TGHOUL",
+        testEvilOdds = new EvilOdds(
+            "Test Evil Odds",
+            "TODDS",
             msg.sender,
             mintPrice,
             burner,
@@ -54,9 +55,12 @@ contract TestGhoulsDeploy is Script {
             artContract
         );
 
-        testGhouls.setTotalPurchaseDays(PURCHASE_DAYS);
+        testEvilOdds.setTotalPurchaseDays(PURCHASE_DAYS);
 
         vm.stopBroadcast();
+
+        console.log("Test Evil Odds:", address(testEvilOdds));
+        console.log("Art:", address(artContract));
     }
 
     /// @notice ETH (wei) that 1 USDC buys on the 0.05% WETH/USDC pool right now

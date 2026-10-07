@@ -4,8 +4,8 @@ pragma solidity 0.8.25;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {BBitsBurner} from "@src/BBitsBurner.sol";
-import {LuckyGhouls, ILuckyGhouls, IV3Router, IV3Quoter, IJackpot} from "@src/LuckyGhouls.sol";
-import {LuckyGhoulsArt} from "@src/modules/LuckyGhoulsArt.sol";
+import {EvilOdds, IEvilOdds, IV3Router, IV3Quoter, IJackpot} from "@src/EvilOdds.sol";
+import {EvilOddsArt} from "@src/modules/EvilOddsArt.sol";
 import {MockERC20} from "@test/mocks/MockERC20.sol";
 import {MockWETH} from "@test/mocks/MockWETH.sol";
 import {MockBurner} from "@test/mocks/MockBurner.sol";
@@ -13,11 +13,11 @@ import {MockV3Quoter} from "@test/mocks/MockV3Quoter.sol";
 import {MockSwapRouterV2} from "@test/mocks/MockSwapRouterV2.sol";
 import {MockJackpotV2} from "@test/mocks/MockJackpotV2.sol";
 
-/// @dev forge test --match-contract LuckyGhoulsTest -vvv
+/// @dev forge test --match-contract EvilOddsTest -vvv
 ///      Mock-based: no fork required. 1 ETH == 1000 USDC in the mocks, so N tickets cost N * 1e15 wei.
-contract LuckyGhoulsTest is Test {
-    LuckyGhouls public ghouls;
-    LuckyGhoulsArt public artContract;
+contract EvilOddsTest is Test {
+    EvilOdds public ghouls;
+    EvilOddsArt public artContract;
     MockWETH public weth;
     MockERC20 public usdcToken;
     MockBurner public mockBurner;
@@ -58,10 +58,10 @@ contract LuckyGhoulsTest is Test {
         router = new MockSwapRouterV2(weth, usdcToken, USDC_PER_ETH);
         vm.deal(address(router), 100 ether);
         jackpot = new MockJackpotV2(usdcToken);
-        artContract = new LuckyGhoulsArt("Ghoul");
+        artContract = new EvilOddsArt("Ghoul");
 
-        ghouls = new LuckyGhouls(
-            "Lucky Ghouls",
+        ghouls = new EvilOdds(
+            "Evil Odds",
             "GHOUL",
             owner,
             mintPrice,
@@ -113,7 +113,7 @@ contract LuckyGhoulsTest is Test {
         }
     }
 
-    function _assertValidTicket(ILuckyGhouls.PurchasedTicket memory t, uint8 ballMax, uint8 bonusballMax)
+    function _assertValidTicket(IEvilOdds.PurchasedTicket memory t, uint8 ballMax, uint8 bonusballMax)
         internal
         pure
     {
@@ -129,7 +129,7 @@ contract LuckyGhoulsTest is Test {
     /// CONSTRUCTOR ///
 
     function testConstructor() public view {
-        assertEq(ghouls.name(), "Lucky Ghouls");
+        assertEq(ghouls.name(), "Evil Odds");
         assertEq(ghouls.symbol(), "GHOUL");
         assertEq(ghouls.owner(), owner);
         assertEq(address(ghouls.bbitsBurner()), address(mockBurner));
@@ -149,7 +149,7 @@ contract LuckyGhoulsTest is Test {
         assertEq(ghouls.completedPurchaseDays(), 0);
         assertEq(ghouls.lastCompletedDrawingId(), type(uint256).max);
         assertEq(ghouls.minGasPerPurchase(), 600_000);
-        assertEq(ghouls.MEGAPOT_SOURCE_TAG(), bytes32("LuckyGhouls"));
+        assertEq(ghouls.MEGAPOT_SOURCE_TAG(), bytes32("EvilOdds"));
         assertEq(ghouls.TREASURY_BURN_DELAY(), 365 days);
         assertEq(ghouls.TREASURY_BURN_GRACE_PERIOD(), 30 days);
         assertEq(ghouls.firstPurchaseTime(), 0);
@@ -197,13 +197,13 @@ contract LuckyGhoulsTest is Test {
 
     function testMintFailureConditions() public prank(user1) {
         uint256 largeQuantity = ghouls.maxMintPerTx() + 1;
-        vm.expectRevert(ILuckyGhouls.MaxMintPerCallExceeded.selector);
+        vm.expectRevert(IEvilOdds.MaxMintPerCallExceeded.selector);
         ghouls.mint{value: mintPrice * largeQuantity}(largeQuantity);
 
-        vm.expectRevert(ILuckyGhouls.InsufficientPayment.selector);
+        vm.expectRevert(IEvilOdds.InsufficientPayment.selector);
         ghouls.mint{value: mintPrice - 1}(1);
 
-        vm.expectRevert(ILuckyGhouls.QuantityZero.selector);
+        vm.expectRevert(IEvilOdds.QuantityZero.selector);
         ghouls.mint{value: 0}(0);
     }
 
@@ -229,13 +229,13 @@ contract LuckyGhoulsTest is Test {
         assertEq(remainder, 16);
 
         // One too many in the final batch
-        vm.expectRevert(ILuckyGhouls.MaxSupplyReached.selector);
+        vm.expectRevert(IEvilOdds.MaxSupplyReached.selector);
         ghouls.mint{value: mintPrice * (remainder + 1)}(remainder + 1);
 
         ghouls.mint{value: mintPrice * remainder}(remainder);
         assertEq(ghouls.totalMinted(), max);
 
-        vm.expectRevert(ILuckyGhouls.MaxSupplyReached.selector);
+        vm.expectRevert(IEvilOdds.MaxSupplyReached.selector);
         ghouls.mint{value: mintPrice}(1);
         vm.stopPrank();
     }
@@ -250,7 +250,7 @@ contract LuckyGhoulsTest is Test {
         uint256 ethBefore = user1.balance;
 
         vm.expectEmit(true, true, false, true);
-        emit ILuckyGhouls.TokenBurned(0, user1, 0.5 ether, 50e6);
+        emit IEvilOdds.TokenBurned(0, user1, 0.5 ether, 50e6);
         ghouls.burn(0);
 
         assertEq(ghouls.totalSupply(), 1);
@@ -269,12 +269,12 @@ contract LuckyGhoulsTest is Test {
         ghouls.mint{value: mintPrice}(1);
 
         vm.prank(user2);
-        vm.expectRevert(ILuckyGhouls.NotOwner.selector);
+        vm.expectRevert(IEvilOdds.NotOwner.selector);
         ghouls.burn(0);
 
         vm.deal(address(ghouls), 0);
         vm.prank(user1);
-        vm.expectRevert(ILuckyGhouls.NoTreasuryAvailable.selector);
+        vm.expectRevert(IEvilOdds.NoTreasuryAvailable.selector);
         ghouls.burn(0);
 
         vm.deal(address(ghouls), 1 ether);
@@ -295,7 +295,7 @@ contract LuckyGhoulsTest is Test {
         ghouls.setApprovalForAll(user2, true);
 
         vm.prank(user2);
-        vm.expectRevert(ILuckyGhouls.NotOwner.selector);
+        vm.expectRevert(IEvilOdds.NotOwner.selector);
         ghouls.burn(0);
         assertEq(ghouls.ownerOf(0), user1);
     }
@@ -334,7 +334,7 @@ contract LuckyGhoulsTest is Test {
         _fundForTickets(12);
 
         vm.expectEmit(true, true, false, true);
-        emit ILuckyGhouls.TicketsPurchased(1, DRAWING, 12, 12 * WEI_PER_TICKET);
+        emit IEvilOdds.TicketsPurchased(1, DRAWING, 12, 12 * WEI_PER_TICKET);
         ghouls.buyTickets();
 
         // One swap, twelve single-ticket purchases
@@ -361,7 +361,7 @@ contract LuckyGhoulsTest is Test {
         assertEq(ghouls.getTreasuryBurnUnlockTime(), vm.getBlockTimestamp() + 395 days);
 
         // Every ticket valid and pairwise distinct; ids recorded and owned by the Cauldron
-        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        IEvilOdds.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         uint256[] memory ids = ghouls.getUnclaimedTicketIds(DRAWING);
         assertEq(tickets.length, 12);
         assertEq(ids.length, 12);
@@ -372,7 +372,7 @@ contract LuckyGhoulsTest is Test {
             assertEq(recipient, address(ghouls));
             assertEq(soldDrawing, DRAWING);
             assertEq(soldBonus, tickets[i].bonusball);
-            assertEq(jackpot.getSoldSource(tickets[i].ticketId), bytes32("LuckyGhouls"));
+            assertEq(jackpot.getSoldSource(tickets[i].ticketId), bytes32("EvilOdds"));
             for (uint256 j = i + 1; j < tickets.length; j++) {
                 bool same = _mask(tickets[i].normals) == _mask(tickets[j].normals)
                     && tickets[i].bonusball == tickets[j].bonusball;
@@ -381,7 +381,7 @@ contract LuckyGhoulsTest is Test {
         }
 
         // Second call for the same drawing is refused
-        vm.expectRevert(ILuckyGhouls.TicketsAlreadyPurchased.selector);
+        vm.expectRevert(IEvilOdds.TicketsAlreadyPurchased.selector);
         ghouls.buyTickets();
     }
 
@@ -389,7 +389,7 @@ contract LuckyGhoulsTest is Test {
         _fundForTickets(20);
         ghouls.buyTickets();
 
-        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        IEvilOdds.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         assertEq(tickets.length, 20);
         uint256 bonusSeen;
         for (uint256 i = 0; i < tickets.length; i++) {
@@ -410,7 +410,7 @@ contract LuckyGhoulsTest is Test {
         _fundForTickets(4);
         ghouls.buyTickets();
 
-        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        IEvilOdds.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         assertEq(tickets.length, 4);
         for (uint256 i = 0; i < tickets.length; i++) {
             _assertValidTicket(tickets[i], 10, 3);
@@ -429,7 +429,7 @@ contract LuckyGhoulsTest is Test {
         _fundForTickets(6);
         ghouls.buyTickets();
 
-        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        IEvilOdds.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         assertEq(tickets.length, 6);
         assertEq(ghouls.completedPurchaseDays(), 1);
         for (uint256 i = 0; i < tickets.length; i++) {
@@ -456,10 +456,10 @@ contract LuckyGhoulsTest is Test {
         _fundForTickets(27);
 
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.UniqueTicketsExhausted(DRAWING, 26);
+        emit IEvilOdds.UniqueTicketsExhausted(DRAWING, 26);
         ghouls.buyTickets();
 
-        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        IEvilOdds.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         assertEq(tickets.length, 26);
         uint256 fifths;
         for (uint256 i = 0; i < tickets.length; i++) {
@@ -487,7 +487,7 @@ contract LuckyGhoulsTest is Test {
     function testCollisionResolvesOnLaterAttempt() public {
         _fundForTickets(1);
         ghouls.buyTickets();
-        ILuckyGhouls.PurchasedTicket memory first = ghouls.getPurchasedTickets(DRAWING)[0];
+        IEvilOdds.PurchasedTicket memory first = ghouls.getPurchasedTickets(DRAWING)[0];
 
         // Ticket index 0 again would reproduce the bought ticket on attempt 0; the retry must differ
         (uint8[5] memory normals, uint8 bonus, bool ok) = ghouls.previewTicketNumbers(DRAWING, 0);
@@ -502,10 +502,10 @@ contract LuckyGhoulsTest is Test {
         _fundForTickets(13);
 
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.UniqueTicketsExhausted(DRAWING, 12);
+        emit IEvilOdds.UniqueTicketsExhausted(DRAWING, 12);
         ghouls.buyTickets();
 
-        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        IEvilOdds.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         assertEq(tickets.length, 12);
         assertEq(ghouls.completedPurchaseDays(), 1);
         for (uint256 i = 0; i < tickets.length; i++) {
@@ -540,7 +540,7 @@ contract LuckyGhoulsTest is Test {
         _fundForTickets(5);
         ghouls.buyTickets();
 
-        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        IEvilOdds.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         assertEq(_mask(tickets[0].normals), _mask(previewNormals));
         assertEq(tickets[0].bonusball, previewBonus);
 
@@ -637,14 +637,14 @@ contract LuckyGhoulsTest is Test {
 
     function testBuyTicketsFailureConditions() public {
         // Nothing in the treasury
-        vm.expectRevert(ILuckyGhouls.InsufficientTreasury.selector);
+        vm.expectRevert(IEvilOdds.InsufficientTreasury.selector);
         ghouls.buyTickets();
 
         // Budget too small for one whole ticket
         vm.prank(owner);
         ghouls.setTotalPurchaseDays(1);
         vm.deal(address(ghouls), WEI_PER_TICKET / 2);
-        vm.expectRevert(ILuckyGhouls.InsufficientUSDCForTicket.selector);
+        vm.expectRevert(IEvilOdds.InsufficientUSDCForTicket.selector);
         ghouls.buyTickets();
 
         // Paused
@@ -662,7 +662,7 @@ contract LuckyGhoulsTest is Test {
 
         // Anyone may call, but not while Megapot is settling: nothing is swapped or locked in
         vm.prank(user2);
-        vm.expectRevert(ILuckyGhouls.DrawingLocked.selector);
+        vm.expectRevert(IEvilOdds.DrawingLocked.selector);
         ghouls.buyTickets();
         assertEq(address(ghouls).balance, ethBefore);
         assertEq(router.ethToUsdcCalls(), 0);
@@ -683,9 +683,9 @@ contract LuckyGhoulsTest is Test {
         jackpot.setFailWhenSold(3);
 
         vm.expectEmit(true, false, false, false);
-        emit ILuckyGhouls.TicketPurchaseFailed(DRAWING, 3, "");
+        emit IEvilOdds.TicketPurchaseFailed(DRAWING, 3, "");
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.TicketsPartiallyPurchased(DRAWING, 3, 7);
+        emit IEvilOdds.TicketsPartiallyPurchased(DRAWING, 3, 7);
         ghouls.buyTickets();
 
         // Three secured, guard not satisfied, USDC for the rest still in the Cauldron
@@ -705,7 +705,7 @@ contract LuckyGhoulsTest is Test {
         // Failure clears; retry does not re-swap, resumes at index 3, finishes
         jackpot.clearFail();
         vm.expectEmit(true, true, false, true);
-        emit ILuckyGhouls.TicketsPurchased(1, DRAWING, 7, 0);
+        emit IEvilOdds.TicketsPurchased(1, DRAWING, 7, 0);
         ghouls.buyTickets();
 
         assertEq(router.ethToUsdcCalls(), 1, "retry must not re-swap");
@@ -716,7 +716,7 @@ contract LuckyGhoulsTest is Test {
         assertEq(ghouls.completedPurchaseDays(), 1);
         assertEq(usdcToken.balanceOf(address(ghouls)), 0);
 
-        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        IEvilOdds.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         for (uint256 i = 0; i < tickets.length; i++) {
             for (uint256 j = i + 1; j < tickets.length; j++) {
                 bool same = _mask(tickets[i].normals) == _mask(tickets[j].normals)
@@ -725,7 +725,7 @@ contract LuckyGhoulsTest is Test {
             }
         }
 
-        vm.expectRevert(ILuckyGhouls.TicketsAlreadyPurchased.selector);
+        vm.expectRevert(IEvilOdds.TicketsAlreadyPurchased.selector);
         ghouls.buyTickets();
     }
 
@@ -755,7 +755,7 @@ contract LuckyGhoulsTest is Test {
 
         // Reserve exceeds the whole call's gas: loop never starts, nothing reverts
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.TicketsPartiallyPurchased(DRAWING, 0, 8);
+        emit IEvilOdds.TicketsPartiallyPurchased(DRAWING, 0, 8);
         ghouls.buyTickets{gas: 5_000_000}();
 
         (uint256 target, uint256 bought) = ghouls.getPurchaseProgress(DRAWING);
@@ -794,9 +794,9 @@ contract LuckyGhoulsTest is Test {
         _fundForTickets(10);
 
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.UniqueTicketsExhausted(DRAWING, 2);
+        emit IEvilOdds.UniqueTicketsExhausted(DRAWING, 2);
         vm.expectEmit(true, true, false, true);
-        emit ILuckyGhouls.TicketsPurchased(1, DRAWING, 2, 10 * WEI_PER_TICKET);
+        emit IEvilOdds.TicketsPurchased(1, DRAWING, 2, 10 * WEI_PER_TICKET);
         ghouls.buyTickets();
 
         (uint256 target, uint256 bought) = ghouls.getPurchaseProgress(DRAWING);
@@ -810,7 +810,7 @@ contract LuckyGhoulsTest is Test {
         assertEq(router.usdcToEthCalls(), 1);
         assertEq(router.lastUsdcToEthAmount(), 8e6);
 
-        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        IEvilOdds.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         assertTrue(_contains(tickets[0].normals, 5) != _contains(tickets[1].normals, 5));
         (,, bool ok) = ghouls.previewTicketNumbers(DRAWING, 2);
         assertFalse(ok);
@@ -821,7 +821,7 @@ contract LuckyGhoulsTest is Test {
         _fundForTickets(3);
 
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.UniqueTicketsExhausted(DRAWING, 0);
+        emit IEvilOdds.UniqueTicketsExhausted(DRAWING, 0);
         ghouls.buyTickets();
 
         assertEq(jackpot.buyCalls(), 0);
@@ -882,7 +882,7 @@ contract LuckyGhoulsTest is Test {
         assertEq(ids.length, 4);
 
         // Not settled yet
-        vm.expectRevert(ILuckyGhouls.DrawingNotSettled.selector);
+        vm.expectRevert(IEvilOdds.DrawingNotSettled.selector);
         ghouls.claimWinnings(DRAWING);
 
         jackpot.setCurrentDrawingId(DRAWING + 1);
@@ -892,7 +892,7 @@ contract LuckyGhoulsTest is Test {
         uint256 ethBefore = address(ghouls).balance;
         vm.prank(user2); // anyone can call
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.WinningsClaimed(DRAWING, 4, 8e6);
+        emit IEvilOdds.WinningsClaimed(DRAWING, 4, 8e6);
         ghouls.claimWinnings(DRAWING);
 
         // Winnings stay in the treasury as USDC; nothing is swapped
@@ -906,7 +906,7 @@ contract LuckyGhoulsTest is Test {
             assertTrue(burned);
         }
 
-        vm.expectRevert(ILuckyGhouls.NoTicketsForDrawing.selector);
+        vm.expectRevert(IEvilOdds.NoTicketsForDrawing.selector);
         ghouls.claimWinnings(DRAWING);
     }
 
@@ -916,7 +916,7 @@ contract LuckyGhoulsTest is Test {
         jackpot.setCurrentDrawingId(DRAWING + 1);
 
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.WinningsClaimed(DRAWING, 3, 0);
+        emit IEvilOdds.WinningsClaimed(DRAWING, 3, 0);
         ghouls.claimWinnings(DRAWING);
         assertEq(ghouls.getUnclaimedTicketIds(DRAWING).length, 0);
         assertEq(router.usdcToEthCalls(), 0, "nothing to convert on a losing round");
@@ -955,7 +955,7 @@ contract LuckyGhoulsTest is Test {
     }
 
     function testClaimWinningsFailureConditions() public {
-        vm.expectRevert(ILuckyGhouls.NoTicketsForDrawing.selector);
+        vm.expectRevert(IEvilOdds.NoTicketsForDrawing.selector);
         ghouls.claimWinnings(DRAWING);
 
         _fundForTickets(1);
@@ -975,7 +975,7 @@ contract LuckyGhoulsTest is Test {
         vm.warp(vm.getBlockTimestamp() + 3650 days);
         assertFalse(ghouls.isTreasuryBurnUnlocked());
         vm.prank(owner);
-        vm.expectRevert(ILuckyGhouls.TreasuryBurnLocked.selector);
+        vm.expectRevert(IEvilOdds.TreasuryBurnLocked.selector);
         ghouls.burnRemainingTreasury();
 
         // A partial ritual does not start the clock
@@ -988,7 +988,7 @@ contract LuckyGhoulsTest is Test {
         jackpot.setRevertAll(false);
         uint256 t0 = vm.getBlockTimestamp();
         vm.expectEmit(false, false, false, true);
-        emit ILuckyGhouls.TreasuryBurnClockStarted(t0, t0 + 395 days);
+        emit IEvilOdds.TreasuryBurnClockStarted(t0, t0 + 395 days);
         ghouls.buyTickets();
         assertEq(ghouls.firstPurchaseTime(), t0);
         assertEq(ghouls.getTreasuryBurnUnlockTime(), t0 + 395 days);
@@ -1021,7 +1021,7 @@ contract LuckyGhoulsTest is Test {
         vm.warp(unlockTime - 1);
         assertFalse(ghouls.isTreasuryBurnUnlocked());
         vm.prank(owner);
-        vm.expectRevert(ILuckyGhouls.TreasuryBurnLocked.selector);
+        vm.expectRevert(IEvilOdds.TreasuryBurnLocked.selector);
         ghouls.burnRemainingTreasury();
 
         // At the unlock time: USDC converted first, then everything burned through BBitsBurner
@@ -1030,7 +1030,7 @@ contract LuckyGhoulsTest is Test {
         uint256 expectedEth = 1 ether + (10e6 * 1e18) / USDC_PER_ETH;
         vm.prank(owner);
         vm.expectEmit(false, false, false, true);
-        emit ILuckyGhouls.TreasuryBurned(expectedEth, unlockTime);
+        emit IEvilOdds.TreasuryBurned(expectedEth, unlockTime);
         ghouls.burnRemainingTreasury();
 
         assertEq(router.lastUsdcToEthAmount(), 10e6);
@@ -1052,7 +1052,7 @@ contract LuckyGhoulsTest is Test {
         // Nothing there
         vm.deal(address(ghouls), 0);
         vm.prank(owner);
-        vm.expectRevert(ILuckyGhouls.NothingToBurn.selector);
+        vm.expectRevert(IEvilOdds.NothingToBurn.selector);
         ghouls.burnRemainingTreasury();
 
         // Works while paused
@@ -1079,7 +1079,7 @@ contract LuckyGhoulsTest is Test {
         ghouls.burnRemainingTreasury();
 
         vm.prank(user1);
-        vm.expectRevert(ILuckyGhouls.NoTreasuryAvailable.selector);
+        vm.expectRevert(IEvilOdds.NoTreasuryAvailable.selector);
         ghouls.burn(0);
     }
 
@@ -1087,7 +1087,7 @@ contract LuckyGhoulsTest is Test {
 
     function testSetMintPrice() public prank(owner) {
         vm.expectEmit(false, false, false, true);
-        emit ILuckyGhouls.MintPriceUpdated(0.001 ether);
+        emit IEvilOdds.MintPriceUpdated(0.001 ether);
         ghouls.setMintPrice(0.001 ether);
         assertEq(ghouls.mintPrice(), 0.001 ether);
     }
@@ -1096,7 +1096,7 @@ contract LuckyGhoulsTest is Test {
         ghouls.setMintBurnBps(500);
         assertEq(ghouls.mintBurnBps(), 500);
 
-        vm.expectRevert(ILuckyGhouls.InvalidPercentage.selector);
+        vm.expectRevert(IEvilOdds.InvalidPercentage.selector);
         ghouls.setMintBurnBps(10001);
     }
 
@@ -1104,13 +1104,13 @@ contract LuckyGhoulsTest is Test {
         ghouls.setTotalPurchaseDays(180);
         assertEq(ghouls.totalPurchaseDays(), 180);
 
-        vm.expectRevert(ILuckyGhouls.QuantityZero.selector);
+        vm.expectRevert(IEvilOdds.QuantityZero.selector);
         ghouls.setTotalPurchaseDays(0);
     }
 
     function testSetMegapotReferrer() public prank(owner) {
         vm.expectEmit(true, false, false, true);
-        emit ILuckyGhouls.MegapotReferrerUpdated(user2);
+        emit IEvilOdds.MegapotReferrerUpdated(user2);
         ghouls.setMegapotReferrer(user2);
         assertEq(ghouls.megapotReferrer(), user2);
     }
@@ -1123,7 +1123,7 @@ contract LuckyGhoulsTest is Test {
         preferred[3] = 1;
         preferred[4] = 255;
         vm.expectEmit(false, false, false, true);
-        emit ILuckyGhouls.PreferredNumbersUpdated(preferred);
+        emit IEvilOdds.PreferredNumbersUpdated(preferred);
         ghouls.setPreferredNumbers(preferred);
         uint8[] memory stored = ghouls.getPreferredNumbers();
         assertEq(stored.length, 5);
@@ -1131,31 +1131,31 @@ contract LuckyGhoulsTest is Test {
         assertEq(stored[1], 66);
         assertEq(ghouls.preferredNumbers(4), 255);
 
-        vm.expectRevert(ILuckyGhouls.TooFewPreferredNumbers.selector);
+        vm.expectRevert(IEvilOdds.TooFewPreferredNumbers.selector);
         ghouls.setPreferredNumbers(new uint8[](0));
-        vm.expectRevert(ILuckyGhouls.TooFewPreferredNumbers.selector);
+        vm.expectRevert(IEvilOdds.TooFewPreferredNumbers.selector);
         ghouls.setPreferredNumbers(_range(1, 4));
 
-        vm.expectRevert(ILuckyGhouls.TooManyPreferredNumbers.selector);
+        vm.expectRevert(IEvilOdds.TooManyPreferredNumbers.selector);
         ghouls.setPreferredNumbers(_range(1, 31));
         ghouls.setPreferredNumbers(_range(1, 30));
 
         preferred[1] = 0;
-        vm.expectRevert(ILuckyGhouls.InvalidPreferredNumber.selector);
+        vm.expectRevert(IEvilOdds.InvalidPreferredNumber.selector);
         ghouls.setPreferredNumbers(preferred);
 
         preferred[1] = 13;
-        vm.expectRevert(ILuckyGhouls.DuplicatePreferredNumber.selector);
+        vm.expectRevert(IEvilOdds.DuplicatePreferredNumber.selector);
         ghouls.setPreferredNumbers(preferred);
     }
 
     function testSetMinGasPerPurchase() public prank(owner) {
         vm.expectEmit(false, false, false, true);
-        emit ILuckyGhouls.MinGasPerPurchaseUpdated(1_000_000);
+        emit IEvilOdds.MinGasPerPurchaseUpdated(1_000_000);
         ghouls.setMinGasPerPurchase(1_000_000);
         assertEq(ghouls.minGasPerPurchase(), 1_000_000);
 
-        vm.expectRevert(ILuckyGhouls.QuantityZero.selector);
+        vm.expectRevert(IEvilOdds.QuantityZero.selector);
         ghouls.setMinGasPerPurchase(0);
     }
 
@@ -1241,7 +1241,7 @@ contract LuckyGhoulsTest is Test {
         vm.deal(address(ghouls), 1 ether);
         assertEq(ghouls.getDailyEthBudget(), 0);
         jackpot.setCurrentDrawingId(DRAWING + 1);
-        vm.expectRevert(ILuckyGhouls.InsufficientTreasury.selector);
+        vm.expectRevert(IEvilOdds.InsufficientTreasury.selector);
         ghouls.buyTickets();
 
         // Owner can extend the window and the ritual resumes
@@ -1266,7 +1266,7 @@ contract LuckyGhoulsTest is Test {
         string memory b = artContract.generateSVG(665);
         assertEq(keccak256(bytes(a)), keccak256(bytes(b)), "art must not vary per token");
         assertTrue(bytes(a).length > 100);
-        // Background from luckyghoul.svg is kept as-is
+        // Background from evilodds.svg is kept as-is
         assertTrue(_contains(a, '<rect width="48" height="48" fill="#EA9412"/>'));
         assertTrue(_startsWith(a, "<svg "));
     }
@@ -1299,6 +1299,6 @@ contract LuckyGhoulsTest is Test {
     }
 
     function testOnERC721Received() public view {
-        assertEq(ghouls.onERC721Received(address(0), address(0), 0, ""), LuckyGhouls.onERC721Received.selector);
+        assertEq(ghouls.onERC721Received(address(0), address(0), 0, ""), EvilOdds.onERC721Received.selector);
     }
 }
