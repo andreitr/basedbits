@@ -106,6 +106,12 @@ contract EvilOddsTest is Test {
         ghouls.setPreferredNumbers(pool);
     }
 
+    function _popcount(uint256 x) internal pure returns (uint256 count) {
+        for (; x != 0; x &= x - 1) {
+            count++;
+        }
+    }
+
     function _range(uint8 from, uint8 to) internal pure returns (uint8[] memory out) {
         out = new uint8[](to - from + 1);
         for (uint8 i = 0; i < out.length; i++) {
@@ -391,17 +397,89 @@ contract EvilOddsTest is Test {
 
         IEvilOdds.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
         assertEq(tickets.length, 20);
-        uint256 bonusSeen;
         for (uint256 i = 0; i < tickets.length; i++) {
             _assertValidTicket(tickets[i], 30, 10);
             for (uint256 j = 0; j < 5; j++) {
                 assertTrue(_inDefaultPool(tickets[i].normals[j]), "normal outside pool");
             }
-            uint8 b = tickets[i].bonusball;
-            assertTrue(b == 4 || b == 6 || b == 7 || b == 9, "bonusball outside pool");
-            bonusSeen |= 1 << b;
         }
-        assertTrue(bonusSeen != (1 << tickets[0].bonusball), "bonusball should rotate");
+    }
+
+    function testBonusballRotatesThroughFullRange() public {
+        _fundForTickets(20);
+        ghouls.buyTickets();
+
+        // Consecutive tickets take consecutive bonusballs (wrapping at bonusballMax), so 20 tickets cover 1..10 twice
+        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        uint256[11] memory counts;
+        for (uint256 i = 0; i < tickets.length; i++) {
+            counts[tickets[i].bonusball]++;
+            if (i > 0) assertEq(tickets[i].bonusball, tickets[i - 1].bonusball % 10 + 1, "bonusball not rotating");
+        }
+        for (uint256 b = 1; b <= 10; b++) {
+            assertEq(counts[b], 2, "bonusball usage uneven");
+        }
+    }
+
+    function testDesignPairsAreComplementsWithTenNumberPool() public {
+        _fundForTickets(30);
+        ghouls.buyTickets();
+
+        // Each pair uses every pool number exactly once, so 30 tickets use each of the 10 numbers 15 times
+        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        uint256 poolMask = (1 << 4) | (1 << 6) | (1 << 7) | (1 << 9) | (1 << 13) | (1 << 14) | (1 << 15) | (1 << 16)
+            | (1 << 17) | (1 << 24);
+        uint256[25] memory usage;
+        for (uint256 i = 0; i < tickets.length; i += 2) {
+            uint256 a = _mask(tickets[i].normals);
+            uint256 b = _mask(tickets[i + 1].normals);
+            assertEq(a & b, 0, "pair overlaps");
+            assertEq(a | b, poolMask, "pair misses pool numbers");
+        }
+        for (uint256 i = 0; i < tickets.length; i++) {
+            for (uint256 j = 0; j < 5; j++) {
+                usage[tickets[i].normals[j]]++;
+            }
+        }
+        for (uint8 n = 1; n <= 24; n++) {
+            assertEq(usage[n], _inDefaultPool(n) ? 15 : 0, "number usage uneven");
+        }
+    }
+
+    function testDesignPairOverlapWithSevenNumberPool() public {
+        // Five of seven numbers per ticket: a pair can share no fewer than 3 numbers
+        _setPool(_range(1, 7));
+        _fundForTickets(10);
+        ghouls.buyTickets();
+        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        for (uint256 i = 0; i < tickets.length; i += 2) {
+            uint256 shared = _mask(tickets[i].normals) & _mask(tickets[i + 1].normals);
+            assertEq(_popcount(shared), 3, "pool-7 pair overlap");
+        }
+    }
+
+    function testDesignPairsDisjointWithTwelveNumberPool() public {
+        _setPool(_range(1, 12));
+        _fundForTickets(10);
+        ghouls.buyTickets();
+        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        assertEq(tickets.length, 10);
+        for (uint256 i = 0; i < tickets.length; i += 2) {
+            assertEq(_mask(tickets[i].normals) & _mask(tickets[i + 1].normals), 0, "pool-12 pair overlap");
+        }
+    }
+
+    function testDesignSpreadsUnpairedTickets() public {
+        _fundForTickets(30);
+        ghouls.buyTickets();
+
+        // First-of-pair tickets keep the least-overlapping candidate, which keeps a 30-ticket day free of repeats
+        ILuckyGhouls.PurchasedTicket[] memory tickets = ghouls.getPurchasedTickets(DRAWING);
+        for (uint256 i = 0; i < tickets.length; i++) {
+            for (uint256 j = i + 1; j < tickets.length; j++) {
+                assertTrue(_mask(tickets[i].normals) != _mask(tickets[j].normals), "repeated normals");
+            }
+        }
     }
 
     function testBuyTicketsSkipsPreferredNumbersOutOfRange() public {
@@ -419,7 +497,7 @@ contract EvilOddsTest is Test {
             assertTrue(_contains(tickets[i].normals, 7));
             assertTrue(_contains(tickets[i].normals, 9));
             assertFalse(_contains(tickets[i].normals, 13));
-            // No pool number fits the bonusball range, so it falls back to a hashed pick
+            // Bonusballs rotate through the whole 1..bonusballMax range
             assertTrue(tickets[i].bonusball >= 1 && tickets[i].bonusball <= 3);
         }
     }
@@ -437,9 +515,7 @@ contract EvilOddsTest is Test {
             assertTrue(_contains(tickets[i].normals, 4));
             assertTrue(_contains(tickets[i].normals, 6));
             assertTrue(_contains(tickets[i].normals, 7));
-            // Bonusballs come from every preferred number <= bonusballMax, including 9 (> ballMax)
-            uint8 b = tickets[i].bonusball;
-            assertTrue(b == 4 || b == 6 || b == 7 || b == 9);
+            if (i > 0) assertEq(tickets[i].bonusball, tickets[i - 1].bonusball % 10 + 1, "bonusball not rotating");
         }
     }
 
@@ -481,7 +557,7 @@ contract EvilOddsTest is Test {
             assertEq(mask & (1 << a[i]), 0, "duplicate normal");
             mask |= 1 << a[i];
         }
-        assertTrue(aBonus == 4 || aBonus == 6 || aBonus == 7 || aBonus == 9);
+        assertTrue(aBonus >= 1 && aBonus <= 10);
     }
 
     function testCollisionResolvesOnLaterAttempt() public {
@@ -1260,15 +1336,31 @@ contract EvilOddsTest is Test {
         ghouls.tokenURI(999);
     }
 
-    function testArtIsStaticAcrossTokens() public view {
+    function testArtBackgroundVariesPerToken() public view {
         assertEq(artContract.tokenNamePrefix(), "Ghoul");
         string memory a = artContract.generateSVG(0);
-        string memory b = artContract.generateSVG(665);
-        assertEq(keccak256(bytes(a)), keccak256(bytes(b)), "art must not vary per token");
+        string memory b = artContract.generateSVG(1);
+        assertTrue(keccak256(bytes(a)) != keccak256(bytes(b)), "background must vary per token");
+        assertEq(keccak256(bytes(a)), keccak256(bytes(artContract.generateSVG(0))), "art is deterministic");
         assertTrue(bytes(a).length > 100);
+<<<<<<< HEAD:test/EvilOdds.t.sol
         // Background from evilodds.svg is kept as-is
         assertTrue(_contains(a, '<rect width="48" height="48" fill="#EA9412"/>'));
+=======
+>>>>>>> 92851897b9dee9136fcd3fc0a12f8c258ca7a840:test/LuckyGhouls.t.sol
         assertTrue(_startsWith(a, "<svg "));
+        assertFalse(_contains(a, '<rect width="48" height="48" fill="#EA9412"/>'), "no hardcoded background left");
+
+        // tokenId 0 -> hue 0, 80% saturation, 50% lightness -> rgb(229,229,25)
+        assertTrue(
+            _contains(
+                a,
+                '<rect width="48" height="48" fill="rgb(229,229,25)"/><rect width="48" height="48" fill="black" opacity="0.9"/>'
+            )
+        );
+        // Ghoul colors from luckyghoul.svg are untouched
+        assertTrue(_contains(a, 'fill="#E24B4B"/>'));
+        assertTrue(_contains(a, 'fill="#FEC94F"/>'));
     }
 
     function _startsWith(string memory s, string memory prefix) internal pure returns (bool) {
