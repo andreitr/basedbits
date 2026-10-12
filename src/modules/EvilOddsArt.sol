@@ -47,7 +47,7 @@ contract EvilOddsArt {
                     abi.encodePacked(
                         '{"name": "',
                         collectionName,
-                        '", "description": "666 Evil Odds conjure cursed numbers and send them after the Megapot jackpot every drawing for a year, paid for by a shared treasury filled at mint. Whatever they haul back stays in the treasury, and any holder can burn their Evil Odd at any time to claim a proportional share of its ETH and USDC.", "image": "data:image/svg+xml;base64,',
+                        '", "description": "666 Evil Odds. One cursed treasury, filled at mint. Every drawing for a year, it plays Megapot. Winnings stay in the pot. Burn your Evil Odd anytime to take your share.", "image": "data:image/svg+xml;base64,',
                         Base64.encode(bytes(_renderSVG("black"))),
                         '", "external_link": "https://www.basedbits.fun"}'
                     )
