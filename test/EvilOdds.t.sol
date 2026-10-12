@@ -119,7 +119,10 @@ contract EvilOddsTest is Test {
         }
     }
 
-    function _assertValidTicket(IEvilOdds.PurchasedTicket memory t, uint8 ballMax, uint8 bonusballMax) internal pure {
+    function _assertValidTicket(IEvilOdds.PurchasedTicket memory t, uint8 ballMax, uint8 bonusballMax)
+        internal
+        pure
+    {
         uint256 mask;
         for (uint256 i = 0; i < 5; i++) {
             assertTrue(t.normals[i] >= 1 && t.normals[i] <= ballMax, "normal out of range");
