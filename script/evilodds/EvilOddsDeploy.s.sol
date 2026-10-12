@@ -10,10 +10,15 @@ import {BBitsBurner} from "@src/BBitsBurner.sol";
 import {EvilOdds} from "@src/EvilOdds.sol";
 import {EvilOddsArt} from "@src/modules/EvilOddsArt.sol";
 
-/// @dev FOUNDRY_PROFILE=evilodds forge script script/evilodds/EvilOddsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
+/// @title  Evil Odds deploy
+/// @notice Production deploy of EvilOdds on Base mainnet. Stores the on-chain collection metadata and deploys
+///         paused, so minting opens only when the owner calls `unpause()`.
+/// @dev    FOUNDRY_PROFILE=evilodds forge script script/evilodds/EvilOddsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
 contract EvilOddsDeploy is Script {
     EvilOdds public evilOdds;
     EvilOddsArt public artContract;
+
+    uint256 public constant MINT_PRICE = 0.003 ether;
 
     // Base mainnet
     BBitsBurner public burner = BBitsBurner(payable(0x1595409cbAEf3dD2485107fb1e328fA0fA505c10));
@@ -33,7 +38,7 @@ contract EvilOddsDeploy is Script {
             "Evil Odds",
             "EVIL",
             msg.sender,
-            0.003 ether,
+            MINT_PRICE,
             burner,
             WETH,
             USDC,
@@ -42,6 +47,9 @@ contract EvilOddsDeploy is Script {
             lotteryContract,
             artContract
         );
+
+        evilOdds.setContractURI(artContract.generateContractURI(evilOdds.name()));
+        evilOdds.pause();
 
         vm.stopBroadcast();
     }
