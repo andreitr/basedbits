@@ -38,13 +38,39 @@ contract EvilOddsArt {
         return string(abi.encodePacked("data:application/json;base64,", json));
     }
 
+    /// @notice Collection-level metadata (name, description, image, external_link) as a base64 JSON data URI,
+    ///         meant to be stored with EvilOdds.setContractURI. The image is the ghoul on a black background.
+    function generateContractURI(string calldata collectionName) external pure returns (string memory) {
+        string memory json = Base64.encode(
+            bytes(
+                string(
+                    abi.encodePacked(
+                        '{"name": "',
+                        collectionName,
+                        '", "description": "666 Evil Odds conjure cursed numbers and send them after the Megapot jackpot every drawing for a year, paid for by a shared treasury filled at mint. Whatever they haul back stays in the treasury, and any holder can burn their Evil Odd at any time to claim a proportional share of its ETH and USDC.", "image": "data:image/svg+xml;base64,',
+                        Base64.encode(bytes(_renderSVG("black"))),
+                        '", "external_link": "https://www.basedbits.fun"}'
+                    )
+                )
+            )
+        );
+        return string(abi.encodePacked("data:application/json;base64,", json));
+    }
+
     function generateSVG(uint256 tokenId) public pure returns (string memory) {
         (uint8 r, uint8 g, uint8 b) = getHueRGB(tokenId);
 
-        string memory backgroundColor = string(
-            abi.encodePacked("rgb(", uint256(r).toString(), ",", uint256(g).toString(), ",", uint256(b).toString(), ")")
+        return _renderSVG(
+            string(
+                abi.encodePacked(
+                    "rgb(", uint256(r).toString(), ",", uint256(g).toString(), ",", uint256(b).toString(), ")"
+                )
+            )
         );
+    }
 
+    /// @dev The ghoul over `backgroundColor`, darkened by the black overlay
+    function _renderSVG(string memory backgroundColor) internal pure returns (string memory) {
         return string(
             abi.encodePacked(
                 '<svg width="480" height="480" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" fill="',

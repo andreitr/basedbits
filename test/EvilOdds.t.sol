@@ -119,10 +119,7 @@ contract EvilOddsTest is Test {
         }
     }
 
-    function _assertValidTicket(IEvilOdds.PurchasedTicket memory t, uint8 ballMax, uint8 bonusballMax)
-        internal
-        pure
-    {
+    function _assertValidTicket(IEvilOdds.PurchasedTicket memory t, uint8 ballMax, uint8 bonusballMax) internal pure {
         uint256 mask;
         for (uint256 i = 0; i < 5; i++) {
             assertTrue(t.normals[i] >= 1 && t.normals[i] <= ballMax, "normal out of range");
@@ -1274,6 +1271,26 @@ contract EvilOddsTest is Test {
         assertEq(evilOdds.contractURI(), "");
         evilOdds.setContractURI("https://example.com/metadata.json");
         assertEq(evilOdds.contractURI(), "https://example.com/metadata.json");
+    }
+
+    /// @dev Mirrors the post-deploy steps of script/evilodds/EvilOddsDeploy.s.sol
+    function testProductionLaunchSetup() public prank(owner) {
+        string memory uri = artContract.generateContractURI(evilOdds.name());
+        assertTrue(_startsWith(uri, "data:application/json;base64,"));
+        assertEq(keccak256(bytes(uri)), keccak256(bytes(artContract.generateContractURI("Evil Odds"))));
+
+        uint256 gasBefore = gasleft();
+        evilOdds.setContractURI(uri);
+        emit log_named_uint("setContractURI gas", gasBefore - gasleft());
+        evilOdds.pause();
+
+        assertEq(evilOdds.contractURI(), uri);
+        assertTrue(evilOdds.paused());
+
+        uint256 price = evilOdds.mintPrice();
+        vm.deal(owner, price);
+        vm.expectRevert(abi.encodeWithSignature("EnforcedPause()"));
+        evilOdds.mint{value: price}(1);
     }
 
     /// EMERGENCY WITHDRAW ///
