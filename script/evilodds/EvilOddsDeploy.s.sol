@@ -13,7 +13,10 @@ import {EvilOddsArt} from "@src/modules/EvilOddsArt.sol";
 /// @title  Evil Odds deploy
 /// @notice Production deploy of EvilOdds on Base mainnet. Stores the on-chain collection metadata and deploys
 ///         paused, so minting opens only when the owner calls `unpause()`.
+///         Broadcast with `--gas-estimate-multiplier 110`: setContractURI uses ~12.6M gas, and forge's default
+///         130% gas limit for it (~17.5M) exceeds the 16,777,216 per-transaction cap (EIP-7825) where enforced.
 /// @dev    FOUNDRY_PROFILE=evilodds forge script script/evilodds/EvilOddsDeploy.s.sol --rpc-url <BASE_RPC_URL> --broadcast
+///         --gas-estimate-multiplier 110
 contract EvilOddsDeploy is Script {
     EvilOdds public evilOdds;
     EvilOddsArt public artContract;
